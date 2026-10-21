@@ -1,0 +1,80 @@
+<!doctype html>
+
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+        />
+        <meta name="theme-color" content="#101923" />
+        <title>kSim — Origins</title>
+        <link rel="stylesheet" href="./styles.css" />
+    </head>
+    <body>
+        <div id="productionErrorLog"></div>
+        <div id="consoleLog"></div>
+        <div id="devtools"></div>
+        <div id="app" class="app-shell"></div>
+        <!-- Keep bootstrap local so startup errors can be captured early. -->
+        <script src="../mobile-dev-console/errorBootstrap.js"></script>
+
+        <script type="module">
+            try {
+                const { default: DevTools } =
+                    await import("../mobile-dev-console/DevTools.js");
+
+                /*
+                const devTools = DevTools.mount({
+                    mode: "overlay",
+                    captureConsole: true,
+                    mirrorToNative: false,
+                    showCopyButtons: false,
+                    allowDragOutsideBounds: true
+                });
+                */
+
+                const devTools = DevTools.mount({
+                    mode: "embedded",
+                    mountPoint: "#devtools", // set above
+                    height: "60dvh",
+                    captureConsole: true,
+                    mirrorToNative: false,
+                    showCopyButtons: false,
+                    allowDragOutsideBounds: true
+                });
+
+                devTools.registerSuite({
+                    id: "app-debug",
+                    name: "App Debug Tools",
+
+                    actions: [
+                        {
+                            id: "hello",
+                            label: "Test Button",
+
+                            run({ console }) {
+                                console.log("Button clicked!");
+                            }
+                        }
+                    ]
+                });
+
+                // Optional: make the instance available to app code.
+                // window.ksimDevTools = devTools;
+
+                await import("./main.js");
+            } catch (error) {
+                if (window.ksimDevTools?.devConsole) {
+                    window.ksimDevTools.devConsole.error(error);
+                } else if (window.devConsole) {
+                    window.devConsole.error(error);
+                } else if (window.showFatalError) {
+                    window.showFatalError("Application Startup Failed", error);
+                } else {
+                    console.error(error);
+                }
+            }
+        </script>
+    </body>
+</html>
