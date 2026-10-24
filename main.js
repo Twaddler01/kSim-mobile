@@ -1,3 +1,5 @@
+import DebugButton from './debug/DebugButtons.js';
+
 import {
     initialGameData,
     resourceDefinitions,
@@ -15,9 +17,11 @@ import {
     buyUpgrade,
     upgradeCost,
     canAfford,
+    payCost,
     costLabel,
     formatNumber,
-    consumeParticles
+    consumeParticles,
+    checkDiscoveries
 } from "./src/functions.js";
 
 const SAVE_KEY = "ksim-quantum-foundations-v1";
@@ -48,7 +52,10 @@ function loadGame() {
                 : [],
             log: Array.isArray(parsed.log)
                 ? parsed.log
-                : [...initialGameData.log]
+                : [...initialGameData.log],
+            triggered: Array.isArray(parsed.triggered) ? parsed.triggered : [],
+
+            announcement: parsed.announcement ?? null
         };
     } catch (error) {
         console.warn("Could not load Quantum Foundations save:", error);
@@ -60,6 +67,7 @@ let game = loadGame();
 let activeTab = "observations";
 let toastText = "";
 let toastTimer = null;
+let inventoryExpanded = false;
 
 function save() {
     try {
@@ -68,6 +76,10 @@ function save() {
         console.warn("Could not save Quantum Foundations:", error);
     }
 }
+
+// Process any event triggers already satisfied by a loaded save.
+checkDiscoveries(game);
+save();
 
 function resourceVisible(resource) {
     return (
@@ -97,27 +109,87 @@ function renderResources() {
 
 function renderDiscoveries() {
     const list = el("div", { className: "item-list" });
+
     for (const item of discoveries) {
+        const triggered = (game.triggered ?? []).includes(item.id);
+
+        // Hidden observations remain completely invisible until triggered.
+        if (item.hidden && !triggered) continue;
+
         const unlocked = game.discoveries.includes(item.id);
+        const investigatable = item.hidden && !unlocked;
+        const cost = item.cost ?? {};
+        const affordable = canAfford(game, cost);
+
         const body = el("div", { className: "item-details" }, [
             el("div", { className: "item-heading" }, [
-                el("span", { className: "item-icon", text: item.icon }),
+                el("span", {
+                    className: "item-icon",
+                    text: item.icon
+                }),
                 el("strong", {
-                    text: unlocked ? item.name : "Unconfirmed Observation"
+                    text: unlocked
+                        ? item.name
+                        : investigatable
+                          ? "Unknown Energy Source"
+                          : "Unconfirmed Observation"
                 }),
                 el("span", {
                     className: `status ${unlocked ? "status-found" : ""}`,
-                    text: unlocked ? "RECORDED" : "UNKNOWN"
+                    text: unlocked
+                        ? "RECORDED"
+                        : investigatable
+                          ? "INVESTIGATION AVAILABLE"
+                          : "UNKNOWN"
                 })
             ]),
+
             el("p", {
                 className: "item-description",
                 text: unlocked
                     ? item.description
-                    : `Perform ${item.requirement} experiments to verify this observation.`
+                    : investigatable
+                      ? "A signal has been detected, but its source is unknown. Allocate research resources to investigate it."
+                      : `Perform ${item.requirement} experiments to verify this observation.`
             })
         ]);
-        if (!unlocked) {
+
+        if (investigatable) {
+            body.append(
+                el("div", {
+                    className: "cost-line",
+                    text: `Investigation cost: ${costLabel(cost, resourceDefinitions)}`
+                }),
+                Button(
+                    "INVESTIGATE",
+                    () => {
+                        if (!game.triggered.includes(item.id)) return;
+                        if (game.discoveries.includes(item.id)) return;
+
+                        if (!payCost(game, cost)) {
+                            showToast("Insufficient research resources.");
+                            return;
+                        }
+
+                        game.discoveries.push(item.id);
+
+                        addLog(
+                            game,
+                            `INVESTIGATION COMPLETE: ${item.name}. ${item.description}`
+                        );
+
+                        save();
+                        render();
+                    },
+                    {
+                        variant: "primary-button",
+                        disabled: !affordable
+                    }
+                )
+            );
+        }
+
+        if (!unlocked && !investigatable) {
             body.append(
                 ProgressBar({
                     label: "Experiment count",
@@ -127,14 +199,18 @@ function renderDiscoveries() {
                 })
             );
         }
+
         list.append(
             el(
                 "article",
-                { className: `list-item ${unlocked ? "is-unlocked" : ""}` },
+                {
+                    className: `list-item ${unlocked ? "is-unlocked" : ""}`
+                },
                 [body]
             )
         );
     }
+
     return list;
 }
 
@@ -241,6 +317,44 @@ function runExperiments(count = 1) {
         );
     save();
     showToast(gains.join(" · "));
+}
+
+function renderAnnouncement() {
+    const announcement = game.announcement;
+    if (!announcement) return null;
+
+    return el("div", {
+        className: "announcement-overlay",
+        role: "alertdialog",
+        "aria-modal": "true",
+        "aria-label": announcement.title
+    }, [
+        el("section", { className: "announcement-panel" }, [
+            el("div", {
+                className: "announcement-eyebrow",
+                text: "⚠ PRIORITY LAB ALERT"
+            }),
+            el("div", {
+                className: "announcement-symbol",
+                text: "◉"
+            }),
+            el("h2", {
+                text: announcement.title
+            }),
+            el("p", {
+                text: announcement.message
+            }),
+            el("p", {
+                className: "announcement-detail",
+                text: "A new observation has been added to the laboratory database."
+            }),
+            Button("ACKNOWLEDGE", () => {
+                game.announcement = null;
+                save();
+                render();
+            }, { variant: "primary-button" })
+        ])
+    ]);
 }
 
 function render() {
@@ -462,6 +576,12 @@ function render() {
             })
         );
     app.replaceChildren(layout);
+
+    const announcement = renderAnnouncement();
+
+    if (announcement) {
+        layout.append(announcement);
+    }
 }
 
 window.kSim = {
@@ -486,3 +606,31 @@ window.kSim = {
 };
 
 render();
+
+new DebugButton({
+    id: "DebugButton",
+    label: "Debug Button",
+    run: () => {
+        console.log('Debug Button clicked!');
+    }
+});
+
+new DebugButton({
+    id: "add_100_energy",
+    label: "Add +100 energy",
+    run: () => {
+        game.resources.energy += 100;
+        save();
+        render();
+        console.log('+100 energy added!');
+    }
+});
+
+new DebugButton({
+    id: "test_100_experiments",
+    label: "Test 100 experiments",
+    run: () => {
+        runExperiments(100);
+        console.log('+100 experiments tested!');
+    }
+});

@@ -35,26 +35,64 @@ export function upgradeCost(definition, level) {
 }
 
 export function checkDiscoveries(game) {
+    // Unlock ordinary observations through experiment milestones.
     for (const discovery of discoveries) {
+        if (discovery.hidden) continue;
+
         if (
             game.discoveries.includes(discovery.id) ||
             game.clicks < discovery.requirement
-        )
+        ) {
             continue;
+        }
 
         game.discoveries.push(discovery.id);
+
         for (const [resource, amount] of Object.entries(
             discovery.reward ?? {}
         )) {
             game.resources[resource] = (game.resources[resource] ?? 0) + amount;
         }
+
         const rewardText = Object.entries(discovery.reward ?? {})
             .map(([resource, amount]) => `+${amount} ${resource}`)
             .join(", ");
+
         addLog(
             game,
-            `DISCOVERY: ${discovery.name}${rewardText ? ` (${rewardText})` : ""}.`
+            `DISCOVERY: ${discovery.name}${
+                rewardText ? ` (${rewardText})` : ""
+            }.`
         );
+    }
+
+    // Process event-triggered observations.
+    game.triggered ??= [];
+
+    for (const observation of discoveries) {
+        if (!observation.hidden) continue;
+        if (game.triggered.includes(observation.id)) continue;
+
+        const trigger = observation.trigger;
+
+        if (
+            trigger?.type === "discovery" &&
+            game.discoveries.includes(trigger.id)
+        ) {
+            game.triggered.push(observation.id);
+
+            game.announcement = {
+                id: observation.id,
+                ...observation.announcement
+            };
+
+            addLog(
+                game,
+                `ALERT: ${
+                    observation.announcement?.message ?? observation.name
+                }`
+            );
+        }
     }
 }
 
