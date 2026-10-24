@@ -10,48 +10,97 @@
     <body>
         <main id="app" class="app-shell"></main>
         <div id="devtools"></div>
-        <div id="productionErrorLog" hidden></div>
-        <div id="consoleLog" hidden></div>
+        <div id="productionErrorLog"></div>
 
         <!-- Install error listeners first. -->
         <script src="./mobile-dev-console/errorBootstrap.js"></script>
 
         <!-- Initialize the console before integrations and the application. -->
         <script type="module">
+            const DEBUG_MODE = true;
+
+            document.body.classList.toggle("debug-mode", DEBUG_MODE);
+
+            // Always-available on-page error output.
+            function showStartupError(title, error) {
+                let output = document.getElementById("startupErrorOutput");
+
+                if (!output) {
+                    output = document.createElement("pre");
+                    output.id = "startupErrorOutput";
+
+                    Object.assign(output.style, {
+                        position: "fixed",
+                        inset: "10px",
+                        zIndex: "99999",
+                        padding: "16px",
+                        overflow: "auto",
+                        whiteSpace: "pre-wrap",
+                        overflowWrap: "anywhere",
+                        background: "#200b12",
+                        color: "#ffdce3",
+                        border: "1px solid #ff6178",
+                        borderRadius: "10px",
+                        font: "12px/1.5 monospace"
+                    });
+
+                    document.body.appendChild(output);
+                }
+
+                const details =
+                    error?.stack ||
+                    error?.message ||
+                    String(error ?? "Unknown error");
+
+                output.textContent +=
+                    `${output.textContent ? "\n\n" : ""}` +
+                    `${title}\n${details}`;
+
+                output.hidden = false;
+            }
+
+            // Initialize optional debugging tools.
+            if (DEBUG_MODE) {
+                try {
+                    const { default: DevTools } =
+                        await import("./mobile-dev-console/DevTools.js");
+
+                    const { DebugButtons } =
+                        await import("./debug/DebugButtons.js");
+
+                    const devTools = DevTools.mount({
+                        mode: "embedded",
+                        mountPoint: "#devtools",
+                        height: "60dvh",
+                        captureConsole: true,
+                        mirrorToNative: false,
+                        showCopyButtons: false,
+                        allowDragOutsideBounds: true
+                    });
+
+                    window.ksimDevTools = devTools;
+                    DebugButtons.connect(devTools);
+                } catch (error) {
+                    showStartupError("DevTools Initialization Failed", error);
+                    console.error("DevTools initialization failed:", error);
+                }
+            }
+
+            // Start the game even if optional debugging tools fail.
             try {
-                const { default: DevTools } =
-                    await import("./mobile-dev-console/DevTools.js");
-
-                const { DebugButtons } =
-                    await import("./debug/DebugButtons.js");
-
-                const devTools = DevTools.mount({
-                    
-                    mode: "embedded",
-                    mountPoint: "#devtools", // set above
-                    height: "60dvh",
-                    captureConsole: true,
-                    mirrorToNative: false,
-                    showCopyButtons: false,
-                    allowDragOutsideBounds: true
-                });
-
-                DebugButtons.connect(devTools);
-
-                // Optional: make the instance available to app code.
-                // window.ksimDevTools = devTools;
-
                 await import("./main.js");
             } catch (error) {
+                showStartupError("Application Startup Failed", error);
+
                 if (window.ksimDevTools?.devConsole) {
                     window.ksimDevTools.devConsole.error(error);
                 } else if (window.devConsole) {
                     window.devConsole.error(error);
                 } else if (window.showFatalError) {
                     window.showFatalError("Application Startup Failed", error);
-                } else {
-                    console.error(error);
                 }
+
+                console.error("Application startup failed:", error);
             }
         </script>
     </body>

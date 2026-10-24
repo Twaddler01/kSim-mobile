@@ -23,6 +23,9 @@ import {
     checkDiscoveries
 } from "./src/functions.js";
 
+import Inventory from "./src/ui/Inventory.js";
+import ResourcePopups from "./src/ui/ResourcePopups.js";
+
 const SAVE_KEY = "ksim-quantum-foundations-v1";
 const app = document.getElementById("app");
 
@@ -69,56 +72,10 @@ let toastTimer = null;
 let inventoryExpanded = false;
 let ui = {};
 
-const activeFloatTexts = [];
-const MAX_FLOAT_TEXTS = 5;
-
-function showResourcePopups(gains, event) {
-    const x = event?.clientX ?? window.innerWidth / 2;
-    const y = event?.clientY ?? window.innerHeight / 2;
-
-    for (const gain of gains) {
-        if (!gain.amount) continue;
-
-        // Keep only the five newest popups.
-        while (activeFloatTexts.length >= MAX_FLOAT_TEXTS) {
-            activeFloatTexts.shift().remove();
-        }
-
-        const stackOffset = activeFloatTexts.length * 24;
-
-        const popup = el("div", {
-            className: "resource-float",
-            text: `+${formatNumber(gain.amount)} ${gain.icon}`,
-            style: {
-                left: `${x}px`,
-                top: `${y - stackOffset}px`
-            },
-            "aria-hidden": "true"
-        });
-
-        document.body.append(popup);
-        activeFloatTexts.push(popup);
-
-        popup.addEventListener(
-            "animationend",
-            () => {
-                popup.remove();
-
-                const index = activeFloatTexts.indexOf(popup);
-                if (index !== -1) activeFloatTexts.splice(index, 1);
-            },
-            { once: true }
-        );
-
-        // Fallback in case animationend doesn't fire.
-        setTimeout(() => {
-            popup.remove();
-
-            const index = activeFloatTexts.indexOf(popup);
-            if (index !== -1) activeFloatTexts.splice(index, 1);
-        }, 1000);
-    }
-}
+const resourcePopups = new ResourcePopups({
+    formatNumber,
+    maxVisible: 5
+});
 
 function save() {
     try {
@@ -139,149 +96,8 @@ function resourceVisible(resource) {
     );
 }
 
-function renderResources() {
-    const resources = resourceDefinitions.filter(resourceVisible);
-
-    ui.inventoryValues = new Map();
-    ui.inventoryDetailValues = new Map();
-    ui.inventoryIds = resources.map(resource => resource.id);
-
-    const toggleChevron = el("span", {
-        className: "inventory-chevron",
-        text: inventoryExpanded ? "⌃" : "⌄"
-    });
-
-    ui.inventoryToggleChevron = toggleChevron;
-
-    const toggle = el(
-        "button",
-        {
-            type: "button",
-            className: "inventory-toggle",
-            "aria-expanded": String(inventoryExpanded),
-            onClick: () => {
-                const oldPanel = ui.inventoryPanel;
-                inventoryExpanded = !inventoryExpanded;
-                const newPanel = renderResources();
-                oldPanel.replaceWith(newPanel);
-                updateInventory();
-            }
-        },
-        [
-            el("span", {
-                className: "inventory-toggle-title",
-                text: "INVENTORY"
-            }),
-            toggleChevron
-        ]
-    );
-
-    const compact = el(
-        "div",
-        {
-            className: "inventory-compact",
-            role: "list",
-            "aria-label": "Current resources"
-        },
-        resources.map(resource => {
-            const value = el("span", {
-                className: "resource-chip-value",
-                text: formatNumber(game.resources[resource.id] ?? 0)
-            });
-
-            ui.inventoryValues.set(resource.id, value);
-
-            return el(
-                "div",
-                {
-                    className: "resource-chip",
-                    role: "listitem",
-                    title: resource.name
-                },
-                [
-                    el("span", {
-                        className: "resource-chip-icon",
-                        "aria-hidden": "true",
-                        text: resource.icon
-                    }),
-                    value
-                ]
-            );
-        })
-    );
-
-    const expanded = inventoryExpanded
-        ? el(
-              "div",
-              {
-                  className: "inventory-expanded",
-                  role: "list",
-                  "aria-label": "Resource details"
-              },
-              resources.map(resource => {
-                  const value = el("strong", {
-                      className: "inventory-item-value",
-                      text: formatNumber(game.resources[resource.id] ?? 0)
-                  });
-
-                  ui.inventoryDetailValues.set(resource.id, value);
-
-                  return el(
-                      "article",
-                      {
-                          className: "inventory-item",
-                          role: "listitem"
-                      },
-                      [
-                          el("span", {
-                              className: "inventory-item-icon",
-                              "aria-hidden": "true",
-                              text: resource.icon
-                          }),
-                          el("div", { className: "inventory-item-copy" }, [
-                              el("strong", { text: resource.name }),
-                              el("small", { text: resource.description })
-                          ]),
-                          value
-                      ]
-                  );
-              })
-          )
-        : null;
-
-    const panel = el(
-        "section",
-        {
-            className: `inventory-panel${inventoryExpanded ? " is-expanded" : ""}`
-        },
-        [toggle, compact, expanded]
-    );
-
-    ui.inventoryPanel = panel;
-    return panel;
-}
-
 function updateInventory() {
-    const resources = resourceDefinitions.filter(resourceVisible);
-    const ids = resources.map(resource => resource.id);
-
-    // Rebuild only the inventory if a resource becomes newly visible.
-    if (JSON.stringify(ids) !== JSON.stringify(ui.inventoryIds)) {
-        const oldPanel = ui.inventoryPanel;
-        const newPanel = renderResources();
-        oldPanel.replaceWith(newPanel);
-        return;
-    }
-
-    for (const resource of resources) {
-        const value = formatNumber(game.resources[resource.id] ?? 0);
-
-        const compactValue = ui.inventoryValues.get(resource.id);
-        if (compactValue) compactValue.textContent = value;
-
-        const detailValue = ui.inventoryDetailValues.get(resource.id);
-        if (detailValue) detailValue.textContent = value;
-    }
+    ui.inventory?.update();
 }
 
 function renderDiscoveries() {
@@ -573,7 +389,7 @@ function runExperiments(count = 1, event = null) {
 
     save();
     refreshUI({ database: true });
-    showResourcePopups(gains, event);
+    resourcePopups.show(gains, event);
 }
 
 function renderAnnouncement() {
@@ -776,7 +592,7 @@ function render() {
 
                 refreshUI({ database: true });
 
-                showResourcePopups(
+                resourcePopups.show(
                     [
                         { amount: result.energy, icon: "⚡" },
                         { amount: result.particles, icon: "⚛️" }
@@ -910,9 +726,15 @@ function render() {
         })
     ]);
 
+    ui.inventory = new Inventory({
+        getGame: () => game,
+        resources: resourceDefinitions,
+        formatNumber
+    });
+    
     const layout = el("div", { className: "game-layout" }, [
         topbar,
-        renderResources(),
+        ui.inventory.element,
         renderTabContent(labContent)
     ]);
 
