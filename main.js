@@ -1,4 +1,4 @@
-import DebugButton from './debug/DebugButtons.js';
+import DebugButton from "./debug/DebugButtons.js";
 
 import {
     initialGameData,
@@ -8,7 +8,6 @@ import {
 } from "./src/data.js";
 import { el } from "./src/ui/Element.js";
 import { Button } from "./src/ui/Button.js";
-import { Card } from "./src/ui/Card.js";
 import { ProgressBar } from "./src/ui/ProgressBar.js";
 import { Tabs } from "./src/ui/Tabs/Tabs.js";
 import {
@@ -64,10 +63,11 @@ function loadGame() {
 }
 
 let game = loadGame();
-let activeTab = "observations";
+let activeTab = "lab";
 let toastText = "";
 let toastTimer = null;
 let inventoryExpanded = false;
+let ui = {};
 
 function save() {
     try {
@@ -89,22 +89,155 @@ function resourceVisible(resource) {
 }
 
 function renderResources() {
-    return el(
-        "div",
-        { className: "resource-grid" },
-        resourceDefinitions.filter(resourceVisible).map(resource =>
-            Card(
-                `${resource.icon} ${resource.name}`,
-                [
-                    el("div", {
-                        className: "resource-value",
-                        text: formatNumber(game.resources[resource.id] ?? 0)
-                    })
-                ],
-                resource.description
-            )
-        )
+    const resources = resourceDefinitions.filter(resourceVisible);
+
+    ui.inventoryValues = new Map();
+    ui.inventoryDetailValues = new Map();
+    ui.inventoryIds = resources.map(resource => resource.id);
+
+    const toggleHint = el("span", {
+        className: "inventory-toggle-hint",
+        text: inventoryExpanded ? "COLLAPSE" : "EXPAND"
+    });
+
+    const toggleChevron = el("span", {
+        className: "inventory-chevron",
+        text: inventoryExpanded ? "⌃" : "⌄"
+    });
+
+    ui.inventoryToggleHint = toggleHint;
+    ui.inventoryToggleChevron = toggleChevron;
+
+    const toggle = el(
+        "button",
+        {
+            type: "button",
+            className: "inventory-toggle",
+            "aria-expanded": String(inventoryExpanded),
+            onClick: () => {
+                const oldPanel = ui.inventoryPanel;
+                inventoryExpanded = !inventoryExpanded;
+                const newPanel = renderResources();
+                oldPanel.replaceWith(newPanel);
+                updateInventory();
+            }
+        },
+        [
+            el("span", {
+                className: "inventory-toggle-title",
+                text: "INVENTORY"
+            }),
+            toggleHint,
+            toggleChevron
+        ]
     );
+
+    const compact = el(
+        "div",
+        {
+            className: "inventory-compact",
+            role: "list",
+            "aria-label": "Current resources"
+        },
+        resources.map(resource => {
+            const value = el("span", {
+                className: "resource-chip-value",
+                text: formatNumber(game.resources[resource.id] ?? 0)
+            });
+
+            ui.inventoryValues.set(resource.id, value);
+
+            return el(
+                "div",
+                {
+                    className: "resource-chip",
+                    role: "listitem",
+                    title: resource.name
+                },
+                [
+                    el("span", {
+                        className: "resource-chip-icon",
+                        "aria-hidden": "true",
+                        text: resource.icon
+                    }),
+                    value
+                ]
+            );
+        })
+    );
+
+    const expanded = inventoryExpanded
+        ? el(
+              "div",
+              {
+                  className: "inventory-expanded",
+                  role: "list",
+                  "aria-label": "Resource details"
+              },
+              resources.map(resource => {
+                  const value = el("strong", {
+                      className: "inventory-item-value",
+                      text: formatNumber(game.resources[resource.id] ?? 0)
+                  });
+
+                  ui.inventoryDetailValues.set(resource.id, value);
+
+                  return el(
+                      "article",
+                      {
+                          className: "inventory-item",
+                          role: "listitem"
+                      },
+                      [
+                          el("span", {
+                              className: "inventory-item-icon",
+                              "aria-hidden": "true",
+                              text: resource.icon
+                          }),
+                          el("div", { className: "inventory-item-copy" }, [
+                              el("strong", { text: resource.name }),
+                              el("small", { text: resource.description })
+                          ]),
+                          value
+                      ]
+                  );
+              })
+          )
+        : null;
+
+    const panel = el(
+        "section",
+        {
+            className: `inventory-panel${inventoryExpanded ? " is-expanded" : ""}`
+        },
+        [toggle, compact, expanded]
+    );
+
+    ui.inventoryPanel = panel;
+    return panel;
+}
+
+function updateInventory() {
+    const resources = resourceDefinitions.filter(resourceVisible);
+    const ids = resources.map(resource => resource.id);
+
+    // Rebuild only the inventory if a resource becomes newly visible.
+    if (JSON.stringify(ids) !== JSON.stringify(ui.inventoryIds)) {
+        const oldPanel = ui.inventoryPanel;
+        const newPanel = renderResources();
+        oldPanel.replaceWith(newPanel);
+        return;
+    }
+
+    for (const resource of resources) {
+        const value = formatNumber(game.resources[resource.id] ?? 0);
+
+        const compactValue = ui.inventoryValues.get(resource.id);
+        if (compactValue) compactValue.textContent = value;
+
+        const detailValue = ui.inventoryDetailValues.get(resource.id);
+        if (detailValue) detailValue.textContent = value;
+    }
 }
 
 function renderDiscoveries() {
@@ -179,7 +312,7 @@ function renderDiscoveries() {
                         );
 
                         save();
-                        render();
+                        refreshUI({ database: true });
                     },
                     {
                         variant: "primary-button",
@@ -242,7 +375,7 @@ function renderUpgrades() {
                 () => {
                     if (buyUpgrade(game, item.id)) {
                         save();
-                        render();
+                        refreshUI({ database: true });
                     } else {
                         showToast("Insufficient resources.");
                     }
@@ -268,15 +401,59 @@ function renderLog() {
     );
 }
 
-function renderTabContent() {
+function renderDatabasePanel(title, count, content) {
+    return el("section", { className: "database-view" }, [
+        el("div", { className: "section-heading" }, [
+            el("div", {}, [
+                el("div", { className: "eyebrow", text: "LAB DATABASE" }),
+                el("h2", { text: title })
+            ]),
+            el("span", {
+                className: "count-pill",
+                text: count
+            })
+        ]),
+        content
+    ]);
+}
+
+function renderTabContent(labContent) {
     const tabDefinitions = [
+        {
+            id: "lab",
+            label: "LAB",
+            render: () => labContent
+        },
         {
             id: "observations",
             label: "OBSERVATIONS",
-            render: renderDiscoveries
+            render: () =>
+                renderDatabasePanel(
+                    "Observation Index",
+                    `${game.discoveries.length}/${discoveries.length}`,
+                    renderDiscoveries()
+                )
         },
-        { id: "equipment", label: "EQUIPMENT", render: renderUpgrades },
-        { id: "log", label: "LAB LOG", render: renderLog }
+        {
+            id: "equipment",
+            label: "EQUIPMENT",
+            render: () =>
+                renderDatabasePanel(
+                    "Lab Equipment",
+                    `${Object.values(game.upgrades).reduce((a, b) => a + b, 0)} levels`,
+                    renderUpgrades()
+                )
+        },
+        {
+            id: "log",
+            label: "LAB LOG",
+            render: () =>
+                renderDatabasePanel(
+                    "Experiment Log",
+                    `${game.log.length} entries`,
+                    renderLog()
+                )
+        }
     ];
 
     const tabs = new Tabs({
@@ -285,19 +462,54 @@ function renderTabContent() {
         tabs: tabDefinitions,
         onChange: id => {
             activeTab = id;
-            render();
         }
     });
+
+    ui.tabs = tabs;
+
     return tabs.element;
+}
+
+function updateToast() {
+    if (!ui.layout) return;
+
+    if (!toastText) {
+        ui.toast?.remove();
+        ui.toast = null;
+        return;
+    }
+
+    if (!ui.toast) {
+        ui.toast = el("div", {
+            className: "toast-message",
+            role: "status"
+        });
+        ui.layout.append(ui.toast);
+    }
+
+    ui.toast.textContent = toastText;
+}
+
+function updateAnnouncement() {
+    ui.announcement?.remove();
+    ui.announcement = null;
+
+    const announcement = renderAnnouncement();
+
+    if (announcement && ui.layout) {
+        ui.announcement = announcement;
+        ui.layout.append(announcement);
+    }
 }
 
 function showToast(message) {
     toastText = message;
-    render();
+    updateToast();
+
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => {
         toastText = "";
-        render();
+        updateToast();
     }, 1800);
 }
 
@@ -317,58 +529,133 @@ function runExperiments(count = 1) {
         );
     save();
     showToast(gains.join(" · "));
+    refreshUI({ database: true });
 }
 
 function renderAnnouncement() {
     const announcement = game.announcement;
     if (!announcement) return null;
 
-    return el("div", {
-        className: "announcement-overlay",
-        role: "alertdialog",
-        "aria-modal": "true",
-        "aria-label": announcement.title
-    }, [
-        el("section", { className: "announcement-panel" }, [
-            el("div", {
-                className: "announcement-eyebrow",
-                text: "⚠ PRIORITY LAB ALERT"
-            }),
-            el("div", {
-                className: "announcement-symbol",
-                text: "◉"
-            }),
-            el("h2", {
-                text: announcement.title
-            }),
-            el("p", {
-                text: announcement.message
-            }),
-            el("p", {
-                className: "announcement-detail",
-                text: "A new observation has been added to the laboratory database."
-            }),
-            Button("ACKNOWLEDGE", () => {
-                game.announcement = null;
-                save();
-                render();
-            }, { variant: "primary-button" })
-        ])
-    ]);
+    return el(
+        "div",
+        {
+            className: "announcement-overlay",
+            role: "alertdialog",
+            "aria-modal": "true",
+            "aria-label": announcement.title
+        },
+        [
+            el("section", { className: "announcement-panel" }, [
+                el("div", {
+                    className: "announcement-eyebrow",
+                    text: "⚠ PRIORITY LAB ALERT"
+                }),
+                el("div", {
+                    className: "announcement-symbol",
+                    text: "◉"
+                }),
+                el("h2", {
+                    text: announcement.title
+                }),
+                el("p", {
+                    text: announcement.message
+                }),
+                el("p", {
+                    className: "announcement-detail",
+                    text: "A new observation has been added to the laboratory database."
+                }),
+                Button(
+                    "ACKNOWLEDGE",
+                    () => {
+                        game.announcement = null;
+                        save();
+                        render();
+                    },
+                    { variant: "primary-button" }
+                )
+            ])
+        ]
+    );
+}
+
+function updateExperimentUI() {
+    if (!ui.experimentProgress) return;
+
+    const visibleMilestones = discoveries.filter(item => !item.hidden);
+    const nextDiscovery = visibleMilestones.find(
+        item => !game.discoveries.includes(item.id)
+    );
+
+    const finalMilestone = visibleMilestones.at(-1);
+    const progressValue = nextDiscovery
+        ? Math.min(game.clicks, nextDiscovery.requirement)
+        : finalMilestone.requirement;
+
+    const progressMax = nextDiscovery
+        ? nextDiscovery.requirement
+        : finalMilestone.requirement;
+
+    ui.experimentCount.textContent = `${formatNumber(game.clicks)} experiments completed`;
+
+    ui.runTenButton.disabled = (game.resources.particles ?? 0) < 10;
+
+    ui.convertButton.disabled = (game.resources.particles ?? 0) <= 0;
+
+    const progressLabel = ui.experimentProgress.querySelector(
+        ".progress-label span:first-child"
+    );
+
+    if (progressLabel) {
+        progressLabel.textContent = nextDiscovery
+            ? `Next observation: ${nextDiscovery.name}`
+            : "Observation index complete";
+    }
+
+    ui.experimentProgress.setValue(progressValue, progressMax);
+}
+
+function refreshUI({ database = false } = {}) {
+    if (!ui.layout) {
+        render();
+        return;
+    }
+
+    updateInventory();
+    updateExperimentUI();
+    updateToast();
+    updateAnnouncement();
+
+    // Refresh the active database panel without rebuilding the tab bar.
+    if (database && activeTab !== "lab") {
+        ui.tabs.update();
+    }
 }
 
 function render() {
     if (!app) return;
 
-    const nextDiscovery = discoveries.find(
+    if (ui.layout) {
+        updateInventory();
+        updateExperimentUI();
+        updateToast();
+        updateAnnouncement();
+        return;
+    }
+
+    const visibleMilestones = discoveries.filter(item => !item.hidden);
+
+    const nextDiscovery = visibleMilestones.find(
         item => !game.discoveries.includes(item.id)
     );
+
+    const finalMilestone = visibleMilestones.at(-1);
     const progressValue = nextDiscovery
         ? Math.min(game.clicks, nextDiscovery.requirement)
-        : discoveries.at(-1).requirement;
+        : finalMilestone.requirement;
+
     const progressMax = nextDiscovery
         ? nextDiscovery.requirement
-        : discoveries.at(-1).requirement;
+        : finalMilestone.requirement;
 
     const intro = el("section", { className: "lab-intro sim-card" }, [
         el("div", {
@@ -407,6 +694,68 @@ function render() {
         ]
     );
 
+    const experimentCount = el("div", {
+        className: "experiment-count",
+        text: `${formatNumber(game.clicks)} experiments completed`
+    });
+
+    ui.experimentCount = experimentCount;
+
+    const runTenButton = Button(
+        "RUN ×10",
+        () => {
+            if ((game.resources.particles ?? 0) < 10) {
+                showToast("Requires 10 Particles.");
+                return;
+            }
+
+            game.resources.particles -= 10;
+            addLog(
+                game,
+                "BATCH: Consumed 10 Particles to run ten experiments."
+            );
+            runExperiments(10);
+        },
+        {
+            variant: "primary-button",
+            disabled: (game.resources.particles ?? 0) < 10
+        }
+    );
+
+    const convertButton = Button(
+        "CONVERT",
+        () => {
+            const result = consumeParticles(game);
+
+            if (result.particles > 0) {
+                save();
+                showToast(
+                    `−${formatNumber(result.particles)} Particles · +${formatNumber(result.energy)} Energy`
+                );
+                refreshUI({ database: true });
+            }
+        },
+        {
+            variant: "primary-button",
+            disabled: (game.resources.particles ?? 0) <= 0
+        }
+    );
+
+    ui.runTenButton = runTenButton;
+    ui.convertButton = convertButton;
+
+    const experimentProgress = ProgressBar({
+        label: nextDiscovery
+            ? `Next observation: ${nextDiscovery.name}`
+            : "Observation index complete",
+        value: progressValue,
+        max: progressMax,
+        format: (value, max) =>
+            nextDiscovery ? `${Math.floor(value)} / ${max}` : "COMPLETE"
+    });
+
+    ui.experimentProgress = experimentProgress;
+
     const fieldPanel = el("section", { className: "sim-card field-panel" }, [
         el("div", { className: "section-heading" }, [
             el("div", {}, [
@@ -420,10 +769,7 @@ function render() {
             text: "Each experiment produces energy. Particle formation and research observations are probabilistic."
         }),
         el("div", { className: "quantum-orb-wrap" }, [orb]),
-        el("div", {
-            className: "experiment-count",
-            text: `${formatNumber(game.clicks)} experiments completed`
-        }),
+        experimentCount,
         el("div", { className: "bonus-actions" }, [
             el("div", { className: "bonus-row" }, [
                 el("div", { className: "bonus-copy" }, [
@@ -436,27 +782,7 @@ function render() {
                         text: "Consume 10 Particles to run ten experiments."
                     })
                 ]),
-                Button(
-                    "RUN ×10",
-                    () => {
-                        // Enforce the requirement even if called outside the UI.
-                        if ((game.resources.particles ?? 0) < 10) {
-                            showToast("Requires 10 Particles.");
-                            return;
-                        }
-
-                        game.resources.particles -= 10;
-                        addLog(
-                            game,
-                            "BATCH: Consumed 10 Particles to run ten experiments."
-                        );
-                        runExperiments(10);
-                    },
-                    {
-                        variant: "primary-button",
-                        disabled: (game.resources.particles ?? 0) < 10
-                    }
-                )
+                runTenButton
             ]),
 
             el("div", { className: "bonus-row" }, [
@@ -474,65 +800,11 @@ function render() {
                         text: "+5 ⚡ Energy per Particle"
                     })
                 ]),
-                Button(
-                    "CONVERT",
-                    () => {
-                        const result = consumeParticles(game);
-
-                        if (result.particles > 0) {
-                            save();
-                            showToast(
-                                `−${formatNumber(result.particles)} Particles · +${formatNumber(result.energy)} Energy`
-                            );
-                        }
-                    },
-                    {
-                        variant: "secondary-button",
-                        disabled: (game.resources.particles ?? 0) <= 0
-                    }
-                )
+                convertButton
             ])
         ]),
-        ProgressBar({
-            label: nextDiscovery
-                ? `Next observation: ${nextDiscovery.name}`
-                : "Observation index complete",
-            value: progressValue,
-            max: progressMax,
-            format: (value, max) =>
-                nextDiscovery ? `${Math.floor(value)} / ${max}` : "COMPLETE"
-        })
+        experimentProgress
     ]);
-
-    const researchPanel = el(
-        "section",
-        { className: "sim-card research-panel" },
-        [
-            el("div", { className: "section-heading" }, [
-                el("div", {}, [
-                    el("div", { className: "eyebrow", text: "LAB DATABASE" }),
-                    el("h2", {
-                        text:
-                            activeTab === "equipment"
-                                ? "Lab Equipment"
-                                : activeTab === "log"
-                                  ? "Experiment Log"
-                                  : "Observation Index"
-                    })
-                ]),
-                el("span", {
-                    className: "count-pill",
-                    text:
-                        activeTab === "observations"
-                            ? `${game.discoveries.length}/${discoveries.length}`
-                            : activeTab === "equipment"
-                              ? `${Object.values(game.upgrades).reduce((a, b) => a + b, 0)} levels`
-                              : `${game.log.length} entries`
-                })
-            ]),
-            renderTabContent()
-        ]
-    );
 
     const resetPanel = el(
         "section",
@@ -550,7 +822,7 @@ function render() {
                     ) {
                         game = freshGame();
                         save();
-                        render();
+                        refreshUI({ database: true });
                     }
                 },
                 {
@@ -560,28 +832,47 @@ function render() {
         ]
     );
 
-    const layout = el("div", { className: "game-layout" }, [
-        intro,
-        renderResources(),
-        fieldPanel,
-        researchPanel,
-        resetPanel
+    const labContent = el(
+        "div",
+        {
+            className: "lab-tab-content"
+        },
+        [intro, fieldPanel, resetPanel]
+    );
+
+    const topbar = el("header", { className: "topbar" }, [
+        el("div", { className: "brand" }, [
+            el("div", { className: "brand-mark", text: "⚛" }),
+            el("div", {}, [
+                el("div", {
+                    className: "brand-name",
+                    text: "kSim — Beyond Reality"
+                }),
+                el("div", {
+                    className: "brand-subtitle",
+                    text: "QUANTUM FOUNDATIONS"
+                })
+            ])
+        ]),
+        el("span", {
+            className: "stage-pill",
+            text: "LAB 01"
+        })
     ]);
-    if (toastText)
-        layout.append(
-            el("div", {
-                className: "toast-message",
-                role: "status",
-                text: toastText
-            })
-        );
+
+    const layout = el("div", { className: "game-layout" }, [
+        topbar,
+        renderResources(),
+        renderTabContent(labContent)
+    ]);
+
+    ui.layout = layout;
     app.replaceChildren(layout);
 
-    const announcement = renderAnnouncement();
-
-    if (announcement) {
-        layout.append(announcement);
-    }
+    updateInventory();
+    updateExperimentUI();
+    updateToast();
+    updateAnnouncement();
 }
 
 window.kSim = {
@@ -593,7 +884,7 @@ window.kSim = {
     stir: (multiplier = 1) => {
         const result = stir(game, multiplier);
         save();
-        render();
+        refreshUI({ database: true });
         return result;
     },
     experiment: runExperiments,
@@ -601,7 +892,7 @@ window.kSim = {
     reset: () => {
         game = freshGame();
         save();
-        render();
+        refreshUI({ database: true });
     }
 };
 
@@ -611,7 +902,7 @@ new DebugButton({
     id: "DebugButton",
     label: "Debug Button",
     run: () => {
-        console.log('Debug Button clicked!');
+        console.log("Debug Button clicked!");
     }
 });
 
@@ -622,7 +913,7 @@ new DebugButton({
         game.resources.energy += 100;
         save();
         render();
-        console.log('+100 energy added!');
+        console.log("+100 energy added!");
     }
 });
 
@@ -631,6 +922,6 @@ new DebugButton({
     label: "Test 100 experiments",
     run: () => {
         runExperiments(100);
-        console.log('+100 experiments tested!');
+        console.log("+100 experiments tested!");
     }
 });
