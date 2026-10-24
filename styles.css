@@ -960,3 +960,42 @@ body {
         padding: 10px 6px;
     }
 }
+
+.resource-float {
+    position: fixed;
+    z-index: 10000;
+    pointer-events: none;
+    white-space: nowrap;
+
+    padding: 5px 9px;
+    border: 1px solid rgba(100, 220, 255, 0.35);
+    border-radius: 999px;
+
+    background: rgba(7, 17, 31, 0.92);
+    color: #9be9ff;
+    font-size: 0.8rem;
+    font-weight: 700;
+
+    transform: translate(-50%, -50%);
+    animation: resource-float-up 850ms ease-out forwards;
+}
+
+@keyframes resource-float-up {
+    0% {
+        opacity: 0;
+        margin-top: 10px;
+    }
+
+    15% {
+        opacity: 1;
+    }
+
+    75% {
+        opacity: 0.9;
+    }
+
+    100% {
+        opacity: 0;
+        margin-top: -42px;
+    }
+}

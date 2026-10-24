@@ -69,6 +69,57 @@ let toastTimer = null;
 let inventoryExpanded = false;
 let ui = {};
 
+const activeFloatTexts = [];
+const MAX_FLOAT_TEXTS = 5;
+
+function showResourcePopups(gains, event) {
+    const x = event?.clientX ?? window.innerWidth / 2;
+    const y = event?.clientY ?? window.innerHeight / 2;
+
+    for (const gain of gains) {
+        if (!gain.amount) continue;
+
+        // Keep only the five newest popups.
+        while (activeFloatTexts.length >= MAX_FLOAT_TEXTS) {
+            activeFloatTexts.shift().remove();
+        }
+
+        const stackOffset = activeFloatTexts.length * 24;
+
+        const popup = el("div", {
+            className: "resource-float",
+            text: `+${formatNumber(gain.amount)} ${gain.icon}`,
+            style: {
+                left: `${x}px`,
+                top: `${y - stackOffset}px`
+            },
+            "aria-hidden": "true"
+        });
+
+        document.body.append(popup);
+        activeFloatTexts.push(popup);
+
+        popup.addEventListener(
+            "animationend",
+            () => {
+                popup.remove();
+
+                const index = activeFloatTexts.indexOf(popup);
+                if (index !== -1) activeFloatTexts.splice(index, 1);
+            },
+            { once: true }
+        );
+
+        // Fallback in case animationend doesn't fire.
+        setTimeout(() => {
+            popup.remove();
+
+            const index = activeFloatTexts.indexOf(popup);
+            if (index !== -1) activeFloatTexts.splice(index, 1);
+        }, 1000);
+    }
+}
+
 function save() {
     try {
         localStorage.setItem(SAVE_KEY, JSON.stringify(game));
@@ -95,17 +146,11 @@ function renderResources() {
     ui.inventoryDetailValues = new Map();
     ui.inventoryIds = resources.map(resource => resource.id);
 
-    const toggleHint = el("span", {
-        className: "inventory-toggle-hint",
-        text: inventoryExpanded ? "COLLAPSE" : "EXPAND"
-    });
-
     const toggleChevron = el("span", {
         className: "inventory-chevron",
         text: inventoryExpanded ? "⌃" : "⌄"
     });
 
-    ui.inventoryToggleHint = toggleHint;
     ui.inventoryToggleChevron = toggleChevron;
 
     const toggle = el(
@@ -127,7 +172,6 @@ function renderResources() {
                 className: "inventory-toggle-title",
                 text: "INVENTORY"
             }),
-            toggleHint,
             toggleChevron
         ]
     );
@@ -513,23 +557,23 @@ function showToast(message) {
     }, 1800);
 }
 
-function runExperiments(count = 1) {
+function runExperiments(count = 1, event = null) {
     const result = stir(game, count);
-    const gains = [`+${formatNumber(result.energy)} energy`];
-    if (result.particles)
-        gains.push(`+${formatNumber(result.particles)} particles`);
-    if (result.research)
-        gains.push(`+${formatNumber(result.research)} research`);
-    if (result.exoticMatter)
-        gains.push(`+${formatNumber(result.exoticMatter)} exotic matter`);
-    if (count > 1)
-        addLog(
-            game,
-            `BATCH COMPLETE: ${count} experiments run. ${gains.join(", ")}.`
-        );
+
+    const gains = [
+        { amount: result.energy, icon: "⚡" },
+        { amount: result.particles, icon: "⚛️" },
+        { amount: result.research, icon: "🔬" },
+        { amount: result.exoticMatter, icon: "🌀" }
+    ].filter(gain => gain.amount > 0);
+
+    if (count > 1) {
+        addLog(game, `BATCH COMPLETE: ${count} experiments run.`);
+    }
+
     save();
-    showToast(gains.join(" · "));
     refreshUI({ database: true });
+    showResourcePopups(gains, event);
 }
 
 function renderAnnouncement() {
@@ -678,7 +722,7 @@ function render() {
             className: "quantum-orb",
             type: "button",
             "aria-label": "Run one quantum experiment",
-            onClick: () => runExperiments(1)
+            onClick: event => runExperiments(1, event)
         },
         [
             el("span", { className: "orb-rings" }),
@@ -703,7 +747,7 @@ function render() {
 
     const runTenButton = Button(
         "RUN ×10",
-        () => {
+        event => {
             if ((game.resources.particles ?? 0) < 10) {
                 showToast("Requires 10 Particles.");
                 return;
@@ -714,7 +758,7 @@ function render() {
                 game,
                 "BATCH: Consumed 10 Particles to run ten experiments."
             );
-            runExperiments(10);
+            runExperiments(10, event);
         },
         {
             variant: "primary-button",
@@ -724,15 +768,21 @@ function render() {
 
     const convertButton = Button(
         "CONVERT",
-        () => {
+        event => {
             const result = consumeParticles(game);
 
             if (result.particles > 0) {
                 save();
-                showToast(
-                    `−${formatNumber(result.particles)} Particles · +${formatNumber(result.energy)} Energy`
-                );
+
                 refreshUI({ database: true });
+
+                showResourcePopups(
+                    [
+                        { amount: result.energy, icon: "⚡" },
+                        { amount: result.particles, icon: "⚛️" }
+                    ],
+                    event
+                );
             }
         },
         {
