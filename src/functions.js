@@ -1,52 +1,164 @@
 import { discoveries, upgradeDefinitions } from "./data.js";
 
 export function formatNumber(value) {
-  return new Intl.NumberFormat(undefined, { maximumFractionDigits: value < 10 ? 1 : 0 }).format(value);
+    return new Intl.NumberFormat(undefined, {
+        maximumFractionDigits: value < 10 ? 1 : 0
+    }).format(value || 0);
 }
+
 export function addLog(game, message) {
-  game.log.unshift(message);
-  game.log = game.log.slice(0, 7);
+    game.log ??= [];
+    game.log.unshift(message);
+    game.log = game.log.slice(0, 60);
 }
+
 export function canAfford(game, cost) {
-  return Object.entries(cost).every(([key, amount]) => game.resources[key] >= amount);
+    return Object.entries(cost).every(
+        ([resource, amount]) => (game.resources[resource] ?? 0) >= amount
+    );
 }
+
 export function payCost(game, cost) {
-  if (!canAfford(game, cost)) return false;
-  for (const [key, amount] of Object.entries(cost)) game.resources[key] -= amount;
-  return true;
+    if (!canAfford(game, cost)) return false;
+    for (const [resource, amount] of Object.entries(cost)) {
+        game.resources[resource] -= amount;
+    }
+    return true;
 }
+
 export function upgradeCost(definition, level) {
-  return Object.fromEntries(Object.entries(definition.baseCost).map(([key, amount]) => [key, Math.ceil(amount * Math.pow(1.65, level))]));
+    const cost = {};
+    for (const [resource, amount] of Object.entries(definition.baseCost)) {
+        cost[resource] = Math.ceil(amount * Math.pow(1.65, level));
+    }
+    return cost;
 }
-export function stir(game, multiplier = 1) {
-  const energyGain = (1 + game.upgrades.efficientClicks) * multiplier;
-  game.resources.energy += energyGain;
-  game.clicks++;
-  game.discoveryRoll++;
-  // A little early-game randomness makes each tap feel less mechanical.
-  if (Math.random() < 0.18) game.resources.molecules += multiplier;
-  checkDiscoveries(game);
-  return { energy: energyGain };
-}
+
 export function checkDiscoveries(game) {
-  for (const item of discoveries) {
-    if (game.discoveries.includes(item.id) || game.clicks < item.requirement) continue;
-    game.discoveries.push(item.id);
-    for (const [key, amount] of Object.entries(item.reward)) game.resources[key] += amount;
-    addLog(game, `Discovery: ${item.name}! Rewards added to your inventory.`);
-  }
+    for (const discovery of discoveries) {
+        if (
+            game.discoveries.includes(discovery.id) ||
+            game.clicks < discovery.requirement
+        )
+            continue;
+
+        game.discoveries.push(discovery.id);
+        for (const [resource, amount] of Object.entries(
+            discovery.reward ?? {}
+        )) {
+            game.resources[resource] = (game.resources[resource] ?? 0) + amount;
+        }
+        const rewardText = Object.entries(discovery.reward ?? {})
+            .map(([resource, amount]) => `+${amount} ${resource}`)
+            .join(", ");
+        addLog(
+            game,
+            `DISCOVERY: ${discovery.name}${rewardText ? ` (${rewardText})` : ""}.`
+        );
+    }
 }
+
+export function stir(game, multiplier = 1) {
+    const result = {
+        energy: 0,
+        particles: 0,
+        research: 0,
+        exoticMatter: 0,
+        events: []
+    };
+    const experiments = Math.max(1, Math.floor(Number(multiplier) || 1));
+    const energyPerExperiment = 1 + (game.upgrades.energyYield ?? 0);
+    const particleChance = Math.min(
+        0.65,
+        0.25 + (game.upgrades.particleStability ?? 0) * 0.05
+    );
+
+    const researchChance = Math.min(
+        0.6,
+        0.08 + (game.upgrades.observation ?? 0) * 0.08
+    );
+    for (let i = 0; i < experiments; i++) {
+        game.clicks += 1;
+        game.resources.energy += energyPerExperiment;
+        result.energy += energyPerExperiment;
+
+        if (Math.random() < particleChance) {
+            game.resources.particles += 1;
+            result.particles += 1;
+        }
+        if (Math.random() < researchChance) {
+            game.resources.research += 1;
+            result.research += 1;
+        }
+
+        // Check milestones before evaluating the anomaly event for the next experiment.
+        checkDiscoveries(game);
+        if (
+            game.discoveries.includes("quantumAnomaly") &&
+            Math.random() < 0.03
+        ) {
+            game.resources.exoticMatter += 1;
+            result.exoticMatter += 1;
+        }
+    }
+
+    if (result.particles)
+        result.events.push(`Particle formation: +${result.particles}`);
+    if (result.research)
+        result.events.push(`Useful observations: +${result.research}`);
+    if (result.exoticMatter) {
+        result.events.push(`ANOMALY: +${result.exoticMatter} Exotic Matter`);
+        addLog(
+            game,
+            `ANOMALY: Exotic matter detected (${result.exoticMatter}). The reading is inconsistent with known physics.`
+        );
+    }
+    return result;
+}
+
 export function buyUpgrade(game, id) {
-  const definition = upgradeDefinitions.find(item => item.id === id);
-  if (!definition) return { ok:false, reason:"Unknown upgrade." };
-  const level = game.upgrades[id];
-  if (level >= definition.maxLevel) return { ok:false, reason:"Maximum level reached." };
-  const cost = upgradeCost(definition, level);
-  if (!payCost(game, cost)) return { ok:false, reason:"Not enough resources." };
-  game.upgrades[id]++;
-  addLog(game, `${definition.name} upgraded to level ${game.upgrades[id]}.`);
-  return { ok:true };
+    const definition = upgradeDefinitions.find(item => item.id === id);
+    if (!definition) return false;
+    const level = game.upgrades[id] ?? 0;
+    if (level >= definition.maxLevel) return false;
+    if (!payCost(game, upgradeCost(definition, level))) return false;
+
+    game.upgrades[id] = level + 1;
+    addLog(
+        game,
+        `EQUIPMENT UPDATED: ${definition.name} is now level ${level + 1}.`
+    );
+    return true;
 }
-export function costLabel(cost) {
-  return Object.entries(cost).map(([key, value]) => `${value} ${key}`).join(" · ");
+
+export function costLabel(cost, resourceDefinitions = []) {
+    const names = Object.fromEntries(
+        resourceDefinitions.map(item => [item.id, item.name])
+    );
+    return Object.entries(cost)
+        .map(
+            ([resource, amount]) =>
+                `${formatNumber(amount)} ${names[resource] ?? resource}`
+        )
+        .join(" · ");
+}
+
+export function consumeParticles(game) {
+    const particles = Math.floor(game.resources.particles ?? 0);
+
+    if (particles <= 0) {
+        return { particles: 0, energy: 0 };
+    }
+
+    const energy = particles * 5;
+
+    game.resources.particles -= particles;
+    game.resources.energy += energy;
+
+    addLog(
+        game,
+        `RESOURCE CONVERSION: Consumed ${particles} particles for +${energy} Quantum Energy.`
+    );
+
+    return { particles, energy };
 }

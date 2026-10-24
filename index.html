@@ -1,80 +1,33 @@
 <!doctype html>
-
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0, viewport-fit=cover"
-        />
-        <meta name="theme-color" content="#101923" />
-        <title>kSim — Origins</title>
-        <link rel="stylesheet" href="./styles.css" />
-    </head>
-    <body>
-        <div id="productionErrorLog"></div>
-        <div id="consoleLog"></div>
-        <div id="devtools"></div>
-        <div id="app" class="app-shell"></div>
-        <!-- Keep bootstrap local so startup errors can be captured early. -->
-        <script src="../mobile-dev-console/errorBootstrap.js"></script>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#07111f" />
+    <title>kSim — Beyond Reality | Quantum Foundations</title>
+    <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">
+            <span class="brand-mark">kS</span>
+            <div>
+                <div class="brand-name">kSim</div>
+                <div class="brand-subtitle">BEYOND REALITY</div>
+            </div>
+        </div>
+        <div class="stage-pill">QUANTUM FOUNDATIONS</div>
+    </header>
 
-        <script type="module">
-            try {
-                const { default: DevTools } =
-                    await import("../mobile-dev-console/DevTools.js");
+    <main id="app" class="app-shell"></main>
+    <div id="devtools"></div>
+    <div id="productionErrorLog" hidden></div>
+    <div id="consoleLog" hidden></div>
 
-                /*
-                const devTools = DevTools.mount({
-                    mode: "overlay",
-                    captureConsole: true,
-                    mirrorToNative: false,
-                    showCopyButtons: false,
-                    allowDragOutsideBounds: true
-                });
-                */
-
-                const devTools = DevTools.mount({
-                    mode: "embedded",
-                    mountPoint: "#devtools", // set above
-                    height: "60dvh",
-                    captureConsole: true,
-                    mirrorToNative: false,
-                    showCopyButtons: false,
-                    allowDragOutsideBounds: true
-                });
-
-                devTools.registerSuite({
-                    id: "app-debug",
-                    name: "App Debug Tools",
-
-                    actions: [
-                        {
-                            id: "hello",
-                            label: "Test Button",
-
-                            run({ console }) {
-                                console.log("Button clicked!");
-                            }
-                        }
-                    ]
-                });
-
-                // Optional: make the instance available to app code.
-                // window.ksimDevTools = devTools;
-
-                await import("./main.js");
-            } catch (error) {
-                if (window.ksimDevTools?.devConsole) {
-                    window.ksimDevTools.devConsole.error(error);
-                } else if (window.devConsole) {
-                    window.devConsole.error(error);
-                } else if (window.showFatalError) {
-                    window.showFatalError("Application Startup Failed", error);
-                } else {
-                    console.error(error);
-                }
-            }
-        </script>
-    </body>
+    <script type="module">
+        import { DevTools } from "../mobile-dev-console/DevTools.js";
+        DevTools.mount({ mode: "embedded", mountPoint: "#devtools" });
+    </script>
+    <script type="module" src="./main.js"></script>
+</body>
 </html>
