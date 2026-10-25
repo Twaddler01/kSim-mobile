@@ -1215,3 +1215,150 @@ body:not(.debug-mode) {
     outline-offset: 3px;
     border-radius: 2px;
 }
+
+/* plan panel */
+
+.plan-panel,
+.plan-board-section {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.plan-panel__heading,
+.plan-board__heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.plan-panel__heading h2,
+.plan-board__heading h3 {
+    margin: 0;
+}
+
+.plan-panel__heading p {
+    width: 100%;
+    margin: 4px 0 0;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    opacity: 0.65;
+}
+
+.plan-cards {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, 140px), 1fr)
+    );
+    gap: 8px;
+    margin: 16px 0;
+}
+
+.plan-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 12px;
+    border: 1px solid #35464d;
+    border-radius: 8px;
+    background: #111a20;
+    color: inherit;
+    text-align: left;
+}
+
+.plan-card[data-selected="true"] {
+    border-color: #65d9c0;
+    background: #172a2d;
+}
+
+.plan-card__progress,
+.plan-board__heading > span {
+    font-size: 0.7rem;
+    color: #91a9ac;
+}
+
+.plan-board-section {
+    position: relative;
+    margin-top: 12px;
+}
+
+.plan-board__heading {
+    margin-bottom: 10px;
+}
+
+.plan-grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(
+        var(--plan-columns, 4),
+        minmax(0, 1fr)
+    );
+    grid-template-rows: repeat(
+        var(--plan-rows, 4),
+        minmax(0, 1fr)
+    );
+    gap: 2px;
+    width: 100%;
+    aspect-ratio: 1;
+    padding: 3px;
+    box-sizing: border-box;
+    overflow: hidden;
+    border: 1px solid #35464d;
+    border-radius: 6px;
+    background: #26343a;
+}
+
+.plan-grid__cell {
+    display: flex;
+    min-width: 0;
+    min-height: 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 2px;
+    overflow: hidden;
+    border: 1px solid #35444a;
+    border-radius: 2px;
+    background: #111a20;
+    color: #b8e8d8;
+    font: inherit;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.plan-grid__cell[data-revealed="true"] {
+    border-color: #527e78;
+    background: #152a2b;
+}
+
+.plan-grid__seal {
+    font-size: clamp(12px, 4vw, 24px);
+    opacity: 0.6;
+}
+
+.plan-grid__cost {
+    font-size: clamp(7px, 2.1vw, 12px);
+    color: #91a9ac;
+    white-space: nowrap;
+}
+
+.plan-grid__expression {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    text-align: center;
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: clamp(8px, 2.7vw, 19px);
+}
+
+.plan-board__completed-art {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-bottom: 12px;
+    border: 1px solid #527e78;
+    border-radius: 6px;
+}

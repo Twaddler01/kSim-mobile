@@ -33,6 +33,7 @@ import { navigateToItem as navigateTabToItem } from "./src/ui/itemNavigation.js"
 import DiscoveryPanel from "./src/ui/DiscoveryPanel.js";
 import UpgradePanel from "./src/ui/UpgradePanel.js";
 import LogPanel from "./src/ui/LogPanel.js";
+import PlanPanel from "./src/ui/PlanPanel.js";
 
 import UnreadManager from "./src/UnreadManager.js";
 
@@ -167,6 +168,11 @@ function renderTabContent(labContent) {
                     `${Object.values(game.upgrades).reduce((a, b) => a + b, 0)} levels`,
                     upgradePanel.render()
                 )
+        },
+        {
+            id: "plan",
+            label: "PLAN",
+            render: () => planPanel.getElement()
         },
         {
             id: "log",
@@ -394,6 +400,23 @@ const upgradePanel = new UpgradePanel({
     refreshUI: options => refreshUI(options),
     onUnread: notifyUnread,
     unreadManager
+});
+
+const planPanel = new PlanPanel({
+    getGame: () => game,
+    save,
+    refreshUI: options => refreshUI(options),
+
+    onCellSelect: (plan, cell, state) => {
+        if (state.insufficientResearch) {
+            showToast("Not enough Research points.");
+            return;
+        }
+
+        if (state.revealed) {
+            // Later: open tile details and modification controls.
+        }
+    }
 });
 
 function render() {

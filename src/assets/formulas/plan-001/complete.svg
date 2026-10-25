@@ -1,0 +1,102 @@
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     viewBox="0 0 640 640">
+  <defs>
+    <linearGradient id="board" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#17262a"/>
+      <stop offset="1" stop-color="#0b151a"/>
+    </linearGradient>
+    <pattern id="chalkDust" width="37" height="43"
+             patternUnits="userSpaceOnUse">
+      <circle cx="7" cy="11" r="0.7"
+              fill="#d9eee8" opacity=".10"/>
+      <circle cx="29" cy="31" r="0.5"
+              fill="#d9eee8" opacity=".08"/>
+    </pattern>
+    <style>
+      .equation {
+        fill: #b8e8d8;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 25px;
+        text-anchor: middle;
+      }
+      .label {
+        fill: #719d98;
+        font-family: monospace;
+        font-size: 10px;
+        letter-spacing: 1px;
+        text-anchor: middle;
+      }
+      .divider {
+        stroke: #608c85;
+        stroke-width: 1;
+        stroke-opacity: .48;
+      }
+    </style>
+  </defs>
+
+  <rect width="640" height="640" rx="8" fill="url(#board)"/>
+  <rect width="640" height="640" rx="8"
+        fill="url(#chalkDust)"/>
+
+  <text x="24" y="29" fill="#70d7bf"
+        font-family="monospace" font-size="12"
+        letter-spacing="3">K-SIM // PLAN 001</text>
+  <text x="616" y="29" fill="#719d98"
+        font-family="monospace" font-size="10"
+        text-anchor="end">TEMPORAL RESONANCE</text>
+
+  <g class="divider">
+    <path d="M16 42 H624"/>
+    <path d="M16 188 H624 M16 334 H624 M16 480 H624"/>
+    <path d="M162 42 V626 M308 42 V626 M454 42 V626"/>
+  </g>
+
+  <g class="equation">
+    <text x="89" y="102">∂Ψ/∂t</text>
+    <text x="235" y="102">= κ∇²Φ</text>
+    <text x="381" y="102">+ λΨ</text>
+    <text x="527" y="102">− Ω₀</text>
+
+    <text x="89" y="248">E = mc²</text>
+    <text x="235" y="248">+ β/a</text>
+    <text x="381" y="248">× 2</text>
+    <text x="527" y="248">= R(t)</text>
+
+    <text x="89" y="394">∫ρ dx</text>
+    <text x="235" y="394">− Ξτ</text>
+    <text x="381" y="394">∇ × A</text>
+    <text x="527" y="394">+ κ₀</text>
+
+    <text x="89" y="540">lim Δt→0</text>
+    <text x="235" y="540">Ψ(t)</text>
+    <text x="381" y="540">↔ K</text>
+    <text x="527" y="540">Ω = 0</text>
+  </g>
+
+  <g class="label">
+    <text x="89" y="163">STATE RATE</text>
+    <text x="235" y="163">FIELD TERM</text>
+    <text x="381" y="163">RESPONSE</text>
+    <text x="527" y="163">OFFSET</text>
+
+    <text x="89" y="309">ENERGY</text>
+    <text x="235" y="309">COEFFICIENT</text>
+    <text x="381" y="309">SCALING</text>
+    <text x="527" y="309">RESPONSE</text>
+
+    <text x="89" y="455">DENSITY</text>
+    <text x="235" y="455">TEMPORAL</text>
+    <text x="381" y="455">VECTOR FIELD</text>
+    <text x="527" y="455">COUPLING</text>
+
+    <text x="89" y="601">LIMIT</text>
+    <text x="235" y="601">STATE</text>
+    <text x="381" y="601">UNKNOWN</text>
+    <text x="527" y="601">CONDITION</text>
+  </g>
+
+  <rect x="8" y="8" width="624" height="624"
+        rx="5" fill="none"
+        stroke="#65d9c0" stroke-opacity=".35"/>
+</svg>
