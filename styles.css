@@ -425,6 +425,14 @@ h2 {
     color: var(--cyan);
     font-size: 1rem;
 }
+.log-entry--important {
+    border-left: 2px solid var(--accent-color, #7c83ff);
+    padding-left: 8px;
+}
+
+.log-entry--activity {
+    opacity: 0.75;
+}
 .toast-message {
     position: fixed;
     z-index: 20;
@@ -1032,4 +1040,97 @@ body:not(.debug-mode) {
         opacity: 0;
         margin-top: -42px;
     }
+}
+
+.log-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+.log-category-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--border-color, #303747);
+    padding-bottom: 10px;
+}
+
+.log-category-button {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color, #303747);
+    border-radius: 8px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    opacity: 0.7;
+}
+
+.log-category-button.is-active {
+    opacity: 1;
+    background: var(--panel-background, rgba(127, 140, 170, 0.1));
+}
+
+.log-category-button--important.is-active {
+    border-color: var(--accent-color, #7c83ff);
+}
+
+.log-category-button--activity.is-active {
+    border-color: var(--border-color, #687386);
+}
+
+.log-category-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    min-height: 22px;
+    padding: 0 5px;
+    border-radius: 11px;
+    background: rgba(127, 140, 170, 0.15);
+    font-size: 0.72rem;
+}
+
+.log-entry--important {
+    border-left: 2px solid var(--accent-color, #7c83ff);
+    padding-left: 8px;
+}
+
+.log-entry--activity {
+    opacity: 0.75;
+}
+
+.log-entry--important .log-marker {
+    color: var(--accent-color, #7c83ff);
+}
+
+.log-empty {
+    padding: 20px 12px;
+    color: var(--muted-color, #929bad);
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.log-entry-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.log-timestamp {
+    color: var(--muted-color, #929bad);
+    font-size: 0.7rem;
+    line-height: 1.3;
+    opacity: 0.8;
 }

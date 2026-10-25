@@ -5,7 +5,15 @@ export default class SaveManager {
     }
 
     freshGame() {
-        return JSON.parse(JSON.stringify(this.initialData));
+        const game = JSON.parse(JSON.stringify(this.initialData));
+        const timestamp = Date.now();
+
+        game.log = (game.log ?? []).map(entry => ({
+            ...entry,
+            timestamp
+        }));
+
+        return game;
     }
 
     load() {
@@ -36,9 +44,7 @@ export default class SaveManager {
                     ? parsed.discoveries
                     : [],
 
-                log: Array.isArray(parsed.log)
-                    ? parsed.log
-                    : [...this.initialData.log],
+                log: Array.isArray(parsed.log) ? parsed.log : [],
 
                 triggered: Array.isArray(parsed.triggered)
                     ? parsed.triggered

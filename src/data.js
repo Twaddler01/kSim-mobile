@@ -6,8 +6,18 @@ export const initialGameData = {
     upgrades: { energyYield: 0, particleStability: 0, observation: 0 },
     discoveries: [],
     log: [
-        "LAB LOG 001: The quantum field generator is online. Begin with low-energy experiments.",
-        "SAFETY NOTE: If the containment field starts singing, step away from the console."
+        {
+            message:
+                "LAB LOG 001: The quantum field generator is online. Begin with low-energy experiments.",
+            category: "important",
+            timestamp: Date.now()
+        },
+        {
+            message:
+                "SAFETY NOTE: If the containment field starts singing, step away from the console.",
+            category: "important",
+            timestamp: Date.now()
+        }
     ],
     triggered: [],
     announcement: null,

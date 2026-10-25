@@ -136,7 +136,8 @@ export default class DiscoveryPanel {
 
         this.addLog(
             game,
-            `INVESTIGATION COMPLETE: ${item.name}. ${item.description}`
+            `INVESTIGATION COMPLETE: ${item.name}. ${item.description}`,
+            "important"
         );
 
         this.save();

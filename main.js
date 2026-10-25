@@ -28,6 +28,7 @@ import ResourcePopups from "./src/ui/ResourcePopups.js";
 import SaveManager from "./src/SaveManager.js";
 import DiscoveryPanel from "./src/ui/DiscoveryPanel.js";
 import UpgradePanel from "./src/ui/UpgradePanel.js";
+import LogPanel from "./src/ui/LogPanel.js";
 
 const saveManager = new SaveManager({
     key: "ksim-quantum-foundations-v1",
@@ -74,21 +75,13 @@ const discoveryPanel = new DiscoveryPanel({
     refreshUI: options => refreshUI(options)
 });
 
+const logPanel = new LogPanel({
+    getGame: () => game,
+    onChange: () => refreshUI({ database: true })
+});
+
 function updateInventory() {
     ui.inventory?.update();
-}
-
-function renderLog() {
-    return el(
-        "div",
-        { className: "log-list" },
-        game.log.map(line =>
-            el("div", { className: "log-entry" }, [
-                el("span", { className: "log-marker", text: "›" }),
-                el("span", { text: line })
-            ])
-        )
-    );
 }
 
 function renderDatabasePanel(title, count, content) {
@@ -141,7 +134,7 @@ function renderTabContent(labContent) {
                 renderDatabasePanel(
                     "Experiment Log",
                     `${game.log.length} entries`,
-                    renderLog()
+                    logPanel.render()
                 )
         }
     ];

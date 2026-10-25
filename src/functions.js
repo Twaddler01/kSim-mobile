@@ -6,9 +6,15 @@ export function formatNumber(value) {
     }).format(value || 0);
 }
 
-export function addLog(game, message) {
+export function addLog(game, message, category = "activity") {
     game.log ??= [];
-    game.log.unshift(message);
+
+    game.log.unshift({
+        message,
+        category,
+        timestamp: Date.now()
+    });
+
     game.log = game.log.slice(0, 60);
 }
 
@@ -62,7 +68,8 @@ export function checkDiscoveries(game) {
             game,
             `DISCOVERY: ${discovery.name}${
                 rewardText ? ` (${rewardText})` : ""
-            }.`
+            }.`,
+            "important"
         );
     }
 
@@ -90,7 +97,8 @@ export function checkDiscoveries(game) {
                 game,
                 `ALERT: ${
                     observation.announcement?.message ?? observation.name
-                }`
+                }`,
+                "important"
             );
         }
     }
@@ -148,7 +156,8 @@ export function stir(game, multiplier = 1) {
         result.events.push(`ANOMALY: +${result.exoticMatter} Exotic Matter`);
         addLog(
             game,
-            `ANOMALY: Exotic matter detected (${result.exoticMatter}). The reading is inconsistent with known physics.`
+            `ANOMALY: Exotic matter detected (${result.exoticMatter}). The reading is inconsistent with known physics.`,
+            "important"
         );
     }
     return result;
@@ -164,7 +173,8 @@ export function buyUpgrade(game, id) {
     game.upgrades[id] = level + 1;
     addLog(
         game,
-        `EQUIPMENT UPDATED: ${definition.name} is now level ${level + 1}.`
+        `EQUIPMENT UPDATED: ${definition.name} is now level ${level + 1}.`,
+        "important"
     );
     return true;
 }
