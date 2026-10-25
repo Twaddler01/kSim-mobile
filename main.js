@@ -416,6 +416,33 @@ const planPanel = new PlanPanel({
         if (state.revealed) {
             // Later: open tile details and modification controls.
         }
+    },
+
+    onEvidence: (plan, cell) => {
+        logEvent(
+            game,
+            `PLAN ${plan.number}: Evidence recorded for ${cell.id}. ${cell.evidence}`,
+            { category: "discovery", tab: "log" }
+        );
+    },
+
+    onHiddenUnlock: (plan, cell, clue) => {
+        logEvent(game, `ANOMALY // ${clue.title}: ${clue.message}`, {
+            category: "important",
+            tab: "log"
+        });
+
+        showToast(`New observation: ${clue.title}`);
+    },
+
+    onComplete: plan => {
+        logEvent(
+            game,
+            `PLAN ${plan.number} COMPLETE: ${plan.name} has been reconstructed. The model is ready for further investigation.`,
+            { category: "important", tab: "log" }
+        );
+
+        showToast(`PLAN ${plan.number} reconstructed.`);
     }
 });
 

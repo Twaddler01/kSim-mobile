@@ -1,4 +1,5 @@
 import { discoveries, upgradeDefinitions } from "./data.js";
+import { evaluateTrigger } from "./triggers/conditions.js";
 
 export function formatNumber(value) {
     return new Intl.NumberFormat(undefined, {
@@ -94,7 +95,10 @@ export function checkDiscoveries(game, onUnread = () => {}) {
 
         if (
             game.discoveries.includes(discovery.id) ||
-            game.clicks < discovery.requirement
+            !evaluateTrigger(game, {
+                type: "experimentCount",
+                min: discovery.requirement
+            })
         ) {
             continue;
         }
@@ -143,10 +147,7 @@ export function checkDiscoveries(game, onUnread = () => {}) {
 
         const trigger = observation.trigger;
 
-        if (
-            trigger?.type === "discovery" &&
-            game.discoveries.includes(trigger.id)
-        ) {
+        if (evaluateTrigger(game, trigger)) {
             game.triggered.push(observation.id);
 
             game.announcement = {
@@ -258,15 +259,7 @@ export function checkUpgradeUnlocks(
             continue;
         }
 
-        let satisfied = false;
-
-        if (condition.type === "upgradeLevel") {
-            const minLevel = condition.minLevel ?? 1;
-
-            satisfied = condition.upgradeIds.some(
-                id => (game.upgrades[id] ?? 0) >= minLevel
-            );
-        }
+        const satisfied = evaluateTrigger(game, condition);
 
         if (!satisfied) continue;
 

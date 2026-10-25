@@ -5,12 +5,19 @@ export default class PlanPanel {
         getGame,
         save = () => {},
         refreshUI = () => {},
-        onCellSelect = () => {}
+        onCellSelect = () => {},
+        onEvidence = () => {},
+        onHiddenUnlock = () => {},
+        onComplete = () => {}
     }) {
         this.getGame = getGame;
         this.save = save;
         this.refreshUI = refreshUI;
         this.onCellSelect = onCellSelect;
+        this.onEvidence = onEvidence;
+        this.onHiddenUnlock = onHiddenUnlock;
+        this.onComplete = onComplete;
+
         this.selectedPlanId = planDefinitions[0]?.id ?? null;
 
         this.element = document.createElement("section");
@@ -98,8 +105,6 @@ export default class PlanPanel {
         const revealed = new Set(state.revealed);
         const completed = plan.tiles.every(tile => revealed.has(tile.id));
 
-        state.completed = completed;
-
         const section = document.createElement("section");
         section.className = "plan-board-section";
 
@@ -154,13 +159,12 @@ export default class PlanPanel {
                 button.append(seal, cost);
             }
 
+            // Attach the listener to EVERY tile.
             button.addEventListener("click", () => {
-                const tileState = {
-                    revealed: revealed.has(cell.id)
-                };
-
-                if (tileState.revealed) {
-                    this.onCellSelect(plan, cell, tileState);
+                if (isRevealed) {
+                    this.onCellSelect(plan, cell, {
+                        revealed: true
+                    });
                     return;
                 }
 
@@ -174,6 +178,7 @@ export default class PlanPanel {
                 }
             });
 
+            // This line is essential!
             board.append(button);
         }
 
@@ -203,7 +208,11 @@ export default class PlanPanel {
         const game = this.getGame();
         const state = this.getPlanState(plan.id);
 
-        // Don't charge twice for an already revealed tile.
+        state.revealed ??= [];
+        state.unlockedClues ??= [];
+        state.completed ??= false;
+
+        // Already revealed: never charge twice.
         if (state.revealed.includes(cell.id)) {
             return false;
         }
@@ -214,15 +223,32 @@ export default class PlanPanel {
             return false;
         }
 
+        // Pay and reveal.
         game.resources.research -= cell.cost;
         state.revealed.push(cell.id);
 
-        state.completed = plan.tiles.every(tile =>
+        // Every tile provides its own evidence.
+        this.onEvidence(plan, cell);
+
+        // Hidden unlocks are permanent and only trigger once.
+        if (
+            cell.hiddenUnlock &&
+            !state.unlockedClues.includes(cell.hiddenUnlock.id)
+        ) {
+            state.unlockedClues.push(cell.hiddenUnlock.id);
+            this.onHiddenUnlock(plan, cell, cell.hiddenUnlock);
+        }
+
+        // Major reward: full-board completion only.
+        const completed = plan.tiles.every(tile =>
             state.revealed.includes(tile.id)
         );
 
-        if (state.completed) {
-            this.addCompletionLog?.(plan);
+        if (completed && !state.completed) {
+            state.completed = true;
+            state.completedAt = Date.now();
+
+            this.onComplete(plan);
         }
 
         this.save();
