@@ -79,25 +79,11 @@ function notifyUnread(tabId, itemId) {
     unreadManager.notify(tabId, itemId);
 }
 
-function logEvent(
-    game,
-    message,
-    category = "activity",
-    tab = "log",
-    contentId = null,
-    notificationTargets = null,
-    link = null
-) {
-    return addLog(
-        game,
-        message,
-        category,
-        tab,
-        notifyUnread,
-        contentId,
-        notificationTargets,
-        link
-    );
+function logEvent(game, message, options = {}) {
+    return addLog(game, message, {
+        onUnread: notifyUnread,
+        ...options
+    });
 }
 
 // Process any event triggers already satisfied by a loaded save.

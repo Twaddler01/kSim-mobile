@@ -152,13 +152,12 @@ export default class DiscoveryPanel {
 
         game.discoveries.push(item.id);
 
-        this.addLog(
-            game,
-            `INVESTIGATION COMPLETE: ${item.name}. ${item.description}`,
-            "important",
-            "observations",
-            item.id
-        );
+        const message = `INVESTIGATION COMPLETE: ${item.name}. ${item.description}`;
+        this.addLog(game, message, {
+            category: "important",
+            tab: "observations",
+            contentId: item.id
+        });
 
         this.save();
         this.refreshUI({ database: true });

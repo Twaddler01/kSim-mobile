@@ -7,22 +7,24 @@ export function formatNumber(value) {
 }
 
 /* 
-RULES:
-Important log entry with destination observations → OBSERVATIONS badge.
-Important log entry with destination equipment → EQUIPMENT badge.
-Any other important log entry → LAB LOG badge.
-Activity entry → no badge.
+CURRENT BADGE SYSTEM:
+Important log entry with NEW observations → OBSERVATIONS + LAB LOG
+Important log entry with NEW UNLOCKED equipment → EQUIPMENT + LAB LOG
+Any other important log entry → LAB LOG
+'Activity' entry → no badge.
 */
 
 export function addLog(
     game,
     message,
-    category = "activity",
-    tab = "log",
-    onUnread = () => {},
-    contentId = null,
-    notificationTargets = null,
-    link = null
+    {
+        category = "activity",
+        tab = "log",
+        onUnread = () => {},
+        contentId = null,
+        notificationTargets = null,
+        link = null
+    } = {}
 ) {
     game.log ??= [];
     game.logSequence ??= Math.max(0, ...game.log.map(entry => entry.id ?? 0));
@@ -42,17 +44,16 @@ export function addLog(
 
     if (category !== "important") return id;
 
-    // Explicit targets override the default single-destination routing.
+    // Explicit targets override default single-destination routing.
     if (notificationTargets) {
         for (const target of notificationTargets) {
-            const itemId = target.itemId ?? id;
-            onUnread(target.tab, itemId);
+            onUnread(target.tab, target.itemId ?? id);
         }
 
         return id;
     }
 
-    // Preserve existing behavior for all existing callers.
+    // Preserve default routing for existing event types.
     const hasDedicatedDestination =
         ["observations", "equipment"].includes(tab) && contentId != null;
 
@@ -115,15 +116,20 @@ export function checkDiscoveries(game, onUnread = () => {}) {
             `DISCOVERY: ${discovery.name}${
                 rewardText ? ` (${rewardText})` : ""
             }.`,
-            "important",
-            "observations",
-            onUnread,
-            discovery.id,
-            null,
             {
+                category: "important",
                 tab: "observations",
-                itemId: discovery.id,
-                label: discovery.name
+                onUnread,
+                contentId: discovery.id,
+                notificationTargets: [
+                    { tab: "observations", itemId: discovery.id },
+                    { tab: "log" }
+                ],
+                link: {
+                    tab: "observations",
+                    itemId: discovery.id,
+                    label: discovery.name
+                }
             }
         );
     }
@@ -153,15 +159,16 @@ export function checkDiscoveries(game, onUnread = () => {}) {
                 `ALERT: ${
                     observation.announcement?.message ?? observation.name
                 }`,
-                "important",
-                "observations",
-                onUnread,
-                observation.id,
-                null,
                 {
+                    category: "important",
                     tab: "observations",
-                    itemId: observation.id,
-                    label: observation.name
+                    onUnread,
+                    contentId: observation.id,
+                    link: {
+                        tab: "observations",
+                        itemId: observation.id,
+                        label: observation.name
+                    }
                 }
             );
         }
@@ -218,13 +225,13 @@ export function stir(game, multiplier = 1, onUnread = () => {}) {
         result.events.push(`Useful observations: +${result.research}`);
     if (result.exoticMatter) {
         result.events.push(`ANOMALY: +${result.exoticMatter} Exotic Matter`);
-        addLog(
-            game,
-            `ANOMALY: Exotic matter detected (${result.exoticMatter}). The reading is inconsistent with known physics.`,
-            "important",
-            "log",
+
+        // Anomaly: important, so it defaults to the LOG badge.
+        const anomalyMessage = `ANOMALY: Exotic matter detected (${result.exoticMatter}). The reading is inconsistent with known physics.`;
+        addLog(game, anomalyMessage, {
+            category: "important",
             onUnread
-        );
+        });
     }
     return result;
 }
@@ -270,15 +277,19 @@ export function checkUpgradeUnlocks(
             addLog(
                 game,
                 `NEW EQUIPMENT UNLOCKED: ${definition.name} is now available.`,
-                "important",
-                "log",
-                onUnread,
-                null,
-                [{ tab: "log" }, { tab: "equipment", itemId: definition.id }],
                 {
-                    tab: "equipment",
-                    itemId: definition.id,
-                    label: definition.name
+                    category: "important",
+                    tab: "log",
+                    onUnread,
+                    notificationTargets: [
+                        { tab: "log" },
+                        { tab: "equipment", itemId: definition.id }
+                    ],
+                    link: {
+                        tab: "equipment",
+                        itemId: definition.id,
+                        label: definition.name
+                    }
                 }
             );
         }
@@ -296,13 +307,9 @@ export function buyUpgrade(game, id, onUnread = () => {}) {
 
     game.upgrades[id] = level + 1;
 
-    addLog(
-        game,
-        `EQUIPMENT UPDATED: ${definition.name} is now level ${level + 1}.`,
-        "activity",
-        "log",
-        onUnread
-    );
+    const purchaseMessage = `EQUIPMENT UPDATED: ${definition.name} is now level ${level + 1}.`;
+    // Equipment purchase: activity, so no badge.
+    addLog(game, purchaseMessage);
     checkUpgradeUnlocks(game, onUnread);
     return true;
 }
@@ -331,10 +338,9 @@ export function consumeParticles(game) {
     game.resources.particles -= particles;
     game.resources.energy += energy;
 
-    addLog(
-        game,
-        `RESOURCE CONVERSION: Consumed ${particles} particles for +${energy} Quantum Energy.`
-    );
+    const conversionMessage = `RESOURCE CONVERSION: Consumed ${particles} particles for +${energy} Quantum Energy.`;
+    // Resource conversion: activity, so no badge.
+    addLog(game, conversionMessage);
 
     return { particles, energy };
 }
