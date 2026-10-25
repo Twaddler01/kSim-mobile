@@ -1134,3 +1134,64 @@ body:not(.debug-mode) {
     line-height: 1.3;
     opacity: 0.8;
 }
+
+.tab-unread-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 10px;
+    background: var(--accent-color, #7c83ff);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.list-item.is-unread,
+.log-entry.is-unread {
+    border-color: var(--accent-color, #58d9ff);
+    box-shadow: inset 3px 0 0 var(--accent-color, #58d9ff);
+}
+
+.list-item.is-unread {
+    background: rgba(88, 217, 255, 0.07);
+}
+
+.log-entry.is-unread {
+    background: rgba(88, 217, 255, 0.07);
+}
+
+.list-item.is-locked {
+    position: relative;
+    overflow: hidden;
+    opacity: 0.58;
+    filter: saturate(0.55);
+}
+
+.list-item.is-locked::after {
+    content: "LOCKED";
+    position: absolute;
+    top: 24px;
+    right: -38px;
+    width: 150px;
+    padding: 7px 0;
+    transform: rotate(35deg);
+    text-align: center;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: #ffffff;
+    background: #505866;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.list-item.is-locked button {
+    cursor: not-allowed;
+}

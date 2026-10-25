@@ -20,15 +20,20 @@ import {
     costLabel,
     formatNumber,
     consumeParticles,
-    checkDiscoveries
+    checkDiscoveries,
+    checkUpgradeUnlocks
 } from "./src/functions.js";
 
 import Inventory from "./src/ui/Inventory.js";
 import ResourcePopups from "./src/ui/ResourcePopups.js";
 import SaveManager from "./src/SaveManager.js";
+
+// TABS
 import DiscoveryPanel from "./src/ui/DiscoveryPanel.js";
 import UpgradePanel from "./src/ui/UpgradePanel.js";
 import LogPanel from "./src/ui/LogPanel.js";
+
+import UnreadManager from "./src/UnreadManager.js";
 
 const saveManager = new SaveManager({
     key: "ksim-quantum-foundations-v1",
@@ -58,8 +63,38 @@ function resetGame() {
     refreshUI({ database: true });
 }
 
+const unreadManager = new UnreadManager({
+    getGame: () => game,
+    save,
+    onChange: () => {
+        if (ui.tabs) {
+            ui.tabs.update();
+        }
+    },
+    isTabActive: tabId => activeTab === tabId
+});
+
+function notifyUnread(tabId, itemId) {
+    unreadManager.notify(tabId, itemId);
+}
+
+function logEvent(
+    game,
+    message,
+    category = "activity",
+    tab = "log",
+    contentId = null
+) {
+    return addLog(game, message, category, tab, notifyUnread, contentId);
+}
+
 // Process any event triggers already satisfied by a loaded save.
 checkDiscoveries(game);
+
+// Initialize or migrate equipment unlocks without creating
+// fresh notifications for conditions already satisfied in a save.
+checkUpgradeUnlocks(game, notifyUnread, { notify: false });
+
 save();
 
 const discoveryPanel = new DiscoveryPanel({
@@ -69,14 +104,17 @@ const discoveryPanel = new DiscoveryPanel({
     canAfford,
     payCost,
     costLabel,
-    addLog,
+    addLog: logEvent,
     save,
     showToast: message => showToast(message),
-    refreshUI: options => refreshUI(options)
+    refreshUI: options => refreshUI(options),
+    onUnread: notifyUnread,
+    unreadManager
 });
 
 const logPanel = new LogPanel({
     getGame: () => game,
+    unreadManager,
     onChange: () => refreshUI({ database: true })
 });
 
@@ -142,7 +180,11 @@ function renderTabContent(labContent) {
     const tabs = new Tabs({
         activeId: activeTab,
         label: "Laboratory sections",
-        tabs: tabDefinitions,
+        unreadManager,
+        tabs: tabDefinitions.map(tab => ({
+            ...tab,
+            unread: ["observations", "equipment", "log"].includes(tab.id)
+        })),
         onChange: id => {
             activeTab = id;
         }
@@ -197,7 +239,7 @@ function showToast(message) {
 }
 
 function runExperiments(count = 1, event = null, costs = []) {
-    const result = stir(game, count);
+    const result = stir(game, count, notifyUnread);
 
     const changes = [
         ...costs,
@@ -217,10 +259,7 @@ function runExperiments(count = 1, event = null, costs = []) {
     for (const change of changes) {
         if (!change.amount) continue;
 
-        totals.set(
-            change.icon,
-            (totals.get(change.icon) ?? 0) + change.amount
-        );
+        totals.set(change.icon, (totals.get(change.icon) ?? 0) + change.amount);
     }
 
     const popups = [...totals.entries()]
@@ -231,7 +270,6 @@ function runExperiments(count = 1, event = null, costs = []) {
     refreshUI({ database: true });
     resourcePopups.show(popups, event);
 }
-
 
 function renderAnnouncement() {
     const announcement = game.announcement;
@@ -350,7 +388,9 @@ const upgradePanel = new UpgradePanel({
     costLabel,
     save,
     showToast: message => showToast(message),
-    refreshUI: options => refreshUI(options)
+    refreshUI: options => refreshUI(options),
+    onUnread: notifyUnread,
+    unreadManager
 });
 
 function render() {
@@ -424,9 +464,7 @@ function render() {
                 game,
                 "BATCH: Consumed 10 Particles to run ten experiments."
             );
-            runExperiments(10, event, [
-                { amount: -10, icon: "⚛️" }
-            ]);
+            runExperiments(10, event, [{ amount: -10, icon: "⚛️" }]);
         },
         {
             variant: "primary-button",
@@ -604,7 +642,7 @@ window.kSim = {
     save,
     render,
     stir: (multiplier = 1) => {
-        const result = stir(game, multiplier);
+        const result = stir(game, multiplier, notifyUnread);
         save();
         refreshUI({ database: true });
         return result;

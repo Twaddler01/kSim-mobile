@@ -12,7 +12,9 @@ export default class UpgradePanel {
         costLabel,
         save,
         showToast,
-        refreshUI
+        refreshUI,
+        onUnread = () => {},
+        unreadManager
     }) {
         this.getGame = getGame;
         this.upgradeDefinitions = upgradeDefinitions;
@@ -24,6 +26,8 @@ export default class UpgradePanel {
         this.save = save;
         this.showToast = showToast;
         this.refreshUI = refreshUI;
+        this.onUnread = onUnread;
+        this.unreadManager = unreadManager;
     }
 
     get game() {
@@ -38,9 +42,15 @@ export default class UpgradePanel {
 
         for (const item of this.upgradeDefinitions) {
             const level = game.upgrades[item.id] ?? 0;
+            const unlocked = (game.unlockedUpgrades ?? []).includes(item.id);
+            const locked = !unlocked;
+
+            const unread =
+                unlocked && this.unreadManager?.isUnread("equipment", item.id);
+
             const maxed = level >= item.maxLevel;
             const cost = this.upgradeCost(item, level);
-            const affordable = !maxed && this.canAfford(game, cost);
+            const affordable = unlocked && !maxed && this.canAfford(game, cost);
 
             const body = el(
                 "div",
@@ -75,20 +85,27 @@ export default class UpgradePanel {
 
                     el("div", {
                         className: "cost-line",
-                        text: maxed
-                            ? "Maximum level reached"
-                            : `Cost: ${this.costLabel(
-                                  cost,
-                                  this.resourceDefinitions
-                              )}`
+                        text: locked
+                            ? (item.unlockDescription ??
+                              "Unlock requirement not met.")
+                            : maxed
+                              ? "Maximum level reached"
+                              : `Cost: ${this.costLabel(
+                                    cost,
+                                    this.resourceDefinitions
+                                )}`
                     }),
 
                     Button(
-                        maxed ? "MAX LEVEL" : "INSTALL UPGRADE",
+                        locked
+                            ? "LOCKED"
+                            : maxed
+                              ? "MAX LEVEL"
+                              : "INSTALL UPGRADE",
                         () => this.install(item),
                         {
                             variant: "secondary-button",
-                            disabled: !affordable || maxed
+                            disabled: locked || !affordable || maxed
                         }
                     )
                 ]
@@ -98,7 +115,18 @@ export default class UpgradePanel {
                 el(
                     "article",
                     {
-                        className: "list-item"
+                        className:
+                            `list-item` +
+                            (unlocked ? "" : " is-locked") +
+                            (unread ? " is-unread" : ""),
+                        onClick: () => {
+                            if (unlocked && unread) {
+                                this.unreadManager?.markRead(
+                                    "equipment",
+                                    item.id
+                                );
+                            }
+                        }
                     },
                     [body]
                 )
@@ -111,7 +139,12 @@ export default class UpgradePanel {
     install(item) {
         const game = this.game;
 
-        if (this.buyUpgrade(game, item.id)) {
+        if (!(this.game.unlockedUpgrades ?? []).includes(item.id)) {
+            this.showToast("This upgrade is still locked.");
+            return;
+        }
+
+        if (this.buyUpgrade(game, item.id, this.onUnread)) {
             this.save();
             this.refreshUI({ database: true });
         } else {

@@ -1,8 +1,9 @@
 import { el } from "./Element.js";
 
 export default class LogPanel {
-    constructor({ getGame, onChange = () => {} }) {
+    constructor({ getGame, unreadManager, onChange = () => {} }) {
         this.getGame = getGame;
+        this.unreadManager = unreadManager;
         this.onChange = onChange;
         this.activeCategory = "important";
     }
@@ -11,9 +12,13 @@ export default class LogPanel {
         const game = this.getGame();
 
         return (game.log ?? []).map(entry => ({
+            id: entry.id,
             message: entry.message ?? "",
             category: entry.category === "important" ? "important" : "activity",
-            timestamp: entry.timestamp ?? null
+            timestamp: entry.timestamp ?? null,
+            unread:
+                entry.category === "important" &&
+                this.unreadManager?.isUnread("log", entry.id)
         }));
     }
 
@@ -57,7 +62,17 @@ export default class LogPanel {
                       el(
                           "div",
                           {
-                              className: `log-entry log-entry--${entry.category}`
+                              className:
+                                  `log-entry log-entry--${entry.category}` +
+                                  (entry.unread ? " is-unread" : ""),
+                              onClick: () => {
+                                  if (entry.unread) {
+                                      this.unreadManager?.markRead(
+                                          "log",
+                                          entry.id
+                                      );
+                                  }
+                              }
                           },
                           [
                               el("span", {

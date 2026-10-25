@@ -3,25 +3,52 @@ export const initialGameData = {
     stage: 0,
     clicks: 0,
     resources: { energy: 0, particles: 0, research: 0, exoticMatter: 0 },
-    upgrades: { energyYield: 0, particleStability: 0, observation: 0 },
+    upgrades: {
+        energyYield: 0,
+        particleStability: 0,
+        observation: 0
+    },
+    unlockedUpgrades: ["energyYield", "particleStability"],
     discoveries: [],
     log: [
         {
+            id: 1,
             message:
                 "LAB LOG 001: The quantum field generator is online. Begin with low-energy experiments.",
             category: "important",
+            tab: "log",
             timestamp: Date.now()
         },
         {
+            id: 2,
             message:
                 "SAFETY NOTE: If the containment field starts singing, step away from the console.",
             category: "important",
+            tab: "log",
             timestamp: Date.now()
         }
     ],
     triggered: [],
     announcement: null,
-    lastTick: Date.now()
+    lastTick: Date.now(),
+    logSequence: 2,
+    tabReadIds: {
+        log: 0,
+        observations: 0,
+        equipment: 0
+    },
+    unread: {
+        items: {
+            observations: [],
+            equipment: [],
+            log: []
+        },
+        pending: {
+            observations: [],
+            equipment: [],
+            log: []
+        }
+    }
 };
 
 export const resourceDefinitions = [
@@ -136,6 +163,14 @@ export const upgradeDefinitions = [
         description:
             "+8 percentage points to useful research observations per level.",
         baseCost: { energy: 600, particles: 3 },
-        maxLevel: 5
+        maxLevel: 5,
+
+        unlockCondition: {
+            type: "upgradeLevel",
+            upgradeIds: ["energyYield", "particleStability"],
+            minLevel: 1
+        },
+        unlockDescription:
+            "Requires at least one level of Field Amplifier or Particle Stabilization."
     }
 ];

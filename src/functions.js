@@ -6,16 +6,60 @@ export function formatNumber(value) {
     }).format(value || 0);
 }
 
-export function addLog(game, message, category = "activity") {
+/* 
+RULES:
+Important log entry with destination observations → OBSERVATIONS badge.
+Important log entry with destination equipment → EQUIPMENT badge.
+Any other important log entry → LAB LOG badge.
+Activity entry → no badge.
+*/
+
+export function addLog(
+    game,
+    message,
+    category = "activity",
+    tab = "log",
+    onUnread = () => {},
+    contentId = null,
+    notificationTargets = null
+) {
     game.log ??= [];
+    game.logSequence ??= Math.max(0, ...game.log.map(entry => entry.id ?? 0));
+
+    const id = ++game.logSequence;
 
     game.log.unshift({
+        id,
         message,
         category,
+        tab,
         timestamp: Date.now()
     });
 
     game.log = game.log.slice(0, 60);
+
+    if (category !== "important") return id;
+
+    // Explicit targets override the default single-destination routing.
+    if (notificationTargets) {
+        for (const target of notificationTargets) {
+            const itemId = target.itemId ?? id;
+            onUnread(target.tab, itemId);
+        }
+
+        return id;
+    }
+
+    // Preserve existing behavior for all existing callers.
+    const hasDedicatedDestination =
+        ["observations", "equipment"].includes(tab) && contentId != null;
+
+    const destination = hasDedicatedDestination ? tab : "log";
+    const itemId = destination === "log" ? id : contentId;
+
+    onUnread(destination, itemId);
+
+    return id;
 }
 
 export function canAfford(game, cost) {
@@ -40,7 +84,7 @@ export function upgradeCost(definition, level) {
     return cost;
 }
 
-export function checkDiscoveries(game) {
+export function checkDiscoveries(game, onUnread = () => {}) {
     // Unlock ordinary observations through experiment milestones.
     for (const discovery of discoveries) {
         if (discovery.hidden) continue;
@@ -69,7 +113,10 @@ export function checkDiscoveries(game) {
             `DISCOVERY: ${discovery.name}${
                 rewardText ? ` (${rewardText})` : ""
             }.`,
-            "important"
+            "important",
+            "observations",
+            onUnread,
+            discovery.id
         );
     }
 
@@ -98,13 +145,16 @@ export function checkDiscoveries(game) {
                 `ALERT: ${
                     observation.announcement?.message ?? observation.name
                 }`,
-                "important"
+                "important",
+                "observations",
+                onUnread,
+                observation.id
             );
         }
     }
 }
 
-export function stir(game, multiplier = 1) {
+export function stir(game, multiplier = 1, onUnread = () => {}) {
     const result = {
         energy: 0,
         particles: 0,
@@ -138,7 +188,7 @@ export function stir(game, multiplier = 1) {
         }
 
         // Check milestones before evaluating the anomaly event for the next experiment.
-        checkDiscoveries(game);
+        checkDiscoveries(game, onUnread);
         if (
             game.discoveries.includes("quantumAnomaly") &&
             Math.random() < 0.03
@@ -157,13 +207,68 @@ export function stir(game, multiplier = 1) {
         addLog(
             game,
             `ANOMALY: Exotic matter detected (${result.exoticMatter}). The reading is inconsistent with known physics.`,
-            "important"
+            "important",
+            "log",
+            onUnread
         );
     }
     return result;
 }
 
-export function buyUpgrade(game, id) {
+export function checkUpgradeUnlocks(
+    game,
+    onUnread = () => {},
+    { notify = true } = {}
+) {
+    game.unlockedUpgrades ??= [];
+
+    const newlyUnlocked = [];
+
+    for (const definition of upgradeDefinitions) {
+        if (game.unlockedUpgrades.includes(definition.id)) {
+            continue;
+        }
+
+        const condition = definition.unlockCondition;
+
+        // Equipment without a condition is available by default.
+        if (!condition) {
+            game.unlockedUpgrades.push(definition.id);
+            continue;
+        }
+
+        let satisfied = false;
+
+        if (condition.type === "upgradeLevel") {
+            const minLevel = condition.minLevel ?? 1;
+
+            satisfied = condition.upgradeIds.some(
+                id => (game.upgrades[id] ?? 0) >= minLevel
+            );
+        }
+
+        if (!satisfied) continue;
+
+        game.unlockedUpgrades.push(definition.id);
+        newlyUnlocked.push(definition.id);
+
+        if (notify) {
+            addLog(
+                game,
+                `NEW EQUIPMENT UNLOCKED: ${definition.name} is now available.`,
+                "important",
+                "log",
+                onUnread,
+                null,
+                [{ tab: "log" }, { tab: "equipment", itemId: definition.id }]
+            );
+        }
+    }
+
+    return newlyUnlocked;
+}
+
+export function buyUpgrade(game, id, onUnread = () => {}) {
     const definition = upgradeDefinitions.find(item => item.id === id);
     if (!definition) return false;
     const level = game.upgrades[id] ?? 0;
@@ -171,11 +276,15 @@ export function buyUpgrade(game, id) {
     if (!payCost(game, upgradeCost(definition, level))) return false;
 
     game.upgrades[id] = level + 1;
+
     addLog(
         game,
         `EQUIPMENT UPDATED: ${definition.name} is now level ${level + 1}.`,
-        "important"
+        "activity",
+        "log",
+        onUnread
     );
+    checkUpgradeUnlocks(game, onUnread);
     return true;
 }
 

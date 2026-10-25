@@ -17,6 +17,7 @@ export class Tabs extends Component {
     constructor({
         tabs = [],
         activeId,
+        unreadManager = null,
         onChange,
         label = "Content sections",
         className = ""
@@ -26,6 +27,7 @@ export class Tabs extends Component {
         this.activeId = this.tabs.some(tab => tab.id === activeId)
             ? activeId
             : (this.tabs[0]?.id ?? null);
+        this.unreadManager = unreadManager;
         this.onChange = onChange;
         this.label = label;
         this.panelId = `ksim-tab-panel-${Tabs.nextId++}`;
@@ -35,7 +37,11 @@ export class Tabs extends Component {
     }
 
     get activeTab() {
-        return this.tabs.find(tab => tab.id === this.activeId) ?? this.tabs[0] ?? null;
+        return (
+            this.tabs.find(tab => tab.id === this.activeId) ??
+            this.tabs[0] ??
+            null
+        );
     }
 
     createElement() {
@@ -45,9 +51,15 @@ export class Tabs extends Component {
             label: this.label
         });
         this.panel = createTabPanel(null, null, { panelId: this.panelId });
-        return el("div", {
-            className: ["tabs-component", this.className].filter(Boolean).join(" ")
-        }, [this.tabBar, this.panel]);
+        return el(
+            "div",
+            {
+                className: ["tabs-component", this.className]
+                    .filter(Boolean)
+                    .join(" ")
+            },
+            [this.tabBar, this.panel]
+        );
     }
 
     update() {
@@ -60,7 +72,12 @@ export class Tabs extends Component {
             onSelect: id => this.selectTab(id)
         });
 
-        this.panel.setAttribute("aria-labelledby", tab ? `ksim-tab-${tab.id}` : "");
+        this.updateUnreadIndicators();
+
+        this.panel.setAttribute(
+            "aria-labelledby",
+            tab ? `ksim-tab-${tab.id}` : ""
+        );
         const content = tab?.render?.() ?? tab?.content ?? null;
         this.panel.replaceChildren(...(content == null ? [] : [content]));
         return this;
@@ -85,8 +102,12 @@ export class Tabs extends Component {
     }
 
     selectTab(id) {
-        if (!this.tabs.some(tab => tab.id === id) || this.activeId === id) return this;
+        if (!this.tabs.some(tab => tab.id === id) || this.activeId === id)
+            return this;
         this.activeId = id;
+        if (this.activeTab?.unread) {
+            this.unreadManager?.markTabSeen(id, { notify: false });
+        }
         this.render();
         this.onChange?.(id, this.activeTab);
         return this;
@@ -97,6 +118,37 @@ export class Tabs extends Component {
         this.tabBar = null;
         this.panel = null;
         this.onChange = null;
+    }
+
+    updateUnreadIndicators() {
+        const buttons = this.tabBar?.querySelectorAll('[role="tab"]');
+        if (!buttons) return;
+
+        for (const tab of this.tabs) {
+            const button = [...buttons].find(
+                item => item.id === `ksim-tab-${tab.id}`
+            );
+
+            if (!button) continue;
+
+            button.querySelector(".tab-unread-badge")?.remove();
+
+            const count = tab.unread
+                ? (this.unreadManager?.getUnreadCount(tab.id) ?? 0)
+                : typeof tab.unreadCount === "function"
+                  ? tab.unreadCount()
+                  : (tab.unreadCount ?? 0);
+
+            if (count <= 0) continue;
+
+            const badge = el("span", {
+                className: "tab-unread-badge",
+                text: String(count),
+                "aria-label": `${count} unread`
+            });
+
+            button.append(badge);
+        }
     }
 }
 

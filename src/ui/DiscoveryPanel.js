@@ -13,7 +13,8 @@ export default class DiscoveryPanel {
         addLog,
         save,
         showToast,
-        refreshUI
+        refreshUI,
+        unreadManager
     }) {
         this.getGame = getGame;
         this.discoveries = discoveries;
@@ -25,6 +26,7 @@ export default class DiscoveryPanel {
         this.save = save;
         this.showToast = showToast;
         this.refreshUI = refreshUI;
+        this.unreadManager = unreadManager;
     }
 
     get game() {
@@ -42,6 +44,10 @@ export default class DiscoveryPanel {
             if (item.hidden && !triggered) continue;
 
             const unlocked = game.discoveries.includes(item.id);
+            const unread = this.unreadManager?.isUnread(
+                "observations",
+                item.id
+            );
             const investigatable = item.hidden && !unlocked;
             const cost = item.cost ?? {};
             const affordable = this.canAfford(game, cost);
@@ -109,7 +115,17 @@ export default class DiscoveryPanel {
                 el(
                     "article",
                     {
-                        className: `list-item ${unlocked ? "is-unlocked" : ""}`
+                        className:
+                            `list-item ${unlocked ? "is-unlocked" : ""}` +
+                            (unread ? " is-unread" : ""),
+                        onClick: () => {
+                            if (unread) {
+                                this.unreadManager?.markRead(
+                                    "observations",
+                                    item.id
+                                );
+                            }
+                        }
                     },
                     [body]
                 )
@@ -137,7 +153,9 @@ export default class DiscoveryPanel {
         this.addLog(
             game,
             `INVESTIGATION COMPLETE: ${item.name}. ${item.description}`,
-            "important"
+            "important",
+            "observations",
+            item.id
         );
 
         this.save();
