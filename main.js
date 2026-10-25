@@ -25,51 +25,21 @@ import {
 
 import Inventory from "./src/ui/Inventory.js";
 import ResourcePopups from "./src/ui/ResourcePopups.js";
+import SaveManager from "./src/SaveManager.js";
+import DiscoveryPanel from "./src/ui/DiscoveryPanel.js";
+import UpgradePanel from "./src/ui/UpgradePanel.js";
 
-const SAVE_KEY = "ksim-quantum-foundations-v1";
+const saveManager = new SaveManager({
+    key: "ksim-quantum-foundations-v1",
+    initialData: initialGameData
+});
+
 const app = document.getElementById("app");
 
-function freshGame() {
-    return JSON.parse(JSON.stringify(initialGameData));
-}
-
-function loadGame() {
-    try {
-        const saved = localStorage.getItem(SAVE_KEY);
-        if (!saved) return freshGame();
-        const parsed = JSON.parse(saved);
-        return {
-            ...freshGame(),
-            ...parsed,
-            resources: {
-                ...initialGameData.resources,
-                ...(parsed.resources ?? {})
-            },
-            upgrades: {
-                ...initialGameData.upgrades,
-                ...(parsed.upgrades ?? {})
-            },
-            discoveries: Array.isArray(parsed.discoveries)
-                ? parsed.discoveries
-                : [],
-            log: Array.isArray(parsed.log)
-                ? parsed.log
-                : [...initialGameData.log],
-            triggered: Array.isArray(parsed.triggered) ? parsed.triggered : [],
-
-            announcement: parsed.announcement ?? null
-        };
-    } catch (error) {
-        console.warn("Could not load Quantum Foundations save:", error);
-        return freshGame();
-    }
-}
-
-let game = loadGame();
+let game = saveManager.load();
 let activeTab = "lab";
 let toastText = "";
 let toastTimer = null;
-let inventoryExpanded = false;
 let ui = {};
 
 const resourcePopups = new ResourcePopups({
@@ -78,174 +48,34 @@ const resourcePopups = new ResourcePopups({
 });
 
 function save() {
-    try {
-        localStorage.setItem(SAVE_KEY, JSON.stringify(game));
-    } catch (error) {
-        console.warn("Could not save Quantum Foundations:", error);
-    }
+    saveManager.save(game);
+}
+
+function resetGame() {
+    game = saveManager.freshGame();
+    save();
+    refreshUI({ database: true });
 }
 
 // Process any event triggers already satisfied by a loaded save.
 checkDiscoveries(game);
 save();
 
-function resourceVisible(resource) {
-    return (
-        !resource.unlockDiscovery ||
-        game.discoveries.includes(resource.unlockDiscovery)
-    );
-}
+const discoveryPanel = new DiscoveryPanel({
+    getGame: () => game,
+    discoveries,
+    resourceDefinitions,
+    canAfford,
+    payCost,
+    costLabel,
+    addLog,
+    save,
+    showToast: message => showToast(message),
+    refreshUI: options => refreshUI(options)
+});
 
 function updateInventory() {
     ui.inventory?.update();
-}
-
-function renderDiscoveries() {
-    const list = el("div", { className: "item-list" });
-
-    for (const item of discoveries) {
-        const triggered = (game.triggered ?? []).includes(item.id);
-
-        // Hidden observations remain completely invisible until triggered.
-        if (item.hidden && !triggered) continue;
-
-        const unlocked = game.discoveries.includes(item.id);
-        const investigatable = item.hidden && !unlocked;
-        const cost = item.cost ?? {};
-        const affordable = canAfford(game, cost);
-
-        const body = el("div", { className: "item-details" }, [
-            el("div", { className: "item-heading" }, [
-                el("span", {
-                    className: "item-icon",
-                    text: item.icon
-                }),
-                el("strong", {
-                    text: unlocked
-                        ? item.name
-                        : investigatable
-                          ? "Unknown Energy Source"
-                          : "Unconfirmed Observation"
-                }),
-                el("span", {
-                    className: `status ${unlocked ? "status-found" : ""}`,
-                    text: unlocked
-                        ? "RECORDED"
-                        : investigatable
-                          ? "INVESTIGATION AVAILABLE"
-                          : "UNKNOWN"
-                })
-            ]),
-
-            el("p", {
-                className: "item-description",
-                text: unlocked
-                    ? item.description
-                    : investigatable
-                      ? "A signal has been detected, but its source is unknown. Allocate research resources to investigate it."
-                      : `Perform ${item.requirement} experiments to verify this observation.`
-            })
-        ]);
-
-        if (investigatable) {
-            body.append(
-                el("div", {
-                    className: "cost-line",
-                    text: `Investigation cost: ${costLabel(cost, resourceDefinitions)}`
-                }),
-                Button(
-                    "INVESTIGATE",
-                    () => {
-                        if (!game.triggered.includes(item.id)) return;
-                        if (game.discoveries.includes(item.id)) return;
-
-                        if (!payCost(game, cost)) {
-                            showToast("Insufficient research resources.");
-                            return;
-                        }
-
-                        game.discoveries.push(item.id);
-
-                        addLog(
-                            game,
-                            `INVESTIGATION COMPLETE: ${item.name}. ${item.description}`
-                        );
-
-                        save();
-                        refreshUI({ database: true });
-                    },
-                    {
-                        variant: "primary-button",
-                        disabled: !affordable
-                    }
-                )
-            );
-        }
-
-        if (!unlocked && !investigatable) {
-            body.append(
-                ProgressBar({
-                    label: "Experiment count",
-                    value: Math.min(game.clicks, item.requirement),
-                    max: item.requirement,
-                    format: (value, max) => `${Math.floor(value)} / ${max}`
-                })
-            );
-        }
-
-        list.append(
-            el(
-                "article",
-                {
-                    className: `list-item ${unlocked ? "is-unlocked" : ""}`
-                },
-                [body]
-            )
-        );
-    }
-
-    return list;
-}
-
-function renderUpgrades() {
-    const list = el("div", { className: "item-list" });
-    for (const item of upgradeDefinitions) {
-        const level = game.upgrades[item.id] ?? 0;
-        const maxed = level >= item.maxLevel;
-        const cost = upgradeCost(item, level);
-        const affordable = !maxed && canAfford(game, cost);
-        const body = el("div", { className: "item-details" }, [
-            el("div", { className: "item-heading" }, [
-                el("span", { className: "item-icon", text: item.icon }),
-                el("strong", { text: item.name }),
-                el("span", {
-                    className: "level-pill",
-                    text: `LV ${level}/${item.maxLevel}`
-                })
-            ]),
-            el("p", { className: "item-description", text: item.description }),
-            el("div", {
-                className: "cost-line",
-                text: maxed
-                    ? "Maximum level reached"
-                    : `Cost: ${costLabel(cost, resourceDefinitions)}`
-            }),
-            Button(
-                maxed ? "MAX LEVEL" : "INSTALL UPGRADE",
-                () => {
-                    if (buyUpgrade(game, item.id)) {
-                        save();
-                        refreshUI({ database: true });
-                    } else {
-                        showToast("Insufficient resources.");
-                    }
-                },
-                { variant: "secondary-button", disabled: !affordable || maxed }
-            )
-        ]);
-        list.append(el("article", { className: "list-item" }, [body]));
-    }
-    return list;
 }
 
 function renderLog() {
@@ -291,7 +121,7 @@ function renderTabContent(labContent) {
                 renderDatabasePanel(
                     "Observation Index",
                     `${game.discoveries.length}/${discoveries.length}`,
-                    renderDiscoveries()
+                    discoveryPanel.render()
                 )
         },
         {
@@ -301,7 +131,7 @@ function renderTabContent(labContent) {
                 renderDatabasePanel(
                     "Lab Equipment",
                     `${Object.values(game.upgrades).reduce((a, b) => a + b, 0)} levels`,
-                    renderUpgrades()
+                    upgradePanel.render()
                 )
         },
         {
@@ -373,24 +203,42 @@ function showToast(message) {
     }, 1800);
 }
 
-function runExperiments(count = 1, event = null) {
+function runExperiments(count = 1, event = null, costs = []) {
     const result = stir(game, count);
 
-    const gains = [
+    const changes = [
+        ...costs,
         { amount: result.energy, icon: "⚡" },
         { amount: result.particles, icon: "⚛️" },
         { amount: result.research, icon: "🔬" },
         { amount: result.exoticMatter, icon: "🌀" }
-    ].filter(gain => gain.amount > 0);
+    ];
 
     if (count > 1) {
         addLog(game, `BATCH COMPLETE: ${count} experiments run.`);
     }
 
+    // Combine gains and costs for each resource.
+    const totals = new Map();
+
+    for (const change of changes) {
+        if (!change.amount) continue;
+
+        totals.set(
+            change.icon,
+            (totals.get(change.icon) ?? 0) + change.amount
+        );
+    }
+
+    const popups = [...totals.entries()]
+        .filter(([, amount]) => amount !== 0)
+        .map(([icon, amount]) => ({ icon, amount }));
+
     save();
     refreshUI({ database: true });
-    resourcePopups.show(gains, event);
+    resourcePopups.show(popups, event);
 }
+
 
 function renderAnnouncement() {
     const announcement = game.announcement;
@@ -438,22 +286,30 @@ function renderAnnouncement() {
     );
 }
 
-function updateExperimentUI() {
-    if (!ui.experimentProgress) return;
+function getExperimentProgress() {
+    const milestones = discoveries.filter(item => !item.hidden);
 
-    const visibleMilestones = discoveries.filter(item => !item.hidden);
-    const nextDiscovery = visibleMilestones.find(
+    const nextDiscovery = milestones.find(
         item => !game.discoveries.includes(item.id)
     );
 
-    const finalMilestone = visibleMilestones.at(-1);
-    const progressValue = nextDiscovery
-        ? Math.min(game.clicks, nextDiscovery.requirement)
-        : finalMilestone.requirement;
+    const finalMilestone = milestones.at(-1);
 
-    const progressMax = nextDiscovery
-        ? nextDiscovery.requirement
-        : finalMilestone.requirement;
+    return {
+        nextDiscovery,
+        value: nextDiscovery
+            ? Math.min(game.clicks, nextDiscovery.requirement)
+            : finalMilestone.requirement,
+        max: nextDiscovery
+            ? nextDiscovery.requirement
+            : finalMilestone.requirement
+    };
+}
+
+function updateExperimentUI() {
+    if (!ui.experimentProgress) return;
+
+    const { nextDiscovery, value, max } = getExperimentProgress();
 
     ui.experimentCount.textContent = `${formatNumber(game.clicks)} experiments completed`;
 
@@ -471,7 +327,7 @@ function updateExperimentUI() {
             : "Observation index complete";
     }
 
-    ui.experimentProgress.setValue(progressValue, progressMax);
+    ui.experimentProgress.setValue(value, max);
 }
 
 function refreshUI({ database = false } = {}) {
@@ -491,6 +347,19 @@ function refreshUI({ database = false } = {}) {
     }
 }
 
+const upgradePanel = new UpgradePanel({
+    getGame: () => game,
+    upgradeDefinitions,
+    resourceDefinitions,
+    upgradeCost,
+    canAfford,
+    buyUpgrade,
+    costLabel,
+    save,
+    showToast: message => showToast(message),
+    refreshUI: options => refreshUI(options)
+});
+
 function render() {
     if (!app) return;
 
@@ -502,20 +371,7 @@ function render() {
         return;
     }
 
-    const visibleMilestones = discoveries.filter(item => !item.hidden);
-
-    const nextDiscovery = visibleMilestones.find(
-        item => !game.discoveries.includes(item.id)
-    );
-
-    const finalMilestone = visibleMilestones.at(-1);
-    const progressValue = nextDiscovery
-        ? Math.min(game.clicks, nextDiscovery.requirement)
-        : finalMilestone.requirement;
-
-    const progressMax = nextDiscovery
-        ? nextDiscovery.requirement
-        : finalMilestone.requirement;
+    const { nextDiscovery, value, max } = getExperimentProgress();
 
     const intro = el("section", { className: "lab-intro sim-card" }, [
         el("div", {
@@ -570,11 +426,14 @@ function render() {
             }
 
             game.resources.particles -= 10;
+
             addLog(
                 game,
                 "BATCH: Consumed 10 Particles to run ten experiments."
             );
-            runExperiments(10, event);
+            runExperiments(10, event, [
+                { amount: -10, icon: "⚛️" }
+            ]);
         },
         {
             variant: "primary-button",
@@ -595,7 +454,7 @@ function render() {
                 resourcePopups.show(
                     [
                         { amount: result.energy, icon: "⚡" },
-                        { amount: result.particles, icon: "⚛️" }
+                        { amount: -result.particles, icon: "⚛️" }
                     ],
                     event
                 );
@@ -614,8 +473,8 @@ function render() {
         label: nextDiscovery
             ? `Next observation: ${nextDiscovery.name}`
             : "Observation index complete",
-        value: progressValue,
-        max: progressMax,
+        value,
+        max,
         format: (value, max) =>
             nextDiscovery ? `${Math.floor(value)} / ${max}` : "COMPLETE"
     });
@@ -686,9 +545,7 @@ function render() {
                             "Reset Quantum Foundations progress? This does not affect your older Origins save."
                         )
                     ) {
-                        game = freshGame();
-                        save();
-                        refreshUI({ database: true });
+                        resetGame();
                     }
                 },
                 {
@@ -731,7 +588,7 @@ function render() {
         resources: resourceDefinitions,
         formatNumber
     });
-    
+
     const layout = el("div", { className: "game-layout" }, [
         topbar,
         ui.inventory.element,
@@ -760,12 +617,8 @@ window.kSim = {
         return result;
     },
     experiment: runExperiments,
-    clearStorage: () => localStorage.removeItem(SAVE_KEY),
-    reset: () => {
-        game = freshGame();
-        save();
-        refreshUI({ database: true });
-    }
+    clearStorage: () => saveManager.clear(),
+    reset: resetGame
 };
 
 render();

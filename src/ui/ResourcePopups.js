@@ -11,7 +11,7 @@ export default class ResourcePopups {
         const x = event?.clientX ?? window.innerWidth / 2;
         const y = event?.clientY ?? window.innerHeight / 2;
 
-        for (const gain of gains) {
+        for (const [index, gain] of gains.entries()) {
             if (!gain.amount) continue;
 
             while (this.active.length >= this.maxVisible) {
@@ -20,11 +20,20 @@ export default class ResourcePopups {
 
             const stackOffset = this.active.length * 24;
 
+            // Spread popups horizontally around the click/tap point.
+            const horizontalSpacing = 70;
+            const horizontalOffset =
+                (index - (gains.length - 1) / 2) * horizontalSpacing;
+
             const popup = el("div", {
-                className: "resource-float",
-                text: `${gain.amount < 0 ? "−" : "+"}${this.formatNumber(Math.abs(gain.amount))} ${gain.icon}`,
+                className: `resource-float ${
+                    gain.amount < 0 ? "resource-loss" : "resource-gain"
+                }`,
+                text: `${gain.amount < 0 ? "−" : "+"}${this.formatNumber(
+                    Math.abs(gain.amount)
+                )} ${gain.icon}`,
                 style: {
-                    left: `${x}px`,
+                    left: `${x + horizontalOffset}px`,
                     top: `${y - stackOffset}px`
                 },
                 "aria-hidden": "true"

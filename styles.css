@@ -1006,6 +1006,14 @@ body:not(.debug-mode) {
     animation: resource-float-up 850ms ease-out forwards;
 }
 
+.resource-gain {
+    color: #7dffb3;
+}
+
+.resource-loss {
+    color: #ff6b6b;
+}
+
 @keyframes resource-float-up {
     0% {
         opacity: 0;
