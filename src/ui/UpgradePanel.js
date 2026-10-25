@@ -1,5 +1,6 @@
 import { el } from "./Element.js";
 import { Button } from "./Button.js";
+import { itemDomId } from "./itemNavigation.js";
 
 export default class UpgradePanel {
     constructor({
@@ -115,6 +116,7 @@ export default class UpgradePanel {
                 el(
                     "article",
                     {
+                        id: itemDomId("equipment", item.id),
                         className:
                             `list-item` +
                             (unlocked ? "" : " is-locked") +

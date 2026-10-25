@@ -1195,3 +1195,23 @@ body:not(.debug-mode) {
 .list-item.is-locked button {
     cursor: not-allowed;
 }
+
+.log-inline-link {
+    display: inline;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--accent-color, #60a5fa);
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+    cursor: pointer;
+}
+
+.log-inline-link:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 3px;
+    border-radius: 2px;
+}

@@ -1,10 +1,16 @@
 import { el } from "./Element.js";
 
 export default class LogPanel {
-    constructor({ getGame, unreadManager, onChange = () => {} }) {
+    constructor({
+        getGame,
+        unreadManager,
+        onChange = () => {},
+        onNavigate = () => {}
+    }) {
         this.getGame = getGame;
         this.unreadManager = unreadManager;
         this.onChange = onChange;
+        this.onNavigate = onNavigate;
         this.activeCategory = "important";
     }
 
@@ -18,7 +24,8 @@ export default class LogPanel {
             timestamp: entry.timestamp ?? null,
             unread:
                 entry.category === "important" &&
-                this.unreadManager?.isUnread("log", entry.id)
+                this.unreadManager?.isUnread("log", entry.id),
+            link: entry.link ?? null
         }));
     }
 
@@ -81,10 +88,7 @@ export default class LogPanel {
                                       entry.category === "important" ? "!" : "›"
                               }),
                               el("div", { className: "log-entry-content" }, [
-                                  el("span", {
-                                      className: "log-message",
-                                      text: entry.message
-                                  }),
+                                  this.renderMessage(entry),
                                   el("span", {
                                       className: "log-timestamp",
                                       text: this.formatTimestamp(
@@ -147,5 +151,50 @@ export default class LogPanel {
             hour: "numeric",
             minute: "2-digit"
         });
+    }
+
+    renderMessage(entry) {
+        const { message, link } = entry;
+
+        if (!link?.label || !link?.tab || link.itemId == null) {
+            return el("span", {
+                className: "log-message",
+                text: message
+            });
+        }
+
+        const linkButton = el("button", {
+            type: "button",
+            className: "log-inline-link",
+            text: link.label,
+            onClick: event => {
+                event.stopPropagation();
+
+                if (entry.unread) {
+                    this.unreadManager?.markRead("log", entry.id);
+                }
+
+                this.onNavigate(link);
+            }
+        });
+
+        const index = message.indexOf(link.label);
+
+        // If the label is part of the message, link just that phrase.
+        if (index !== -1) {
+            return el("span", { className: "log-message" }, [
+                el("span", { text: message.slice(0, index) }),
+                linkButton,
+                el("span", {
+                    text: message.slice(index + link.label.length)
+                })
+            ]);
+        }
+
+        // Otherwise, append a useful link after the message.
+        return el("span", { className: "log-message" }, [
+            el("span", { text: `${message} ` }),
+            linkButton
+        ]);
     }
 }

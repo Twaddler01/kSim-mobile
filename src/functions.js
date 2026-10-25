@@ -21,7 +21,8 @@ export function addLog(
     tab = "log",
     onUnread = () => {},
     contentId = null,
-    notificationTargets = null
+    notificationTargets = null,
+    link = null
 ) {
     game.log ??= [];
     game.logSequence ??= Math.max(0, ...game.log.map(entry => entry.id ?? 0));
@@ -33,7 +34,8 @@ export function addLog(
         message,
         category,
         tab,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        ...(link ? { link } : {})
     });
 
     game.log = game.log.slice(0, 60);
@@ -116,7 +118,13 @@ export function checkDiscoveries(game, onUnread = () => {}) {
             "important",
             "observations",
             onUnread,
-            discovery.id
+            discovery.id,
+            null,
+            {
+                tab: "observations",
+                itemId: discovery.id,
+                label: discovery.name
+            }
         );
     }
 
@@ -148,7 +156,13 @@ export function checkDiscoveries(game, onUnread = () => {}) {
                 "important",
                 "observations",
                 onUnread,
-                observation.id
+                observation.id,
+                null,
+                {
+                    tab: "observations",
+                    itemId: observation.id,
+                    label: observation.name
+                }
             );
         }
     }
@@ -260,7 +274,12 @@ export function checkUpgradeUnlocks(
                 "log",
                 onUnread,
                 null,
-                [{ tab: "log" }, { tab: "equipment", itemId: definition.id }]
+                [{ tab: "log" }, { tab: "equipment", itemId: definition.id }],
+                {
+                    tab: "equipment",
+                    itemId: definition.id,
+                    label: definition.name
+                }
             );
         }
     }

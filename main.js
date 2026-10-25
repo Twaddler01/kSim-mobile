@@ -27,6 +27,7 @@ import {
 import Inventory from "./src/ui/Inventory.js";
 import ResourcePopups from "./src/ui/ResourcePopups.js";
 import SaveManager from "./src/SaveManager.js";
+import { navigateToItem as navigateTabToItem } from "./src/ui/itemNavigation.js";
 
 // TABS
 import DiscoveryPanel from "./src/ui/DiscoveryPanel.js";
@@ -83,9 +84,20 @@ function logEvent(
     message,
     category = "activity",
     tab = "log",
-    contentId = null
+    contentId = null,
+    notificationTargets = null,
+    link = null
 ) {
-    return addLog(game, message, category, tab, notifyUnread, contentId);
+    return addLog(
+        game,
+        message,
+        category,
+        tab,
+        notifyUnread,
+        contentId,
+        notificationTargets,
+        link
+    );
 }
 
 // Process any event triggers already satisfied by a loaded save.
@@ -115,11 +127,16 @@ const discoveryPanel = new DiscoveryPanel({
 const logPanel = new LogPanel({
     getGame: () => game,
     unreadManager,
-    onChange: () => refreshUI({ database: true })
+    onChange: () => refreshUI({ database: true }),
+    onNavigate: target => navigateToItem(target)
 });
 
 function updateInventory() {
     ui.inventory?.update();
+}
+
+function navigateToItem(target) {
+    return navigateTabToItem(ui.tabs, target);
 }
 
 function renderDatabasePanel(title, count, content) {

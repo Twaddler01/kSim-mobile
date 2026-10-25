@@ -1,6 +1,7 @@
 import { el } from "./Element.js";
 import { Button } from "./Button.js";
 import { ProgressBar } from "./ProgressBar.js";
+import { itemDomId } from "./itemNavigation.js";
 
 export default class DiscoveryPanel {
     constructor({
@@ -115,6 +116,7 @@ export default class DiscoveryPanel {
                 el(
                     "article",
                     {
+                        id: itemDomId("observations", item.id),
                         className:
                             `list-item ${unlocked ? "is-unlocked" : ""}` +
                             (unread ? " is-unread" : ""),
