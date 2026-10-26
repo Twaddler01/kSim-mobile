@@ -17,23 +17,40 @@ export function applyEffects(game, effects = []) {
                 if (
                     !resource ||
                     !Number.isFinite(amount) ||
-                    !Object.hasOwn(game.resources, resource)
+                    !Object.hasOwn(game.resources ?? {}, resource)
                 ) {
                     break;
                 }
 
                 game.resources[resource] += amount;
+                applied.push({ ...effect });
+                break;
+            }
 
-                applied.push({
-                    ...effect,
-                    amount
-                });
+            case "unlockUpgrade": {
+                const { upgradeId } = effect;
 
+                if (
+                    !upgradeId ||
+                    !Object.hasOwn(game.upgrades ?? {}, upgradeId)
+                ) {
+                    break;
+                }
+
+                game.unlockedUpgrades ??= [];
+
+                // Do not unlock an upgrade more than once.
+                if (game.unlockedUpgrades.includes(upgradeId)) {
+                    break;
+                }
+
+                game.unlockedUpgrades.push(upgradeId);
+                applied.push({ ...effect });
                 break;
             }
 
             default:
-                // Unsupported effects must not change game state.
+                // Unsupported effects do not change game state.
                 break;
         }
     }
@@ -42,7 +59,7 @@ export function applyEffects(game, effects = []) {
 }
 
 /**
- * Creates a readable summary of resource effects for log messages.
+ * Creates a readable summary of resource effects.
  */
 export function describeEffects(effects = []) {
     return effects

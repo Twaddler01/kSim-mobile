@@ -67,6 +67,27 @@ export function addLog(
     return id;
 }
 
+function notifyUpgradeUnlocked(game, definition, onUnread = () => {}) {
+    addLog(
+        game,
+        `NEW EQUIPMENT UNLOCKED: ${definition.name} is now available.`,
+        {
+            category: "important",
+            tab: "log",
+            onUnread,
+            notificationTargets: [
+                { tab: "log" },
+                { tab: "equipment", itemId: definition.id }
+            ],
+            link: {
+                tab: "equipment",
+                itemId: definition.id,
+                label: definition.name
+            }
+        }
+    );
+}
+
 export function canAfford(game, cost) {
     return Object.entries(cost).every(
         ([resource, amount]) => (game.resources[resource] ?? 0) >= amount
@@ -127,6 +148,18 @@ export function checkDiscoveries(game, onUnread = () => {}) {
                 }
             }
         );
+
+        for (const effect of appliedEffects) {
+            if (effect.type !== "unlockUpgrade") continue;
+
+            const definition = upgradeDefinitions.find(
+                item => item.id === effect.upgradeId
+            );
+
+            if (definition) {
+                notifyUpgradeUnlocked(game, definition, onUnread);
+            }
+        }
     }
 
     // Process event-triggered observations.
@@ -251,31 +284,21 @@ export function checkUpgradeUnlocks(
         }
 
         const satisfied = evaluateTrigger(game, condition);
-
         if (!satisfied) continue;
-
-        game.unlockedUpgrades.push(definition.id);
+        
+        const appliedEffects = applyEffects(game, [
+            {
+                type: "unlockUpgrade",
+                upgradeId: definition.id
+            }
+        ]);
+        
+        if (appliedEffects.length === 0) continue;
+        
         newlyUnlocked.push(definition.id);
-
+        
         if (notify) {
-            addLog(
-                game,
-                `NEW EQUIPMENT UNLOCKED: ${definition.name} is now available.`,
-                {
-                    category: "important",
-                    tab: "log",
-                    onUnread,
-                    notificationTargets: [
-                        { tab: "log" },
-                        { tab: "equipment", itemId: definition.id }
-                    ],
-                    link: {
-                        tab: "equipment",
-                        itemId: definition.id,
-                        label: definition.name
-                    }
-                }
-            );
+            notifyUpgradeUnlocked(game, definition, onUnread);
         }
     }
 

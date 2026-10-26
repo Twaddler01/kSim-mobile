@@ -345,7 +345,10 @@ function getExperimentProgress() {
         };
     }
 
-    const nextRequirement = nextDiscovery.trigger.min;
+    const nextRequirement =
+        nextDiscovery?.trigger?.min ??
+        finalMilestone?.trigger?.min ??
+        0;
     const finalRequirement = finalMilestone.trigger.min;
 
     return {
