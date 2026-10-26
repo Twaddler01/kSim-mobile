@@ -103,14 +103,11 @@ export class Tabs extends Component {
 
     selectTab(id) {
         if (!this.tabs.some(tab => tab.id === id) || this.activeId === id)
-            return this;
+            return;
+
         this.activeId = id;
-        if (this.activeTab?.unread) {
-            this.unreadManager?.markTabSeen(id, { notify: false });
-        }
         this.render();
         this.onChange?.(id, this.activeTab);
-        return this;
     }
 
     onDestroy() {

@@ -1,3 +1,18 @@
+
+/*
+ * TODO — Stage 3B: Effects-based unlocks
+ *
+ * Future work:
+ * - Allow discovery effects to unlock equipment/upgrades.
+ * - Route unlocks through the shared effects processor.
+ * - Preserve existing LAB LOG and EQUIPMENT notifications,
+ *   unread indicators, and equipment links.
+ * - Test both discovery-triggered and condition-triggered unlocks.
+ *
+ * Resume with: "Resume kSim-mobile Stage 3B."
+ */
+
+
 export const initialGameData = {
     version: 2,
     stage: 0,
@@ -29,6 +44,7 @@ export const initialGameData = {
         }
     ],
     triggered: [],
+    logOnce: {},
     announcement: null,
     lastTick: Date.now(),
     logSequence: 2,

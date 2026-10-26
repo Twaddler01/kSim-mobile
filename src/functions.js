@@ -10,10 +10,10 @@ export function formatNumber(value) {
 
 /* 
 CURRENT BADGE SYSTEM:
-Important log entry with NEW observations → OBSERVATIONS + LAB LOG
-Important log entry with NEW UNLOCKED equipment → EQUIPMENT + LAB LOG
-Any other important log entry → LAB LOG
-'Activity' entry → no badge.
+Log entry with NEW observations → OBSERVATIONS
+Log entry with NEW UNLOCKED equipment → EQUIPMENT
+Any "important" log entry → LAB LOG
+Any "activity" lpg entry → no badge.
 */
 
 export function addLog(
@@ -25,18 +25,31 @@ export function addLog(
         onUnread = () => {},
         contentId = null,
         notificationTargets = null,
-        link = null
+        link = null,
+        onceKey = null
     } = {}
 ) {
     game.log ??= [];
     game.logSequence ??= Math.max(0, ...game.log.map(entry => entry.id ?? 0));
-
+    game.logOnce ??= {};
+    
+    const alreadyLogged =
+        onceKey != null && game.logOnce[onceKey];
+    
+    const effectiveCategory = alreadyLogged
+        ? "activity"
+        : category;
+    
+    if (onceKey != null) {
+        game.logOnce[onceKey] = true;
+    }
+    
     const id = ++game.logSequence;
 
     game.log.unshift({
         id,
         message,
-        category,
+        category: effectiveCategory,
         tab,
         timestamp: Date.now(),
         ...(link ? { link } : {})
@@ -44,25 +57,36 @@ export function addLog(
 
     game.log = game.log.slice(0, 60);
 
-    if (category !== "important") return id;
-
-    // Explicit targets override default single-destination routing.
+    // Explicit targets notify their own tabs independently of log category.
     if (notificationTargets) {
         for (const target of notificationTargets) {
+            if (target.tab === "log") continue;
+
             onUnread(target.tab, target.itemId ?? id);
         }
-
-        return id;
+    } else if (
+        ["observations", "equipment"].includes(tab) &&
+        contentId != null
+    ) {
+        // Preserve the default dedicated-tab behavior.
+        onUnread(tab, contentId);
     }
 
-    // Preserve default routing for existing event types.
-    const hasDedicatedDestination =
-        ["observations", "equipment"].includes(tab) && contentId != null;
+    // Only important messages create LAB LOG badges.
+    if (effectiveCategory === "important") {
+        const explicitlyTargetsLog =
+            notificationTargets?.some(target => target.tab === "log") ?? false;
 
-    const destination = hasDedicatedDestination ? tab : "log";
-    const itemId = destination === "log" ? id : contentId;
-
-    onUnread(destination, itemId);
+        if (!explicitlyTargetsLog) {
+            onUnread("log", id);
+        } else {
+            onUnread(
+                "log",
+                notificationTargets.find(target => target.tab === "log")
+                    ?.itemId ?? id
+            );
+        }
+    }
 
     return id;
 }
@@ -72,13 +96,10 @@ function notifyUpgradeUnlocked(game, definition, onUnread = () => {}) {
         game,
         `NEW EQUIPMENT UNLOCKED: ${definition.name} is now available.`,
         {
-            category: "important",
-            tab: "log",
+            category: "activity",
+            tab: "equipment",
             onUnread,
-            notificationTargets: [
-                { tab: "log" },
-                { tab: "equipment", itemId: definition.id }
-            ],
+            notificationTargets: [{ tab: "equipment", itemId: definition.id }],
             link: {
                 tab: "equipment",
                 itemId: definition.id,
@@ -133,13 +154,12 @@ export function checkDiscoveries(game, onUnread = () => {}) {
                 rewardText ? ` (${rewardText})` : ""
             }.`,
             {
-                category: "important",
+                category: "activity",
                 tab: "observations",
                 onUnread,
                 contentId: discovery.id,
                 notificationTargets: [
-                    { tab: "observations", itemId: discovery.id },
-                    { tab: "log" }
+                    { tab: "observations", itemId: discovery.id }
                 ],
                 link: {
                     tab: "observations",
@@ -184,11 +204,15 @@ export function checkDiscoveries(game, onUnread = () => {}) {
                 `ALERT: ${
                     observation.announcement?.message ?? observation.name
                 }`,
+
                 {
-                    category: "important",
+                    category: "activity",
                     tab: "observations",
                     onUnread,
                     contentId: observation.id,
+                    notificationTargets: [
+                        { tab: "observations", itemId: observation.id }
+                    ],
                     link: {
                         tab: "observations",
                         itemId: observation.id,
@@ -255,6 +279,7 @@ export function stir(game, multiplier = 1, onUnread = () => {}) {
         const anomalyMessage = `ANOMALY: Exotic matter detected (${result.exoticMatter}). The reading is inconsistent with known physics.`;
         addLog(game, anomalyMessage, {
             category: "important",
+            onceKey: "anomaly",
             onUnread
         });
     }
@@ -285,18 +310,18 @@ export function checkUpgradeUnlocks(
 
         const satisfied = evaluateTrigger(game, condition);
         if (!satisfied) continue;
-        
+
         const appliedEffects = applyEffects(game, [
             {
                 type: "unlockUpgrade",
                 upgradeId: definition.id
             }
         ]);
-        
+
         if (appliedEffects.length === 0) continue;
-        
+
         newlyUnlocked.push(definition.id);
-        
+
         if (notify) {
             notifyUpgradeUnlocked(game, definition, onUnread);
         }

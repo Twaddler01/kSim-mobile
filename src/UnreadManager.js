@@ -30,7 +30,7 @@ export default class UnreadManager {
     }
 
     getUnreadCount(tabId) {
-        return this.getState().pending[tabId]?.length ?? 0;
+        return this.getUnreadItems(tabId).length;
     }
 
     isUnread(tabId, itemId) {
@@ -41,32 +41,21 @@ export default class UnreadManager {
         const state = this.getState();
 
         state.items[tabId] ??= [];
-        state.pending[tabId] ??= [];
 
         if (state.items[tabId].includes(itemId)) {
             return false;
         }
 
+        // Every notification stays unread until explicitly acknowledged.
         state.items[tabId].push(itemId);
-
-        if (!this.isTabActive(tabId)) {
-            state.pending[tabId].push(itemId);
-        }
 
         this.changed();
         return true;
     }
 
-    markTabSeen(tabId, { notify = true } = {}) {
-        const state = this.getState();
-        const pending = state.pending[tabId] ?? [];
-
-        if (pending.length === 0) return false;
-
-        state.pending[tabId] = [];
-
-        if (notify) this.changed();
-        return true;
+    // Visiting a tab must never acknowledge its unread items.
+    markTabSeen() {
+        return false;
     }
 
     markRead(tabId, itemId) {
@@ -76,6 +65,8 @@ export default class UnreadManager {
         if (!items.includes(itemId)) return false;
 
         state.items[tabId] = items.filter(id => id !== itemId);
+
+        // Clean up any pending state left by an older save.
         state.pending[tabId] = (state.pending[tabId] ?? []).filter(
             id => id !== itemId
         );
