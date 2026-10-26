@@ -95,10 +95,7 @@ export function checkDiscoveries(game, onUnread = () => {}) {
 
         if (
             game.discoveries.includes(discovery.id) ||
-            !evaluateTrigger(game, {
-                type: "experimentCount",
-                min: discovery.requirement
-            })
+            !evaluateTrigger(game, discovery.trigger)
         ) {
             continue;
         }
@@ -251,7 +248,7 @@ export function checkUpgradeUnlocks(
             continue;
         }
 
-        const condition = definition.unlockCondition;
+        const condition = definition.trigger;
 
         // Equipment without a condition is available by default.
         if (!condition) {

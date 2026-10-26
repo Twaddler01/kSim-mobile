@@ -85,7 +85,10 @@ export const discoveries = [
         name: "Field Calibration",
         icon: "📡",
         description: "The field generator holds a stable baseline.",
-        requirement: 400,
+        trigger: {
+            type: "experimentCount",
+            min: 400
+        },
         reward: { research: 2 }
     },
     {
@@ -93,7 +96,10 @@ export const discoveries = [
         name: "Particle Formation",
         icon: "⚛️",
         description: "Energy condenses into measurable particles.",
-        requirement: 1000,
+        trigger: {
+            type: "experimentCount",
+            min: 1000
+        },
         reward: { particles: 3, research: 2 }
     },
     {
@@ -101,7 +107,10 @@ export const discoveries = [
         name: "The Impossible Reading",
         icon: "🌀",
         description: "Your instruments detect matter outside known models.",
-        requirement: 2000,
+        trigger: {
+            type: "experimentCount",
+            min: 2000
+        },
         reward: { research: 5 }
     },
     {
@@ -110,7 +119,10 @@ export const discoveries = [
         icon: "🧪",
         description:
             "The phenomenon can be reproduced under controlled conditions.",
-        requirement: 3500,
+        trigger: {
+            type: "experimentCount",
+            min: 3500
+        },
         reward: { research: 8, particles: 4 }
     },
     {
@@ -164,11 +176,11 @@ export const upgradeDefinitions = [
             "+8 percentage points to useful research observations per level.",
         baseCost: { energy: 600, particles: 3 },
         maxLevel: 5,
-
-        unlockCondition: {
+        trigger: {
             type: "upgradeLevel",
             upgradeIds: ["energyYield", "particleStability"],
-            minLevel: 1
+            minLevel: 1,
+            match: "any"
         },
         unlockDescription:
             "Requires at least one level of Field Amplifier or Particle Stabilization."

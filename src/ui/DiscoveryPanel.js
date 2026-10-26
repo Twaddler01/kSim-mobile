@@ -34,6 +34,12 @@ export default class DiscoveryPanel {
         return this.getGame();
     }
 
+    getExperimentRequirement(item) {
+        return item.trigger?.type === "experimentCount"
+            ? (item.trigger.min ?? 0)
+            : null;
+    }
+
     render() {
         const game = this.game;
         const list = el("div", { className: "item-list" });
@@ -81,7 +87,9 @@ export default class DiscoveryPanel {
                         ? item.description
                         : investigatable
                           ? "A signal has been detected, but its source is unknown. Allocate research resources to investigate it."
-                          : `Perform ${item.requirement} experiments to verify this observation.`
+                          : this.getExperimentRequirement(item) !== null
+                            ? `Perform ${this.getExperimentRequirement(item)} experiments to verify this observation.`
+                            : "This observation is awaiting further investigation."
                 })
             ]);
 
@@ -101,12 +109,14 @@ export default class DiscoveryPanel {
                 );
             }
 
-            if (!unlocked && !investigatable) {
+            const requirement = this.getExperimentRequirement(item);
+
+            if (!unlocked && !investigatable && requirement !== null) {
                 body.append(
                     ProgressBar({
                         label: "Experiment count",
-                        value: Math.min(game.clicks, item.requirement),
-                        max: item.requirement,
+                        value: Math.min(game.clicks, requirement),
+                        max: requirement,
                         format: (value, max) => `${Math.floor(value)} / ${max}`
                     })
                 );
