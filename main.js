@@ -395,7 +395,7 @@ function getExperimentProgress() {
 
 function updateMaterialRecoveryUI() {
     if (ui.materialCount) {
-        ui.materialCount.textContent = `Copper Samples: ${game.inventory.copper ?? 0} / 5`;
+        ui.materialCount.textContent = `${game.inventory.copper ?? 0} materials gathered`;
     }
 }
 
@@ -685,49 +685,77 @@ function render() {
         experimentProgress
     ]);
 
-    const materialCount = el("div", {
-        className: "experiment-count",
-        text: `Copper Samples: ${game.inventory.copper ?? 0} / 5`
-    });
+    const materialOrb = el(
+        "button",
+        {
+            className: "quantum-orb quantum-orb--material",
+            type: "button",
+            "aria-label": "Gather one material sample",
+            onClick: event => {
+                const result = gatherMaterial(game, "copper", 1);
 
-    ui.materialCount = materialCount;
+                if (!result.ok) {
+                    showToast(result.reason);
+                    return;
+                }
 
-    const recoverCopperButton = Button(
-        "⛏ RECOVER COPPER  +1",
-        () => {
-            const result = gatherMaterial(game, "copper", 1);
-
-            if (!result.ok) {
-                showToast(result.reason);
-                return;
-            }
-
-            // Unlock once, when the inventory first reaches five.
-            if (!game.operations.quantumFieldUnlocked && result.total >= 5) {
-                game.operations.quantumFieldUnlocked = true;
-
-                quantumFieldPanel.unlock({
-                    unread: true,
-                    expanded: false
-                });
-
-                logEvent(
-                    game,
-                    "NEW SYSTEM AVAILABLE: Quantum Field unlocked after recovering five Copper Samples.",
-                    { category: "activity", tab: "operations" }
+                resourcePopups.show(
+                    [{ amount: 1, icon: result.item.icon }],
+                    event
                 );
 
-                showToast("Quantum Field unlocked!");
-            } else {
-                showToast(`+1 ${result.item.name}`);
-            }
+                // Unlock once, when the inventory first reaches five.
+                if (
+                    !game.operations.quantumFieldUnlocked &&
+                    result.total >= 5
+                ) {
+                    game.operations.quantumFieldUnlocked = true;
 
-            save();
-            refreshUI({ database: true });
+                    quantumFieldPanel.unlock({
+                        unread: true,
+                        expanded: false
+                    });
+
+                    logEvent(
+                        game,
+                        "NEW SYSTEM AVAILABLE: Quantum Field unlocked after recovering five Copper Samples.",
+                        { category: "activity", tab: "operations" }
+                    );
+
+                    showToast("Quantum Field unlocked!");
+                }
+
+                save();
+                refreshUI({ database: true });
+            }
         },
-        { variant: "primary-button" }
+        [
+            el("span", { className: "orb-rings" }),
+            el("span", { className: "orb-symbol", text: "🟠" }),
+            el("span", {
+                className: "orb-button-label",
+                text: "GATHER MATERIALS"
+            }),
+            el("span", {
+                className: "orb-sub-label",
+                text: "MANUAL COLLECTION"
+            })
+        ]
     );
 
+    const materialGatherCount = el("div", {
+        className: "experiment-count",
+        text: `${game.inventory.copper ?? 0} materials gathered`
+    });
+
+    ui.materialCount = materialGatherCount;
+
+    const materialOrbWrap = el(
+            "div",
+            { className: "quantum-orb-wrap" },
+            [materialOrb, materialGatherCount]
+        );
+    
     const materialRecoveryContent = el(
         "div",
         { className: "field-panel-content" },
@@ -742,14 +770,12 @@ function render() {
                 {
                     className: "quantum-orb-wrap recovery-action"
                 },
-                [recoverCopperButton]
+                [materialOrbWrap]
             ),
-
-            materialCount,
 
             el("p", {
                 className: "bonus-description",
-                text: "Recover five Copper Samples to activate the Quantum Field."
+                text: "DEBUG: Recover 5 Copper to unlock Quantum Field."
             })
         ]
     );
@@ -837,6 +863,7 @@ function render() {
     ui.inventory = new Inventory({
         getGame: () => game,
         resources: resourceDefinitions,
+        materials: materialDefinitions,
         formatNumber
     });
 
