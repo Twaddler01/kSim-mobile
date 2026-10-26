@@ -33,6 +33,12 @@ export class Tabs extends Component {
         this.panelId = `ksim-tab-panel-${Tabs.nextId++}`;
         this.tabBar = null;
         this.panel = null;
+
+        this.leftArrow = null;
+        this.rightArrow = null;
+        this.handleTabScroll = () => this.updateScrollIndicators();
+        this.resizeObserver = null;
+
         this.render();
     }
 
@@ -50,16 +56,62 @@ export class Tabs extends Component {
             panelId: this.panelId,
             label: this.label
         });
-        this.panel = createTabPanel(null, null, { panelId: this.panelId });
-        return el(
+
+        this.leftArrow = el("button", {
+            type: "button",
+            className: "tab-scroll-arrow tab-scroll-arrow-left",
+            text: "‹",
+            "aria-label": "Scroll tabs left",
+            onClick: () => this.scrollTabs(-1),
+            hidden: true
+        });
+
+        this.rightArrow = el("button", {
+            type: "button",
+            className: "tab-scroll-arrow tab-scroll-arrow-right",
+            text: "›",
+            "aria-label": "Scroll tabs right",
+            onClick: () => this.scrollTabs(1),
+            hidden: true
+        });
+
+        const tabBarContainer = el("div", { className: "tabs-bar-container" }, [
+            this.leftArrow,
+            this.tabBar,
+            this.rightArrow
+        ]);
+
+        this.panel = createTabPanel(null, null, {
+            panelId: this.panelId
+        });
+
+        const root = el(
             "div",
             {
                 className: ["tabs-component", this.className]
                     .filter(Boolean)
                     .join(" ")
             },
-            [this.tabBar, this.panel]
+            [tabBarContainer, this.panel]
         );
+
+        this.tabBar.addEventListener("scroll", this.handleTabScroll, {
+            passive: true
+        });
+
+        if (typeof ResizeObserver !== "undefined") {
+            this.resizeObserver = new ResizeObserver(() => {
+                this.updateScrollIndicators();
+                this.scheduleArrowGeometry();
+            });
+
+            this.resizeObserver.observe(root);
+            this.resizeObserver.observe(this.tabBar);
+        }
+
+        this.scheduleArrowGeometry();
+
+        return root;
     }
 
     update() {
@@ -72,7 +124,9 @@ export class Tabs extends Component {
             onSelect: id => this.selectTab(id)
         });
 
-        this.updateUnreadIndicators();
+        this.refreshUnreadIndicators();
+        this.updateScrollIndicators();
+        this.updateArrowGeometry();
 
         this.panel.setAttribute(
             "aria-labelledby",
@@ -110,10 +164,125 @@ export class Tabs extends Component {
         this.onChange?.(id, this.activeTab);
     }
 
+    scrollTabs(direction) {
+        if (!this.tabBar) return;
+
+        this.tabBar.scrollBy({
+            left: direction * this.tabBar.clientWidth * 0.8,
+            behavior: "smooth"
+        });
+    }
+
+    updateScrollIndicators() {
+        if (!this.tabBar || !this.leftArrow || !this.rightArrow) {
+            return;
+        }
+
+        const maxScroll = this.tabBar.scrollWidth - this.tabBar.clientWidth;
+
+        const canScrollLeft = this.tabBar.scrollLeft > 1;
+        const canScrollRight = this.tabBar.scrollLeft < maxScroll - 1;
+
+        this.leftArrow.hidden = !canScrollLeft;
+        this.rightArrow.hidden = !canScrollRight;
+
+        this.updateArrowUnreadState();
+    }
+
+    updateArrowGeometry() {
+        if (!this.tabBar || !this.leftArrow || !this.rightArrow) {
+            return;
+        }
+
+        const buttons = this.tabBar.querySelectorAll('[role="tab"]');
+        if (!buttons.length) return;
+
+        // Measure the actual button row, excluding tab-bar padding.
+        const firstRect = buttons[0].getBoundingClientRect();
+        const lastRect = buttons[buttons.length - 1].getBoundingClientRect();
+        const containerRect = this.tabBar.parentElement.getBoundingClientRect();
+
+        const top = firstRect.top - containerRect.top;
+        const bottom = lastRect.bottom - containerRect.top;
+
+        this.tabBar.parentElement.style.setProperty(
+            "--tab-row-top",
+            `${top}px`
+        );
+
+        this.tabBar.parentElement.style.setProperty(
+            "--tab-row-height",
+            `${bottom - top}px`
+        );
+    }
+
+    updateArrowUnreadState() {
+        if (!this.tabBar || !this.leftArrow || !this.rightArrow) {
+            return;
+        }
+
+        const buttons = [...this.tabBar.querySelectorAll('[role="tab"]')];
+
+        const barRect = this.tabBar.getBoundingClientRect();
+
+        let unreadLeft = false;
+        let unreadRight = false;
+
+        for (const button of buttons) {
+            const tabId = button.id.replace("ksim-tab-", "");
+            const tab = this.tabs.find(item => item.id === tabId);
+
+            if (!tab) continue;
+
+            const count = tab.unread
+                ? (this.unreadManager?.getUnreadCount(tab.id) ?? 0)
+                : typeof tab.unreadCount === "function"
+                  ? tab.unreadCount()
+                  : (tab.unreadCount ?? 0);
+
+            if (count <= 0) continue;
+
+            // Use the unread badge bounds when available.
+            const badge = button.querySelector(".tab-unread-badge");
+            const rect = (badge ?? button).getBoundingClientRect();
+
+            // Keep the arrow active until the indicator is fully visible.
+            if (rect.left < barRect.left) {
+                unreadLeft = true;
+            }
+
+            if (rect.right > barRect.right) {
+                unreadRight = true;
+            }
+        }
+
+        this.leftArrow.classList.toggle("has-unread", unreadLeft);
+        this.rightArrow.classList.toggle("has-unread", unreadRight);
+    }
+
+    scheduleArrowGeometry() {
+        requestAnimationFrame(() => {
+            this.updateArrowGeometry();
+            this.updateScrollIndicators();
+        });
+    }
+
+    refreshUnreadIndicators() {
+        this.updateUnreadIndicators();
+        this.updateArrowUnreadState();
+    }
+
     onDestroy() {
+        this.tabBar?.removeEventListener("scroll", this.handleTabScroll);
+
+        this.resizeObserver?.disconnect();
+        this.resizeObserver = null;
+
         this.tabs = [];
         this.tabBar = null;
         this.panel = null;
+        this.leftArrow = null;
+        this.rightArrow = null;
         this.onChange = null;
     }
 
