@@ -35,8 +35,11 @@ import UpgradePanel from "./src/ui/UpgradePanel.js";
 import LogPanel from "./src/ui/LogPanel.js";
 import PlanPanel from "./src/ui/PlanPanel.js";
 
-import UnreadManager from "./src/UnreadManager.js";
+import { SynthesisPanel } from "./src/ui/SynthesisPanel.js";
+import { ensureManufacturingState, gatherMaterialSamples } from "./src/systems/SynthesisEngine.js";
+import { materialDefinitions } from "./src/data/manufacturing.js";
 
+import UnreadManager from "./src/UnreadManager.js";
 const saveManager = new SaveManager({
     key: "ksim-quantum-foundations-v1",
     initialData: initialGameData
@@ -89,6 +92,8 @@ function logEvent(game, message, options = {}) {
 
 // Process any event triggers already satisfied by a loaded save.
 checkDiscoveries(game);
+
+ensureManufacturingState(game);
 
 // Initialize or migrate equipment unlocks without creating
 // fresh notifications for conditions already satisfied in a save.
@@ -170,6 +175,19 @@ function renderTabContent(labContent) {
                 )
         },
         {
+            id: "synthesis",
+            label: "SYNTHESIS",
+            render: () => new SynthesisPanel({
+                game,
+                onChange: () => {
+                    save();
+                    render();
+                    showToast("Synthesis complete.");
+                },
+                onToast: showToast
+            }).getElement()
+        },
+        {
             id: "plan",
             label: "PLAN",
             render: () => planPanel.getElement()
@@ -249,7 +267,16 @@ function showToast(message) {
 
 function runExperiments(count = 1, event = null, costs = []) {
     const result = stir(game, count, notifyUnread);
+    const recovered = gatherMaterialSamples(game, count);
 
+if (recovered.length) {
+    gains.push(...recovered.map(item => {
+        const definition = materialDefinitions.find(entry => entry.id === item.id);
+        return `+${item.amount} ${definition?.name ?? item.id}`;
+    }));
+}
+
+    
     const changes = [
         ...costs,
         { amount: result.energy, icon: "⚡" },

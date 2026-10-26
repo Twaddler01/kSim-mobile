@@ -1,0 +1,173 @@
+import { materialDefinitions, recipeDefinitions } from "../data/manufacturing.js";
+
+const RESOURCE_NAMES = {
+    energy: "Quantum Energy",
+    particles: "Particles",
+    research: "Research",
+    exoticMatter: "Exotic Matter"
+};
+
+export function ensureManufacturingState(game) {
+    game.inventory ??= {};
+    game.manufacturing ??= {
+        unlocked: false,
+        completedRecipes: [],
+        machineBuilt: false
+    };
+
+    for (const item of materialDefinitions) {
+        game.inventory[item.id] ??= 0;
+    }
+
+    game.manufacturing.completedRecipes ??= [];
+    game.manufacturing.unlocked = true;
+    game.manufacturing.machineBuilt = game.inventory.particleReconfigurationArray > 0;
+    return game.manufacturing;
+}
+
+export function hasDiscovery(game, id) {
+    if (!id) return true;
+
+    // The first check is the preferred stable ID. The other two support
+    // common plan-save shapes without requiring plan code to import this system.
+    return (game.discoveries ?? []).includes(id) ||
+        (game.completedPlans ?? []).includes("plan-001") ||
+        game.plans?.["plan-001"]?.complete === true ||
+        game.planProgress?.["plan-001"]?.complete === true;
+}
+
+export function recipeUnlocked(game, recipe) {
+    return !recipe.unlock?.discovery || hasDiscovery(game, recipe.unlock.discovery);
+}
+
+export function getCostStatus(game, recipe) {
+    const missing = [];
+    for (const [id, amount] of Object.entries(recipe.costs?.resources ?? {})) {
+        if ((game.resources?.[id] ?? 0) < amount) {
+            missing.push({
+                id,
+                name: RESOURCE_NAMES[id] ?? id,
+                needed: amount,
+                have: game.resources?.[id] ?? 0,
+                type: "resource"
+            });
+        }
+    }
+    for (const [id, amount] of Object.entries(recipe.costs?.items ?? {})) {
+        if ((game.inventory?.[id] ?? 0) < amount) {
+            const definition = materialDefinitions.find(item => item.id === id);
+            missing.push({
+                id,
+                name: definition?.name ?? id,
+                needed: amount,
+                have: game.inventory?.[id] ?? 0,
+                type: "item"
+            });
+        }
+    }
+    return { affordable: missing.length === 0, missing };
+}
+
+export function canCraftRecipe(game, recipeOrId) {
+    const recipe = typeof recipeOrId === "string"
+        ? recipeDefinitions.find(item => item.id === recipeOrId)
+        : recipeOrId;
+
+    if (!recipe || !recipeUnlocked(game, recipe)) return false;
+    if (recipe.unique && (game.inventory?.[recipe.output.id] ?? 0) >= 1) return false;
+    return getCostStatus(game, recipe).affordable;
+}
+
+export function craftRecipe(game, recipeId) {
+    ensureManufacturingState(game);
+    const recipe = recipeDefinitions.find(item => item.id === recipeId);
+
+    if (!recipe) return { ok: false, reason: "Unknown recipe." };
+    if (!recipeUnlocked(game, recipe)) {
+        return { ok: false, reason: "This recipe requires the Temporal Resonance discovery." };
+    }
+    if (recipe.unique && (game.inventory[recipe.output.id] ?? 0) >= 1) {
+        return { ok: false, reason: `${recipe.name} has already been assembled.` };
+    }
+
+    const status = getCostStatus(game, recipe);
+    if (!status.affordable) {
+        return {
+            ok: false,
+            reason: `Missing: ${status.missing.map(item => `${item.needed - item.have} ${item.name}`).join(", ")}.`
+        };
+    }
+
+    // Check everything before changing state, then pay atomically.
+    for (const [id, amount] of Object.entries(recipe.costs?.resources ?? {})) {
+        game.resources[id] -= amount;
+    }
+    for (const [id, amount] of Object.entries(recipe.costs?.items ?? {})) {
+        game.inventory[id] -= amount;
+    }
+    game.inventory[recipe.output.id] = (game.inventory[recipe.output.id] ?? 0) + recipe.output.amount;
+    if (!game.manufacturing.completedRecipes.includes(recipe.id)) {
+        game.manufacturing.completedRecipes.push(recipe.id);
+    }
+
+    if (recipe.output.id === "particleReconfigurationArray") {
+        game.manufacturing.machineBuilt = true;
+    }
+
+    game.log ??= [];
+    game.log.unshift(`SYNTHESIS: ${recipe.name} produced (${recipe.output.amount}).`);
+    game.log = game.log.slice(0, 60);
+
+    return { ok: true, recipe, output: recipe.output };
+}
+
+/**
+ * Experiment drops: a small, deterministic amount of material progress per
+ * batch, with chance-based yields. This keeps raw material gathering tied to
+ * the existing experiment button rather than adding another currency loop.
+ */
+export function gatherMaterialSamples(game, experimentCount = 1, random = Math.random) {
+    ensureManufacturingState(game);
+
+    const drops = [];
+    const count = Math.max(1, Math.floor(Number(experimentCount) || 1));
+    const dropTable = [
+        { id: "copper", chance: 0.12 },
+        { id: "silicon", chance: 0.10 },
+        { id: "silica", chance: 0.09 },
+        { id: "aluminum", chance: 0.08 }
+    ];
+
+    for (let i = 0; i < count; i++) {
+        for (const drop of dropTable) {
+            if (random() < drop.chance) {
+                game.inventory[drop.id] += 1;
+                const found = drops.find(item => item.id === drop.id);
+                if (found) found.amount += 1;
+                else drops.push({ id: drop.id, amount: 1 });
+            }
+        }
+    }
+
+    if (drops.length) {
+        game.log ??= [];
+        game.log.unshift(`MATERIAL RECOVERY: ${drops.map(item => `+${item.amount} ${materialDefinitions.find(def => def.id === item.id).name}`).join(", ")}.`);
+        game.log = game.log.slice(0, 60);
+    }
+
+    return drops;
+}
+
+export function formatRecipeCost(recipe) {
+    const parts = [];
+    for (const [id, amount] of Object.entries(recipe.costs?.resources ?? {})) {
+        parts.push(`${amount} ${RESOURCE_NAMES[id] ?? id}`);
+    }
+    for (const [id, amount] of Object.entries(recipe.costs?.items ?? {})) {
+        const item = materialDefinitions.find(def => def.id === id);
+        parts.push(`${amount} ${item?.name ?? id}`);
+    }
+    return parts.join(" · ") || "No cost";
+}
+
+export { materialDefinitions, recipeDefinitions };

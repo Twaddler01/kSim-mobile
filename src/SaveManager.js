@@ -50,7 +50,22 @@ export default class SaveManager {
                     ? parsed.triggered
                     : [],
 
-                announcement: parsed.announcement ?? null
+                announcement: parsed.announcement ?? null,
+
+                inventory: {
+                    ...(this.initialData.inventory ?? {}),
+                    ...(parsed.inventory ?? {})
+                },
+                
+                manufacturing: {
+                    ...(this.initialData.manufacturing ?? {}),
+                    ...(parsed.manufacturing ?? {}),
+                    completedRecipes: Array.isArray(
+                        parsed.manufacturing?.completedRecipes
+                    )
+                        ? parsed.manufacturing.completedRecipes
+                        : []
+                }
             };
         } catch (error) {
             console.warn("Could not load Quantum Foundations save:", error);

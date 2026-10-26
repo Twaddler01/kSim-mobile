@@ -1,4 +1,3 @@
-
 /*
  * TODO — Stage 3B: Effects-based unlocks
  *
@@ -11,7 +10,6 @@
  *
  * Resume with: "Resume kSim-mobile Stage 3B."
  */
-
 
 export const initialGameData = {
     version: 2,
@@ -64,6 +62,12 @@ export const initialGameData = {
             equipment: [],
             log: []
         }
+    },
+    inventory: {},
+    manufacturing: {
+        unlocked: false,
+        completedRecipes: [],
+        machineBuilt: false
     }
 };
 
@@ -105,9 +109,7 @@ export const discoveries = [
             type: "experimentCount",
             min: 400
         },
-        effects: [
-            { type: "resource", resource: "research", amount: 2 }
-        ]
+        effects: [{ type: "resource", resource: "research", amount: 2 }]
     },
     {
         id: "particleFormation",
@@ -132,9 +134,7 @@ export const discoveries = [
             type: "experimentCount",
             min: 2000
         },
-        effects: [
-            { type: "resource", resource: "research", amount: 5 }
-        ]
+        effects: [{ type: "resource", resource: "research", amount: 5 }]
     },
     {
         id: "repeatableExperiment",
