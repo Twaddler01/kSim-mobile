@@ -1472,3 +1472,111 @@ body:not(.debug-mode) {
 .tabs {
     gap: 24px !important;
 }
+
+/* Collapsible system panels */
+.collapsible-panel {
+    padding: 0;
+    overflow: hidden;
+}
+
+.collapsible-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-width: 0;
+    padding: 13px;
+    border: 0;
+    color: inherit;
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+}
+
+.collapsible-panel-heading {
+    flex: 1;
+    min-width: 0;
+}
+
+.collapsible-panel-heading h2 {
+    margin: 4px 0 0;
+}
+
+.collapsible-panel-status {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.collapsible-panel .live-indicator {
+    padding-top: 0;
+}
+
+.collapsible-panel[data-status="locked"] .live-indicator {
+    color: var(--muted);
+}
+
+.collapsible-panel[data-status="inactive"] .live-indicator {
+    color: var(--muted);
+}
+
+.collapsible-panel[data-status="online"] .live-indicator {
+    color: #72f0c0;
+}
+
+.collapsible-panel[data-status="attention"] .live-indicator {
+    color: var(--warning);
+}
+
+.collapsible-panel-unread {
+    color: var(--accent-color, var(--cyan));
+    font-size: 0.65rem;
+}
+
+.collapsible-panel-unread[hidden],
+.collapsible-panel-body[hidden] {
+    display: none;
+}
+
+.collapsible-panel-chevron {
+    width: 17px;
+    color: var(--cyan);
+    font-size: 1.1rem;
+    text-align: center;
+}
+
+.collapsible-panel-body {
+    padding: 0 13px 13px;
+}
+
+.collapsible-panel.is-collapsed .collapsible-panel-header {
+    border-bottom-color: transparent;
+}
+
+.collapsible-panel-header:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: -3px;
+}
+
+.collapsible-panel.is-locked {
+    opacity: 0.65;
+    filter: saturate(0.55);
+}
+
+.collapsible-panel.is-unread {
+    border-color: var(--accent-color, var(--cyan));
+    box-shadow: inset 3px 0 0 var(--accent-color, var(--cyan));
+}
+
+@media (max-width: 420px) {
+    .collapsible-panel-header {
+        gap: 8px;
+    }
+
+    .collapsible-panel-status {
+        gap: 6px;
+    }
+}

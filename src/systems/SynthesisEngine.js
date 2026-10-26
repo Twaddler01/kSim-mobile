@@ -122,6 +122,50 @@ export function craftRecipe(game, recipeId) {
 }
 
 /**
+ * Deliberate material gathering.
+ * Adds a fixed amount of a defined raw material to inventory.
+ */
+export function gatherMaterial(game, materialId, amount = 1) {
+    ensureManufacturingState(game);
+
+    const material = materialDefinitions.find(
+        item => item.id === materialId
+    );
+
+    if (!material || material.category !== "raw") {
+        return {
+            ok: false,
+            reason: "Unknown raw material."
+        };
+    }
+
+    const quantity = Math.floor(Number(amount));
+
+    if (!Number.isFinite(quantity) || quantity < 1) {
+        return {
+            ok: false,
+            reason: "Amount must be at least 1."
+        };
+    }
+
+    game.inventory[material.id] =
+        (game.inventory[material.id] ?? 0) + quantity;
+
+    game.log ??= [];
+    game.log.unshift(
+        `MATERIAL RECOVERY: +${quantity} ${material.name}.`
+    );
+    game.log = game.log.slice(0, 60);
+
+    return {
+        ok: true,
+        item: material,
+        amount: quantity,
+        total: game.inventory[material.id]
+    };
+}
+
+/**
  * Experiment drops: a small, deterministic amount of material progress per
  * batch, with chance-based yields. This keeps raw material gathering tied to
  * the existing experiment button rather than adding another currency loop.

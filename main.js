@@ -24,6 +24,7 @@ import {
     checkUpgradeUnlocks
 } from "./src/functions.js";
 
+import CollapsiblePanel from "./src/ui/CollapsiblePanel.js";
 import Inventory from "./src/ui/Inventory.js";
 import ResourcePopups from "./src/ui/ResourcePopups.js";
 import SaveManager from "./src/SaveManager.js";
@@ -36,7 +37,11 @@ import LogPanel from "./src/ui/LogPanel.js";
 import PlanPanel from "./src/ui/PlanPanel.js";
 
 import { SynthesisPanel } from "./src/ui/SynthesisPanel.js";
-import { ensureManufacturingState, gatherMaterialSamples } from "./src/systems/SynthesisEngine.js";
+import {
+    ensureManufacturingState,
+    gatherMaterialSamples,
+    gatherMaterial
+} from "./src/systems/SynthesisEngine.js";
 import { materialDefinitions } from "./src/data/manufacturing.js";
 
 import UnreadManager from "./src/UnreadManager.js";
@@ -95,6 +100,12 @@ checkDiscoveries(game);
 
 ensureManufacturingState(game);
 
+// Persistent Operations unlocks.
+// Existing saves with 5+ Copper should already have Quantum Field unlocked.
+game.operations ??= {};
+
+game.operations.quantumFieldUnlocked ??= (game.inventory.copper ?? 0) >= 5;
+
 // Initialize or migrate equipment unlocks without creating
 // fresh notifications for conditions already satisfied in a save.
 checkUpgradeUnlocks(game, notifyUnread, { notify: false });
@@ -147,12 +158,17 @@ function renderDatabasePanel(title, count, content) {
     ]);
 }
 
-function renderTabContent(labContent) {
+function renderTabContent(labContent, operationsContent) {
     const tabDefinitions = [
         {
             id: "lab",
             label: "LAB",
             render: () => labContent
+        },
+        {
+            id: "operations",
+            label: "OPERATIONS",
+            render: () => operationsContent
         },
         {
             id: "observations",
@@ -177,15 +193,16 @@ function renderTabContent(labContent) {
         {
             id: "synthesis",
             label: "SYNTHESIS",
-            render: () => new SynthesisPanel({
-                game,
-                onChange: () => {
-                    save();
-                    render();
-                    showToast("Synthesis complete.");
-                },
-                onToast: showToast
-            }).getElement()
+            render: () =>
+                new SynthesisPanel({
+                    game,
+                    onChange: () => {
+                        save();
+                        render();
+                        showToast("Synthesis complete.");
+                    },
+                    onToast: showToast
+                }).getElement()
         },
         {
             id: "plan",
@@ -267,16 +284,7 @@ function showToast(message) {
 
 function runExperiments(count = 1, event = null, costs = []) {
     const result = stir(game, count, notifyUnread);
-    const recovered = gatherMaterialSamples(game, count);
 
-if (recovered.length) {
-    gains.push(...recovered.map(item => {
-        const definition = materialDefinitions.find(entry => entry.id === item.id);
-        return `+${item.amount} ${definition?.name ?? item.id}`;
-    }));
-}
-
-    
     const changes = [
         ...costs,
         { amount: result.energy, icon: "⚡" },
@@ -373,9 +381,7 @@ function getExperimentProgress() {
     }
 
     const nextRequirement =
-        nextDiscovery?.trigger?.min ??
-        finalMilestone?.trigger?.min ??
-        0;
+        nextDiscovery?.trigger?.min ?? finalMilestone?.trigger?.min ?? 0;
     const finalRequirement = finalMilestone.trigger.min;
 
     return {
@@ -385,6 +391,29 @@ function getExperimentProgress() {
             : finalRequirement,
         max: nextDiscovery ? nextRequirement : finalRequirement
     };
+}
+
+function updateMaterialRecoveryUI() {
+    if (ui.materialCount) {
+        ui.materialCount.textContent = `Copper Samples: ${game.inventory.copper ?? 0} / 5`;
+    }
+}
+
+function updateOperationsUI() {
+    const unlocked = Boolean(game.operations?.quantumFieldUnlocked);
+
+    const panel = ui.quantumFieldPanel;
+    if (!panel) return;
+
+    if (unlocked && panel.locked) {
+        panel.unlock({ unread: true, expanded: false });
+    } else if (!unlocked && !panel.locked) {
+        panel.setLocked(true);
+    }
+
+    if (unlocked && panel.status !== "AVAILABLE") {
+        panel.setStatus("AVAILABLE");
+    }
 }
 
 function updateExperimentUI() {
@@ -418,6 +447,8 @@ function refreshUI({ database = false } = {}) {
     }
 
     updateInventory();
+    updateMaterialRecoveryUI();
+    updateOperationsUI();
     updateExperimentUI();
     updateToast();
     updateAnnouncement();
@@ -492,6 +523,7 @@ function render() {
 
     if (ui.layout) {
         updateInventory();
+        updateMaterialRecoveryUI();
         updateExperimentUI();
         updateToast();
         updateAnnouncement();
@@ -606,20 +638,16 @@ function render() {
 
     ui.experimentProgress = experimentProgress;
 
-    const fieldPanel = el("section", { className: "sim-card field-panel" }, [
-        el("div", { className: "section-heading" }, [
-            el("div", {}, [
-                el("div", { className: "eyebrow", text: "ACTIVE SYSTEM" }),
-                el("h2", { text: "Quantum Field" })
-            ]),
-            el("span", { className: "live-indicator", text: "● ONLINE" })
-        ]),
+    const fieldContent = el("div", { className: "field-panel-content" }, [
         el("p", {
             className: "muted",
             text: "Each experiment produces energy. Particle formation and research observations are probabilistic."
         }),
+
         el("div", { className: "quantum-orb-wrap" }, [orb]),
+
         experimentCount,
+
         el("div", { className: "bonus-actions" }, [
             el("div", { className: "bonus-row" }, [
                 el("div", { className: "bonus-copy" }, [
@@ -653,8 +681,98 @@ function render() {
                 convertButton
             ])
         ]),
+
         experimentProgress
     ]);
+
+    const materialCount = el("div", {
+        className: "experiment-count",
+        text: `Copper Samples: ${game.inventory.copper ?? 0} / 5`
+    });
+
+    ui.materialCount = materialCount;
+
+    const recoverCopperButton = Button(
+        "⛏ RECOVER COPPER  +1",
+        () => {
+            const result = gatherMaterial(game, "copper", 1);
+
+            if (!result.ok) {
+                showToast(result.reason);
+                return;
+            }
+
+            // Unlock once, when the inventory first reaches five.
+            if (!game.operations.quantumFieldUnlocked && result.total >= 5) {
+                game.operations.quantumFieldUnlocked = true;
+
+                quantumFieldPanel.unlock({
+                    unread: true,
+                    expanded: false
+                });
+
+                logEvent(
+                    game,
+                    "NEW SYSTEM AVAILABLE: Quantum Field unlocked after recovering five Copper Samples.",
+                    { category: "activity", tab: "operations" }
+                );
+
+                showToast("Quantum Field unlocked!");
+            } else {
+                showToast(`+1 ${result.item.name}`);
+            }
+
+            save();
+            refreshUI({ database: true });
+        },
+        { variant: "primary-button" }
+    );
+
+    const materialRecoveryContent = el(
+        "div",
+        { className: "field-panel-content" },
+        [
+            el("p", {
+                className: "muted",
+                text: "Recover raw materials for future synthesis and equipment."
+            }),
+
+            el(
+                "div",
+                {
+                    className: "quantum-orb-wrap recovery-action"
+                },
+                [recoverCopperButton]
+            ),
+
+            materialCount,
+
+            el("p", {
+                className: "bonus-description",
+                text: "Recover five Copper Samples to activate the Quantum Field."
+            })
+        ]
+    );
+
+    const materialRecoveryPanel = new CollapsiblePanel({
+        eyebrow: "FIELD OPERATIONS",
+        title: "Material Recovery",
+        status: "ONLINE",
+        content: materialRecoveryContent,
+        expanded: true
+    });
+
+    const quantumFieldPanel = new CollapsiblePanel({
+        eyebrow: "ACTIVE SYSTEM",
+        title: "Quantum Field",
+        status: game.operations.quantumFieldUnlocked ? "AVAILABLE" : "LOCKED",
+        content: fieldContent,
+        expanded: false,
+        locked: !game.operations.quantumFieldUnlocked
+    });
+
+    ui.quantumFieldPanel = quantumFieldPanel;
+    ui.materialRecoveryPanel = materialRecoveryPanel;
 
     const resetPanel = el(
         "section",
@@ -685,7 +803,15 @@ function render() {
         {
             className: "lab-tab-content"
         },
-        [intro, fieldPanel, resetPanel]
+        [intro, resetPanel]
+    );
+
+    const operationsContent = el(
+        "div",
+        {
+            className: "lab-tab-content operations-tab-content"
+        },
+        [materialRecoveryPanel.element, quantumFieldPanel.element]
     );
 
     const topbar = el("header", { className: "topbar" }, [
@@ -717,7 +843,7 @@ function render() {
     const layout = el("div", { className: "game-layout" }, [
         topbar,
         ui.inventory.element,
-        renderTabContent(labContent)
+        renderTabContent(labContent, operationsContent)
     ]);
 
     ui.layout = layout;

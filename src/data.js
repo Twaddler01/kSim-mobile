@@ -64,6 +64,9 @@ export const initialGameData = {
         }
     },
     inventory: {},
+    operations: {
+        quantumFieldUnlocked: false
+    },
     manufacturing: {
         unlocked: false,
         completedRecipes: [],
