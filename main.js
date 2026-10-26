@@ -327,7 +327,9 @@ function renderAnnouncement() {
 }
 
 function getExperimentProgress() {
-    const milestones = discoveries.filter(item => !item.hidden);
+    const milestones = discoveries.filter(
+        item => !item.hidden && item.trigger?.type === "experimentCount"
+    );
 
     const nextDiscovery = milestones.find(
         item => !game.discoveries.includes(item.id)
@@ -335,14 +337,23 @@ function getExperimentProgress() {
 
     const finalMilestone = milestones.at(-1);
 
+    if (!finalMilestone) {
+        return {
+            nextDiscovery: null,
+            value: 0,
+            max: 1
+        };
+    }
+
+    const nextRequirement = nextDiscovery.trigger.min;
+    const finalRequirement = finalMilestone.trigger.min;
+
     return {
         nextDiscovery,
         value: nextDiscovery
-            ? Math.min(game.clicks, nextDiscovery.requirement)
-            : finalMilestone.requirement,
-        max: nextDiscovery
-            ? nextDiscovery.requirement
-            : finalMilestone.requirement
+            ? Math.min(game.clicks, nextRequirement)
+            : finalRequirement,
+        max: nextDiscovery ? nextRequirement : finalRequirement
     };
 }
 
@@ -363,7 +374,7 @@ function updateExperimentUI() {
 
     if (progressLabel) {
         progressLabel.textContent = nextDiscovery
-            ? `Next observation: ${nextDiscovery.name}`
+            ? `Experiment progress:`
             : "Observation index complete";
     }
 
@@ -555,7 +566,7 @@ function render() {
 
     const experimentProgress = ProgressBar({
         label: nextDiscovery
-            ? `Next observation: ${nextDiscovery.name}`
+            ? `Experiment progress:`
             : "Observation index complete",
         value,
         max,

@@ -89,7 +89,9 @@ export const discoveries = [
             type: "experimentCount",
             min: 400
         },
-        reward: { research: 2 }
+        effects: [
+            { type: "resource", resource: "research", amount: 2 }
+        ]
     },
     {
         id: "particleFormation",
@@ -100,7 +102,10 @@ export const discoveries = [
             type: "experimentCount",
             min: 1000
         },
-        reward: { particles: 3, research: 2 }
+        effects: [
+            { type: "resource", resource: "particles", amount: 200 },
+            { type: "resource", resource: "research", amount: 2 }
+        ]
     },
     {
         id: "quantumAnomaly",
@@ -111,7 +116,9 @@ export const discoveries = [
             type: "experimentCount",
             min: 2000
         },
-        reward: { research: 5 }
+        effects: [
+            { type: "resource", resource: "research", amount: 5 }
+        ]
     },
     {
         id: "repeatableExperiment",
@@ -123,7 +130,10 @@ export const discoveries = [
             type: "experimentCount",
             min: 3500
         },
-        reward: { research: 8, particles: 4 }
+        effects: [
+            { type: "resource", resource: "particles", amount: 4 },
+            { type: "resource", resource: "research", amount: 8 }
+        ]
     },
     {
         id: "unknownEnergySource",

@@ -1,5 +1,6 @@
 import { discoveries, upgradeDefinitions } from "./data.js";
 import { evaluateTrigger } from "./triggers/conditions.js";
+import { applyEffects, describeEffects } from "./triggers/effects.js";
 
 export function formatNumber(value) {
     return new Intl.NumberFormat(undefined, {
@@ -102,15 +103,8 @@ export function checkDiscoveries(game, onUnread = () => {}) {
 
         game.discoveries.push(discovery.id);
 
-        for (const [resource, amount] of Object.entries(
-            discovery.reward ?? {}
-        )) {
-            game.resources[resource] = (game.resources[resource] ?? 0) + amount;
-        }
-
-        const rewardText = Object.entries(discovery.reward ?? {})
-            .map(([resource, amount]) => `+${amount} ${resource}`)
-            .join(", ");
+        const appliedEffects = applyEffects(game, discovery.effects);
+        const rewardText = describeEffects(appliedEffects);
 
         addLog(
             game,
