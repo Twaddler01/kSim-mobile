@@ -115,6 +115,7 @@ export default class DiscoveryPanel {
         article.addEventListener("click", () => {
             if (this.unreadManager?.isUnread("observations", item.id)) {
                 this.unreadManager.markRead("observations", item.id);
+                this.updateCard(item);
             }
         });
 

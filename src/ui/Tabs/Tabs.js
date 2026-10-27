@@ -114,9 +114,11 @@ export class Tabs extends Component {
         return root;
     }
 
-    update() {
+    update({ refreshContent = true } = {}) {
         if (!this.element || !this.tabBar || !this.panel) return this;
+
         const tab = this.activeTab;
+
         updateTabBar(this.tabBar, this.tabs, {
             activeId: this.activeId,
             panelId: this.panelId,
@@ -132,8 +134,13 @@ export class Tabs extends Component {
             "aria-labelledby",
             tab ? `ksim-tab-${tab.id}` : ""
         );
-        const content = tab?.render?.() ?? tab?.content ?? null;
-        this.panel.replaceChildren(...(content == null ? [] : [content]));
+
+        if (refreshContent) {
+            const content = tab?.render?.() ?? tab?.content ?? null;
+
+            this.panel.replaceChildren(...(content == null ? [] : [content]));
+        }
+
         return this;
     }
 

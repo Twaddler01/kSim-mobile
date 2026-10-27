@@ -93,9 +93,7 @@ const unreadManager = new UnreadManager({
     getGame: () => game,
     save,
     onChange: () => {
-        if (ui.tabs) {
-            ui.tabs.update();
-        }
+        ui.tabs?.update({ refreshContent: false });
     },
     isTabActive: tabId => activeTab === tabId
 });
@@ -207,6 +205,17 @@ function renderDatabasePanel(title, count, content) {
         content
     ]);
 }
+
+function updateActiveDatabaseCount(count) {
+    const countPill = ui.tabs?.panel?.querySelector(
+        ".database-view .count-pill"
+    );
+
+    if (countPill) {
+        countPill.textContent = count;
+    }
+}
+
 
 // ========================================
 // TAB CONTENT RENDERERS
@@ -621,13 +630,24 @@ function updateOperationsTab() {
     updateMaterialRecoveryUI();
 }
 
+
 function updateObservationsTab() {
     discoveryPanel.update();
+
+    updateActiveDatabaseCount(
+        `${game.discoveries.length}/${discoveries.length}`
+    );
 }
+
 
 function updateEquipmentTab() {
     upgradePanel.update();
+
+    updateActiveDatabaseCount(
+        `${Object.values(game.upgrades).reduce((a, b) => a + b, 0)} levels`
+    );
 }
+
 
 function updatePlanTab() {
     planPanel.update();
@@ -639,6 +659,8 @@ function updateSynthesisTab() {
 
 function updateLogTab() {
     logPanel.update();
+
+    updateActiveDatabaseCount(`${game.log.length} entries`);
 }
 
 function updateSharedUI() {
@@ -656,7 +678,12 @@ function refreshUI({ database = false } = {}) {
     updateSharedUI();
 
     if (database) {
-        ui.tabs.update();
+        // Refresh navigation and unread indicators independently.
+        // Synthesis still uses its full-render fallback until it has
+        // a dedicated in-place updater.
+        const refreshContent = activeTab === "synthesis";
+
+        ui.tabs.update({ refreshContent });
     }
 
     updateActiveTabUI();

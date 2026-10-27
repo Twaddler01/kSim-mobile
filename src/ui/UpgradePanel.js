@@ -94,6 +94,7 @@ export default class UpgradePanel {
                 (this.game.unlockedUpgrades ?? []).includes(item.id)
             ) {
                 this.unreadManager.markRead("equipment", item.id);
+                this.updateCard(item);
             }
         });
 
