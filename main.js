@@ -50,6 +50,8 @@ import { materialDefinitions } from "./src/data/manufacturing.js";
 import MaterialRecoveryOrb from "./src/ui/MaterialRecoveryOrb.js";
 
 import UnreadManager from "./src/UnreadManager.js";
+import { evaluateTrigger } from "./src/triggers/conditions.js";
+
 const saveManager = new SaveManager({
     key: "ksim-quantum-foundations-v1",
     initialData: initialGameData
@@ -63,6 +65,29 @@ let toastText = "";
 let toastTimer = null;
 let ui = {};
 let previousAnnouncementIds = new Set();
+const gatheringFields = new Map();
+
+const FIELD_DEFINITIONS = [
+    {
+        id: "copper",
+        name: "Copper Field",
+        materialId: "copper",
+        description: "Locate Copper nodes and recover raw samples.",
+        unlockTrigger: null
+    },
+    {
+        id: "silicon",
+        name: "Silicon Field",
+        materialId: "silicon",
+        description: "Locate Silicon nodes and recover mineral samples.",
+        unlockTrigger: {
+            type: "inventoryAmount",
+            item: "copper",
+            amount: 10
+        }
+    }
+];
+
 let gatheringField = null;
 
 const resourcePopups = new ResourcePopups({
@@ -107,6 +132,34 @@ function logEvent(game, message, options = {}) {
         onUnread: notifyUnread,
         ...options
     });
+}
+
+function checkGatheringFieldUnlocks() {
+    game.operations ??= {};
+    game.operations.unlockedFields ??= {};
+
+    game.operations.unlockedFields.copper = true;
+
+    for (const field of FIELD_DEFINITIONS) {
+        if (!field.unlockTrigger) continue;
+
+        if (game.operations.unlockedFields[field.id]) continue;
+
+        if (!evaluateTrigger(game, field.unlockTrigger)) continue;
+
+        if (!unlockField(field.id)) continue;
+
+        logEvent(game, `NEW FIELD AVAILABLE: ${field.name} unlocked.`, {
+            category: "activity",
+            tab: "log"
+        });
+
+        showToast(`${field.name} unlocked!`);
+    }
+
+    if (!game.operations.unlockedFields[game.operations.activeFieldId]) {
+        game.operations.activeFieldId = "copper";
+    }
 }
 
 function discoverMaterial(material, source = "recovery") {
@@ -154,9 +207,18 @@ game.operations ??= {};
 
 game.operations.quantumFieldUnlocked ??= (game.inventory.copper ?? 0) >= 5;
 
+game.operations.unlockedFields ??= {
+    copper: true
+};
+
+game.operations.unlockedFields.copper = true;
+game.operations.activeFieldId ??= "copper";
+
 // Initialize or migrate equipment unlocks without creating
 // fresh notifications for conditions already satisfied in a save.
 checkUpgradeUnlocks(game, notifyUnread, { notify: false });
+
+checkGatheringFieldUnlocks();
 
 save();
 
@@ -216,7 +278,6 @@ function updateActiveDatabaseCount(count) {
     }
 }
 
-
 // ========================================
 // TAB CONTENT RENDERERS
 // ========================================
@@ -226,6 +287,7 @@ function renderLabTab() {
 }
 
 function renderGatheringTab() {
+    gatheringField = getGatheringField();
     return gatheringField.getElement();
 }
 
@@ -484,10 +546,207 @@ function updateMaterialRecoveryUI() {
     ui.materialRecoveryOrb?.update();
 }
 
+function unlockField(fieldId) {
+    game.operations ??= {};
+    game.operations.unlockedFields ??= {};
+    game.operations.fieldUnlocks ??= {};
+
+    if (game.operations.unlockedFields[fieldId]) {
+        return false;
+    }
+
+    game.operations.unlockedFields[fieldId] = true;
+    game.operations.fieldUnlocks[fieldId] = {
+        unlockedAt: Date.now()
+    };
+
+    notifyUnread("operations", `announcement-field-${fieldId}`);
+
+    save();
+    return true;
+}
+
+function getGatheringField(fieldId = game.operations.activeFieldId) {
+    const field =
+        FIELD_DEFINITIONS.find(item => item.id === fieldId) ??
+        FIELD_DEFINITIONS[0];
+
+    if (!gatheringFields.has(field.id)) {
+        gatheringFields.set(
+            field.id,
+            new GatheringField({
+                field,
+                onGather: (event, target) => {
+                    const result = recoverMaterial(game, target.id, 1);
+
+                    if (!result.ok) {
+                        showToast(result.reason);
+                        return false;
+                    }
+
+                    resourcePopups.show(
+                        [
+                            {
+                                amount: result.amount ?? 1,
+                                icon: result.item.icon
+                            }
+                        ],
+                        event
+                    );
+
+                    const newlyDiscovered = discoverMaterial(
+                        result.item,
+                        "gathering-field"
+                    );
+
+                    if (newlyDiscovered) {
+                        showToast(
+                            `New material discovered: ${result.item.name}`
+                        );
+                    }
+
+                    if (result.unlockedQuantumField) {
+                        ui.quantumFieldPanel?.unlock({
+                            unread: false,
+                            expanded: false
+                        });
+
+                        logEvent(
+                            game,
+                            "NEW SYSTEM AVAILABLE: Quantum Field unlocked after recovering five Copper Samples.",
+                            {
+                                category: "activity",
+                                tab: "log",
+                                notificationTargets: [
+                                    {
+                                        tab: "operations",
+                                        itemId: "quantum-field"
+                                    }
+                                ]
+                            }
+                        );
+
+                        showToast("Quantum Field unlocked!");
+                    }
+
+                    checkGatheringFieldUnlocks();
+                    save();
+                    refreshUI({ database: true });
+
+                    return true;
+                }
+            })
+        );
+    }
+
+    return gatheringFields.get(field.id);
+}
+
+function updateFieldCards() {
+    if (!ui.fieldCards) return;
+
+    const unlockedFields = game.operations?.unlockedFields ?? {};
+
+    const cards = FIELD_DEFINITIONS.map(field => {
+        const unlocked = Boolean(unlockedFields[field.id]);
+        const active = game.operations?.activeFieldId === field.id;
+
+        return el(
+            "button",
+            {
+                type: "button",
+                className: [
+                    "field-selection-card",
+                    unlocked ? "is-unlocked" : "is-locked",
+                    active ? "is-active" : ""
+                ]
+                    .filter(Boolean)
+                    .join(" "),
+                disabled: !unlocked,
+                "aria-label": unlocked
+                    ? `${field.name}${active ? ", selected" : ""}`
+                    : `${field.name}, locked`,
+                onClick: () => {
+                    if (!unlocked) return;
+
+                    game.operations.activeFieldId = field.id;
+
+                    save();
+                    updateFieldCards();
+                }
+            },
+            [
+                el("span", {
+                    className: "field-selection-card__icon",
+                    text: field.materialId === "copper" ? "🟠" : "🔹"
+                }),
+                el(
+                    "span",
+                    {
+                        className: "field-selection-card__copy"
+                    },
+                    [
+                        el("strong", { text: field.name }),
+                        el("span", {
+                            className: "field-selection-card__description",
+                            text: unlocked
+                                ? field.description
+                                : "Requires 10 Copper Samples"
+                        })
+                    ]
+                ),
+                
+el("span", {
+    className: "field-selection-card__actions"
+}, [
+    el("span", {
+        className: "field-selection-card__status",
+        text: !unlocked
+            ? "LOCKED"
+            : active
+                ? "SELECTED"
+                : "AVAILABLE"
+    }),
+    ...(unlocked && active
+        ? [
+            Button(
+                "GO",
+                () => {
+                    const fieldId = game.operations.activeFieldId;
+
+                    gatheringField = getGatheringField(fieldId);
+
+                    ui.tabs?.setActiveTab("gathering", {
+                        notify: true
+                    });
+                },
+                {
+                    variant: "primary-button"
+                }
+            )
+        ]
+        : [])
+])
+
+            ]
+        );
+    });
+
+    ui.fieldCards.replaceChildren(...cards);
+
+    // Enable GO only when the selected field is unlocked.
+    const selectedFieldId = game.operations?.activeFieldId;
+
+    if (ui.fieldGoButton) {
+        ui.fieldGoButton.disabled = !unlockedFields[selectedFieldId];
+    }
+}
+
 function updateOperationsUI() {
     // Announcements are independent of the Quantum Field panel.
     updateAnnouncementOverlay();
-    
+    updateFieldCards();
+
     const unlocked = Boolean(game.operations?.quantumFieldUnlocked);
     const panel = ui.quantumFieldPanel;
 
@@ -535,10 +794,10 @@ function updateActiveTabUI() {
         case "plan":
             updatePlanTab();
             break;
-        
+
         case "synthesis":
             updateSynthesisTab();
-            break; 
+            break;
 
         case "log":
             updateLogTab();
@@ -547,20 +806,22 @@ function updateActiveTabUI() {
 }
 
 function updateAnnouncementOverlay() {
-    const records = game.operations?.discoveredMaterials ?? {};
+    const materialRecords = game.operations?.discoveredMaterials ?? {};
 
-    const announcements = Object.entries(records)
+    const fieldUnlockRecords = game.operations?.fieldUnlocks ?? {};
+
+    const materialAnnouncements = Object.entries(materialRecords)
         .filter(([id]) =>
             unreadManager.isUnread("operations", `material-${id}`)
         )
-        .sort((a, b) => (b[1].discoveredAt ?? 0) - (a[1].discoveredAt ?? 0))
-        .map(([id]) => {
+        .map(([id, record]) => {
             const material = materialDefinitions.find(item => item.id === id);
 
             if (!material) return null;
 
             return {
                 id: `material-${id}`,
+                discoveredAt: record.discoveredAt ?? 0,
                 title: "NEW MATERIAL DISCOVERED",
                 name: material.name,
                 message:
@@ -571,6 +832,35 @@ function updateAnnouncementOverlay() {
             };
         })
         .filter(Boolean);
+
+    const fieldAnnouncements = Object.entries(fieldUnlockRecords)
+        .filter(([fieldId]) =>
+            unreadManager.isUnread(
+                "operations",
+                `announcement-field-${fieldId}`
+            )
+        )
+        .map(([fieldId, record]) => {
+            const field = FIELD_DEFINITIONS.find(item => item.id === fieldId);
+
+            if (!field) return null;
+
+            return {
+                id: `announcement-field-${fieldId}`,
+                discoveredAt: record.unlockedAt ?? 0,
+                title: "NEW FIELD AVAILABLE",
+                name: field.name,
+                message: field.description,
+                icon: "◈",
+                category: "field"
+            };
+        })
+        .filter(Boolean);
+
+    const announcements = [
+        ...materialAnnouncements,
+        ...fieldAnnouncements
+    ].sort((a, b) => b.discoveredAt - a.discoveredAt);
 
     const nextIds = new Set(announcements.map(item => item.id));
 
@@ -621,7 +911,8 @@ function updateLabTab() {
 }
 
 function updateGatheringTab() {
-    gatheringField?.update();
+    gatheringField = getGatheringField();
+    gatheringField.update();
 }
 
 function updateOperationsTab() {
@@ -629,7 +920,6 @@ function updateOperationsTab() {
     updateExperimentUI();
     updateMaterialRecoveryUI();
 }
-
 
 function updateObservationsTab() {
     discoveryPanel.update();
@@ -639,7 +929,6 @@ function updateObservationsTab() {
     );
 }
 
-
 function updateEquipmentTab() {
     upgradePanel.update();
 
@@ -647,7 +936,6 @@ function updateEquipmentTab() {
         `${Object.values(game.upgrades).reduce((a, b) => a + b, 0)} levels`
     );
 }
-
 
 function updatePlanTab() {
     planPanel.update();
@@ -1007,6 +1295,29 @@ function render() {
     ui.quantumFieldPanel = quantumFieldPanel;
     ui.materialRecoveryPanel = materialRecoveryPanel;
 
+    const fieldSelection = el(
+        "section",
+        {
+            className: "field-selection-section"
+        },
+        [
+            el("div", {
+                className: "eyebrow",
+                text: "GATHERING LOCATIONS"
+            }),
+            el("h2", { text: "Select a Field" }),
+            el("p", {
+                className: "muted",
+                text: "Choose a field, then enter it when you're ready."
+            }),
+            (ui.fieldCards = el("div", {
+                className: "field-selection-list"
+            }))
+        ]
+    );
+
+    updateFieldCards();
+
     const resetPanel = el(
         "section",
         {
@@ -1054,6 +1365,7 @@ function render() {
             className: "lab-tab-content operations-tab-content"
         },
         [
+            fieldSelection,
             materialRecoveryPanel.element,
             quantumFieldPanel.element,
             announcementOverlay.element
@@ -1087,59 +1399,7 @@ function render() {
         formatNumber
     });
 
-    gatheringField ??= new GatheringField({
-        onGather: (event, target) => {
-            const result = recoverMaterial(game, target.id, 1);
-
-            if (!result.ok) {
-                showToast(result.reason);
-                return false;
-            }
-
-            resourcePopups.show(
-                [{ amount: result.amount ?? 1, icon: result.item.icon }],
-                event
-            );
-
-            const newlyDiscovered = discoverMaterial(
-                result.item,
-                "gathering-field"
-            );
-
-            if (newlyDiscovered) {
-                showToast(`New material discovered: ${result.item.name}`);
-            }
-
-            if (result.unlockedQuantumField) {
-                quantumFieldPanel.unlock({
-                    unread: false,
-                    expanded: false
-                });
-
-                logEvent(
-                    game,
-                    "NEW SYSTEM AVAILABLE: Quantum Field unlocked after recovering five Copper Samples.",
-                    {
-                        category: "activity",
-                        tab: "log",
-                        notificationTargets: [
-                            {
-                                tab: "operations",
-                                itemId: "quantum-field"
-                            }
-                        ]
-                    }
-                );
-
-                showToast("Quantum Field unlocked!");
-            }
-
-            save();
-            refreshUI({ database: true });
-
-            return true;
-        }
-    });
+    gatheringField = getGatheringField(game.operations.activeFieldId);
 
     const layout = el("div", { className: "game-layout" }, [
         topbar,

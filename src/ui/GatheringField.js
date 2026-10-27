@@ -1,3 +1,4 @@
+
 import { el } from "./Element.js";
 import { MaterialIcon } from "./MaterialIcon.js";
 
@@ -6,7 +7,17 @@ const ROWS = 8;
 const INITIAL_NODES = 7;
 
 export default class GatheringField {
-    constructor({ onGather, nodeCount = INITIAL_NODES } = {}) {
+    constructor({
+        field = {
+            id: "copper",
+            name: "Copper Field",
+            materialId: "copper",
+            description: "Locate Copper nodes and recover raw samples."
+        },
+        onGather,
+        nodeCount = INITIAL_NODES
+    } = {}) {
+        this.field = field;
         this.onGather = onGather;
         this.nodeCount = nodeCount;
         this.nextId = 1;
@@ -17,7 +28,9 @@ export default class GatheringField {
     }
 
     spawnNodes(count = 1) {
-        const occupied = new Set(this.nodes.map(node => `${node.x},${node.y}`));
+        const occupied = new Set(
+            this.nodes.map(node => `${node.x},${node.y}`)
+        );
 
         const available = [];
 
@@ -31,7 +44,10 @@ export default class GatheringField {
 
         for (let i = available.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [available[i], available[j]] = [available[j], available[i]];
+            [available[i], available[j]] = [
+                available[j],
+                available[i]
+            ];
         }
 
         const amount = Math.min(count, available.length);
@@ -59,23 +75,21 @@ export default class GatheringField {
     update() {
         if (!this.element) return this;
 
-        const heading = el(
-            "div",
-            {
-                className: "gathering-heading"
-            },
-            [
-                el("div", {
-                    className: "eyebrow",
-                    text: "FIELD OPERATIONS // RAW MATERIALS"
-                }),
-                el("h2", { text: "Copper Field" }),
-                el("p", {
-                    className: "muted",
-                    text: "Locate a Copper node and tap it to collect one sample."
-                })
-            ]
-        );
+        const { id, name, materialId, description } = this.field;
+
+        const heading = el("div", {
+            className: "gathering-heading"
+        }, [
+            el("div", {
+                className: "eyebrow",
+                text: "FIELD OPERATIONS // RAW MATERIALS"
+            }),
+            el("h2", { text: name }),
+            el("p", {
+                className: "muted",
+                text: description
+            })
+        ]);
 
         const plane = el("div", {
             className: "gathering-field"
@@ -85,45 +99,46 @@ export default class GatheringField {
         plane.style.setProperty("--gathering-rows", ROWS);
 
         for (const node of this.nodes) {
-            const button = el(
-                "button",
-                {
-                    type: "button",
-                    className: "gathering-node",
-                    "aria-label": `Gather Copper at grid position ${node.x + 1}, ${node.y + 1}`,
-                    onClick: event => {
-                        const succeeded = this.onGather?.(event, {
-                            id: "copper",
-                            name: "Copper"
-                        });
+            const button = el("button", {
+                type: "button",
+                className: "gathering-node",
+                "aria-label":
+                    `Gather ${name} node at grid position ` +
+                    `${node.x + 1}, ${node.y + 1}`,
+                onClick: event => {
+                    const succeeded = this.onGather?.(event, {
+                        id: materialId,
+                        name
+                    });
 
-                        if (succeeded !== true) return;
+                    if (succeeded !== true) return;
 
-                        this.nodes = this.nodes.filter(
-                            item => item.id !== node.id
-                        );
+                    this.nodes = this.nodes.filter(
+                        item => item.id !== node.id
+                    );
 
-                        this.spawnNodes(1);
-                        this.update();
-                    }
-                },
-                [
-                    MaterialIcon("copper", {
-                        size: 30,
-                        className: "gathering-node__icon"
-                    })
-                ]
-            );
+                    this.spawnNodes(1);
+                    this.update();
+                }
+            }, [
+                MaterialIcon(materialId, {
+                    size: 30,
+                    className: "gathering-node__icon"
+                })
+            ]);
 
-            button.style.left = `${((node.x + 0.5) / COLUMNS) * 100}%`;
-            button.style.top = `${((node.y + 0.5) / ROWS) * 100}%`;
+            button.style.left =
+                `${((node.x + 0.5) / COLUMNS) * 100}%`;
+
+            button.style.top =
+                `${((node.y + 0.5) / ROWS) * 100}%`;
 
             plane.append(button);
         }
 
         const status = el("div", {
             className: "gathering-status",
-            text: `${this.nodes.length} Copper nodes detected`
+            text: `${this.nodes.length} ${name} nodes detected`
         });
 
         this.element.replaceChildren(heading, plane, status);

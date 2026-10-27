@@ -11,6 +11,13 @@ export function evaluateTrigger(game, trigger) {
         case "discovery":
             return (game.discoveries ?? []).includes(trigger.id);
 
+        case "inventoryAmount":
+            if (!trigger.item) return false;
+
+            return (
+                (game.inventory?.[trigger.item] ?? 0) >= (trigger.amount ?? 0)
+            );
+
         case "upgradeLevel": {
             const ids = trigger.upgradeIds ?? [];
 
