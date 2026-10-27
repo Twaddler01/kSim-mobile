@@ -208,72 +208,92 @@ function renderDatabasePanel(title, count, content) {
     ]);
 }
 
-function renderTabContent(labContent, operationsContent) {
+// ========================================
+// TAB CONTENT RENDERERS
+// ========================================
+
+function renderLabTab() {
+    return ui.labContent;
+}
+
+function renderGatheringTab() {
+    return gatheringField.getElement();
+}
+
+function renderOperationsTab() {
+    return ui.operationsContent;
+}
+
+function renderObservationsTab() {
+    return renderDatabasePanel(
+        "Observation Index",
+        `${game.discoveries.length}/${discoveries.length}`,
+        discoveryPanel.render()
+    );
+}
+
+function renderEquipmentTab() {
+    return renderDatabasePanel(
+        "Lab Equipment",
+        `${Object.values(game.upgrades).reduce((a, b) => a + b, 0)} levels`,
+        upgradePanel.render()
+    );
+}
+
+function renderSynthesisTab() {
+    return new SynthesisPanel({
+        game,
+        onChange: () => {
+            save();
+            refreshUI({ database: true });
+            showToast("Synthesis complete.");
+        },
+        onToast: showToast
+    }).getElement();
+}
+
+function renderPlanTab() {
+    return planPanel.getElement();
+}
+
+function renderLogTab() {
+    return renderDatabasePanel(
+        "Experiment Log",
+        `${game.log.length} entries`,
+        logPanel.render()
+    );
+}
+
+// ========================================
+// TAB REGISTRATION
+// ========================================
+
+function renderTabContent() {
     const tabDefinitions = [
-        {
-            id: "lab",
-            label: "LAB",
-            render: () => labContent
-        },
-        {
-            id: "gathering",
-            label: "GATHER",
-            render: () => gatheringField.getElement()
-        },
+        { id: "lab", label: "LAB", render: renderLabTab },
+        { id: "gathering", label: "GATHER", render: renderGatheringTab },
         {
             id: "operations",
             label: "OPERATIONS",
-            render: () => operationsContent
+            render: renderOperationsTab
         },
         {
             id: "observations",
             label: "OBSERVATIONS",
-            render: () =>
-                renderDatabasePanel(
-                    "Observation Index",
-                    `${game.discoveries.length}/${discoveries.length}`,
-                    discoveryPanel.render()
-                )
+            render: renderObservationsTab
         },
         {
             id: "equipment",
             label: "EQUIPMENT",
-            render: () =>
-                renderDatabasePanel(
-                    "Lab Equipment",
-                    `${Object.values(game.upgrades).reduce((a, b) => a + b, 0)} levels`,
-                    upgradePanel.render()
-                )
+            render: renderEquipmentTab
         },
         {
             id: "synthesis",
             label: "SYNTHESIS",
-            render: () =>
-                new SynthesisPanel({
-                    game,
-                    onChange: () => {
-                        save();
-                        render();
-                        showToast("Synthesis complete.");
-                    },
-                    onToast: showToast
-                }).getElement()
+            render: renderSynthesisTab
         },
-        {
-            id: "plan",
-            label: "PLAN",
-            render: () => planPanel.getElement()
-        },
-        {
-            id: "log",
-            label: "LAB LOG",
-            render: () =>
-                renderDatabasePanel(
-                    "Experiment Log",
-                    `${game.log.length} entries`,
-                    logPanel.render()
-                )
-        }
+        { id: "plan", label: "PLAN", render: renderPlanTab },
+        { id: "log", label: "LAB LOG", render: renderLogTab }
     ];
 
     const tabs = new Tabs({
@@ -288,13 +308,11 @@ function renderTabContent(labContent, operationsContent) {
         })),
         onChange: id => {
             activeTab = id;
+            updateActiveTabUI();
         }
     });
 
     ui.tabs = tabs;
-
-    //ui.tabs.update();
-    //ui.tabs.updateUnreadIndicators();
 
     return tabs.element;
 }
@@ -458,6 +476,9 @@ function updateMaterialRecoveryUI() {
 }
 
 function updateOperationsUI() {
+    // Announcements are independent of the Quantum Field panel.
+    updateAnnouncementOverlay();
+    
     const unlocked = Boolean(game.operations?.quantumFieldUnlocked);
     const panel = ui.quantumFieldPanel;
 
@@ -478,8 +499,26 @@ function updateOperationsUI() {
 
     // Keep the panel indicator synchronized with persisted unread state.
     panel.setUnread(unreadManager.isUnread("operations", "quantum-field"));
+}
 
-    updateAnnouncementOverlay();
+function updateActiveTabUI() {
+    switch (activeTab) {
+        case "lab":
+            updateLabTab();
+            break;
+
+        case "gathering":
+            updateGatheringTab();
+            break;
+
+        case "operations":
+            updateOperationsTab();
+            break;
+
+        case "observations":
+            updateObservationsTab();
+            break;
+    }
 }
 
 function updateAnnouncementOverlay() {
@@ -552,23 +591,43 @@ function updateExperimentUI() {
     ui.experimentProgress.setValue(value, max);
 }
 
+function updateLabTab() {
+    // TODO: updateLabUI();
+}
+
+function updateGatheringTab() {
+    gatheringField?.update();
+}
+
+function updateOperationsTab() {
+    updateOperationsUI();
+    updateExperimentUI();
+    updateMaterialRecoveryUI();
+}
+
+function updateObservationsTab() {
+    discoveryPanel.update();
+}
+
+function updateSharedUI() {
+    updateInventory();
+    updateToast();
+    updateAnnouncement();
+}
+
 function refreshUI({ database = false } = {}) {
     if (!ui.layout) {
         render();
         return;
     }
 
-    updateInventory();
-    updateMaterialRecoveryUI();
-    updateOperationsUI();
-    updateExperimentUI();
-    updateToast();
-    updateAnnouncement();
+    updateSharedUI();
 
-    // Refresh the active database panel without rebuilding the tab bar.
-    if (database && activeTab !== "lab") {
+    if (database) {
         ui.tabs.update();
     }
+
+    updateActiveTabUI();
 }
 
 const upgradePanel = new UpgradePanel({
@@ -634,11 +693,7 @@ function render() {
     if (!app) return;
 
     if (ui.layout) {
-        updateInventory();
-        updateMaterialRecoveryUI();
-        updateExperimentUI();
-        updateToast();
-        updateAnnouncement();
+        updateSharedUI();
         return;
     }
 
@@ -917,7 +972,7 @@ function render() {
         ]
     );
 
-    const labContent = el(
+    ui.labContent = el(
         "div",
         {
             className: "lab-tab-content"
@@ -934,7 +989,7 @@ function render() {
 
     ui.announcementOverlay = announcementOverlay;
 
-    const operationsContent = el(
+    ui.operationsContent = el(
         "div",
         {
             className: "lab-tab-content operations-tab-content"
@@ -1030,17 +1085,14 @@ function render() {
     const layout = el("div", { className: "game-layout" }, [
         topbar,
         ui.inventory.element,
-        renderTabContent(labContent, operationsContent)
+        renderTabContent()
     ]);
 
     ui.layout = layout;
     app.replaceChildren(layout);
 
-    updateInventory();
-    updateOperationsUI();
-    updateExperimentUI();
-    updateToast();
-    updateAnnouncement();
+    updateSharedUI();
+    updateLabTab();
 }
 
 window.kSim = {
@@ -1117,5 +1169,14 @@ new DebugButton({
     run: () => {
         kSim.randomizeMaterialTarget();
         console.log("randomizeMaterialTarget");
+    }
+});
+
+new DebugButton({
+    id: "labLog",
+    label: "labLog",
+    run: () => {
+        const log = kSim.data.log;
+        console.log(log);
     }
 });
