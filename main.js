@@ -107,6 +107,57 @@ function logEvent(game, message, options = {}) {
     });
 }
 
+function discoverMaterial(material, source = "recovery") {
+    if (!material?.id || material.category !== "raw") {
+        return false;
+    }
+
+    game.operations ??= {};
+
+    const saved = game.operations.discoveredMaterials;
+
+    // Migrate the earlier array format without losing discoveries.
+    if (Array.isArray(saved)) {
+        game.operations.discoveredMaterials = Object.fromEntries(
+            saved.map(id => [
+                id,
+                {
+                    discoveredAt: Date.now(),
+                    source: "recovery",
+                    notes: ""
+                }
+            ])
+        );
+    } else {
+        game.operations.discoveredMaterials ??= {};
+    }
+
+    const records = game.operations.discoveredMaterials;
+
+    if (records[material.id]) {
+        return false;
+    }
+
+    records[material.id] = {
+        discoveredAt: Date.now(),
+        source,
+        notes: ""
+    };
+
+    logEvent(game, `NEW MATERIAL DISCOVERED: ${material.name}.`, {
+        category: "activity",
+        tab: "log",
+        notificationTargets: [
+            {
+                tab: "operations",
+                itemId: `material-${material.id}`
+            }
+        ]
+    });
+
+    return true;
+}
+
 // Process any event triggers already satisfied by a loaded save.
 checkDiscoveries(game);
 
@@ -239,7 +290,9 @@ function renderTabContent(labContent, operationsContent) {
         unreadManager,
         tabs: tabDefinitions.map(tab => ({
             ...tab,
-            unread: ["observations", "equipment", "log", "operations"].includes(tab.id)
+            unread: ["observations", "equipment", "log", "operations"].includes(
+                tab.id
+            )
         })),
         onChange: id => {
             activeTab = id;
@@ -420,10 +473,7 @@ function updateOperationsUI() {
 
     if (unlocked && panel.locked) {
         panel.unlock({
-            unread: unreadManager.isUnread(
-                "operations",
-                "quantum-field"
-            ),
+            unread: unreadManager.isUnread("operations", "quantum-field"),
             expanded: false
         });
     } else if (!unlocked && !panel.locked) {
@@ -435,9 +485,71 @@ function updateOperationsUI() {
     }
 
     // Keep the panel indicator synchronized with persisted unread state.
-    panel.setUnread(
-        unreadManager.isUnread("operations", "quantum-field")
-    );
+    panel.setUnread(unreadManager.isUnread("operations", "quantum-field"));
+
+    updateMaterialDiscoveryCards();
+}
+
+function updateMaterialDiscoveryCards() {
+    const stack = ui.materialDiscoveryStack;
+    if (!stack) return;
+
+    const records = game.operations?.discoveredMaterials ?? {};
+
+    const cards = Object.entries(records)
+        .filter(([id]) =>
+            unreadManager.isUnread("operations", `material-${id}`)
+        )
+        .sort((a, b) => (b[1].discoveredAt ?? 0) - (a[1].discoveredAt ?? 0))
+        .map(([id, record]) => {
+            const material = materialDefinitions.find(item => item.id === id);
+
+            if (!material) return null;
+
+            return el(
+                "button",
+                {
+                    className: "material-discovery-card is-new",
+                    type: "button",
+                    "aria-label": `Acknowledge new material: ${material.name}`,
+                    onClick: () => {
+                        unreadManager.markRead("operations", `material-${id}`);
+
+                        updateMaterialDiscoveryCards();
+                    }
+                },
+                [
+                    el("div", {
+                        className: "material-discovery-eyebrow",
+                        text: "NEW MATERIAL DISCOVERED"
+                    }),
+                    el("div", { className: "material-discovery-heading" }, [
+                        el("span", {
+                            className: "material-discovery-icon",
+                            text: material.icon ?? "◈"
+                        }),
+                        el("span", {
+                            className: "material-discovery-name",
+                            text: material.name
+                        }),
+                        el("span", {
+                            className: "material-discovery-new",
+                            text: "NEW"
+                        })
+                    ]),
+                    el("p", {
+                        className: "material-discovery-description",
+                        text:
+                            material.description ??
+                            "A new raw material has been added to the research inventory."
+                    })
+                ]
+            );
+        })
+        .filter(Boolean);
+
+    stack.replaceChildren(...cards);
+    stack.hidden = cards.length === 0;
 }
 
 function updateExperimentUI() {
@@ -721,7 +833,11 @@ function render() {
                 return;
             }
 
-            resourcePopups.show([{ amount: 1, icon: result.item.icon }], event);
+            const newlyDiscovered = discoverMaterial(result.item, "recovery");
+
+            if (newlyDiscovered) {
+                showToast(`New material discovered: ${result.item.name}`);
+            }
 
             if (result.unlockedQuantumField) {
                 quantumFieldPanel.unlock({
@@ -828,12 +944,23 @@ function render() {
         [intro, resetPanel]
     );
 
+    const materialDiscoveryStack = el("div", {
+        className: "material-discovery-stack",
+        hidden: true
+    });
+
+    ui.materialDiscoveryStack = materialDiscoveryStack;
+
     const operationsContent = el(
         "div",
         {
             className: "lab-tab-content operations-tab-content"
         },
-        [materialRecoveryPanel.element, quantumFieldPanel.element]
+        [
+            materialDiscoveryStack,
+            materialRecoveryPanel.element,
+            quantumFieldPanel.element
+        ]
     );
 
     const topbar = el("header", { className: "topbar" }, [
@@ -873,6 +1000,7 @@ function render() {
     app.replaceChildren(layout);
 
     updateInventory();
+    updateOperationsUI();
     updateExperimentUI();
     updateToast();
     updateAnnouncement();
@@ -896,12 +1024,12 @@ window.kSim = {
     // DEBUG
     randomizeMaterialTarget: () => {
         const target = selectRandomRecoveryTarget(game);
-    
+
         ui.materialRecoveryOrb?.update();
         save();
-    
+
         showToast(`Recovery target: ${target.name}`);
-    
+
         return target;
     }
 };
@@ -950,7 +1078,7 @@ new DebugButton({
     id: "randomizeMaterialTarget",
     label: "randomizeMaterialTarget",
     run: () => {
-        kSim.randomizeMaterialTarget()
-        console.log('randomizeMaterialTarget');
+        kSim.randomizeMaterialTarget();
+        console.log("randomizeMaterialTarget");
     }
 });
