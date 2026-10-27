@@ -29,6 +29,7 @@ import Inventory from "./src/ui/Inventory.js";
 import ResourcePopups from "./src/ui/ResourcePopups.js";
 import SaveManager from "./src/SaveManager.js";
 import { navigateToItem as navigateTabToItem } from "./src/ui/itemNavigation.js";
+import AnnouncementOverlay from "./src/ui/AnnouncementOverlay.js";
 
 // TABS
 import DiscoveryPanel from "./src/ui/DiscoveryPanel.js";
@@ -60,6 +61,7 @@ let activeTab = "lab";
 let toastText = "";
 let toastTimer = null;
 let ui = {};
+let previousAnnouncementIds = new Set();
 
 const resourcePopups = new ResourcePopups({
     formatNumber,
@@ -113,24 +115,7 @@ function discoverMaterial(material, source = "recovery") {
     }
 
     game.operations ??= {};
-
-    const saved = game.operations.discoveredMaterials;
-
-    // Migrate the earlier array format without losing discoveries.
-    if (Array.isArray(saved)) {
-        game.operations.discoveredMaterials = Object.fromEntries(
-            saved.map(id => [
-                id,
-                {
-                    discoveredAt: Date.now(),
-                    source: "recovery",
-                    notes: ""
-                }
-            ])
-        );
-    } else {
-        game.operations.discoveredMaterials ??= {};
-    }
+    game.operations.discoveredMaterials ??= {};
 
     const records = game.operations.discoveredMaterials;
 
@@ -487,69 +472,53 @@ function updateOperationsUI() {
     // Keep the panel indicator synchronized with persisted unread state.
     panel.setUnread(unreadManager.isUnread("operations", "quantum-field"));
 
-    updateMaterialDiscoveryCards();
+    updateAnnouncementOverlay();
 }
 
-function updateMaterialDiscoveryCards() {
-    const stack = ui.materialDiscoveryStack;
-    if (!stack) return;
-
+function updateAnnouncementOverlay() {
     const records = game.operations?.discoveredMaterials ?? {};
 
-    const cards = Object.entries(records)
+    const announcements = Object.entries(records)
         .filter(([id]) =>
             unreadManager.isUnread("operations", `material-${id}`)
         )
         .sort((a, b) => (b[1].discoveredAt ?? 0) - (a[1].discoveredAt ?? 0))
-        .map(([id, record]) => {
+        .map(([id]) => {
             const material = materialDefinitions.find(item => item.id === id);
 
             if (!material) return null;
 
-            return el(
-                "button",
-                {
-                    className: "material-discovery-card is-new",
-                    type: "button",
-                    "aria-label": `Acknowledge new material: ${material.name}`,
-                    onClick: () => {
-                        unreadManager.markRead("operations", `material-${id}`);
-
-                        updateMaterialDiscoveryCards();
-                    }
-                },
-                [
-                    el("div", {
-                        className: "material-discovery-eyebrow",
-                        text: "NEW MATERIAL DISCOVERED"
-                    }),
-                    el("div", { className: "material-discovery-heading" }, [
-                        el("span", {
-                            className: "material-discovery-icon",
-                            text: material.icon ?? "◈"
-                        }),
-                        el("span", {
-                            className: "material-discovery-name",
-                            text: material.name
-                        }),
-                        el("span", {
-                            className: "material-discovery-new",
-                            text: "NEW"
-                        })
-                    ]),
-                    el("p", {
-                        className: "material-discovery-description",
-                        text:
-                            material.description ??
-                            "A new raw material has been added to the research inventory."
-                    })
-                ]
-            );
+            return {
+                id: `material-${id}`,
+                title: "NEW MATERIAL DISCOVERED",
+                name: material.name,
+                message:
+                    material.description ??
+                    "A new raw material has been added to the research inventory.",
+                icon: material.icon ?? "◈",
+                category: "material"
+            };
         })
         .filter(Boolean);
 
-    stack.replaceChildren(...cards);
-    stack.hidden = cards.length === 0;
+    const nextIds = new Set(announcements.map(item => item.id));
+
+    const hasNewAnnouncement = [...nextIds].some(
+        id => !previousAnnouncementIds.has(id)
+    );
+
+    ui.announcementOverlay?.setAnnouncements(announcements);
+
+    if (hasNewAnnouncement) {
+        const operationsContent = ui.announcementOverlay?.element.parentElement;
+
+        operationsContent?.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+    }
+
+    previousAnnouncementIds = nextIds;
 }
 
 function updateExperimentUI() {
@@ -949,12 +918,14 @@ function render() {
         [intro, resetPanel]
     );
 
-    const materialDiscoveryStack = el("div", {
-        className: "material-discovery-stack",
-        hidden: true
+    const announcementOverlay = new AnnouncementOverlay({
+        onClose: id => {
+            unreadManager.markRead("operations", id);
+            updateAnnouncementOverlay();
+        }
     });
 
-    ui.materialDiscoveryStack = materialDiscoveryStack;
+    ui.announcementOverlay = announcementOverlay;
 
     const operationsContent = el(
         "div",
@@ -962,9 +933,9 @@ function render() {
             className: "lab-tab-content operations-tab-content"
         },
         [
-            materialDiscoveryStack,
             materialRecoveryPanel.element,
-            quantumFieldPanel.element
+            quantumFieldPanel.element,
+            announcementOverlay.element
         ]
     );
 
@@ -1087,3 +1058,4 @@ new DebugButton({
         console.log("randomizeMaterialTarget");
     }
 });
+
