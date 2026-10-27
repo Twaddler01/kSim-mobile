@@ -1,4 +1,3 @@
-
 import { el } from "./Element.js";
 import { MaterialIcon } from "./MaterialIcon.js";
 
@@ -28,9 +27,7 @@ export default class GatheringField {
     }
 
     spawnNodes(count = 1) {
-        const occupied = new Set(
-            this.nodes.map(node => `${node.x},${node.y}`)
-        );
+        const occupied = new Set(this.nodes.map(node => `${node.x},${node.y}`));
 
         const available = [];
 
@@ -44,10 +41,7 @@ export default class GatheringField {
 
         for (let i = available.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
-            [available[i], available[j]] = [
-                available[j],
-                available[i]
-            ];
+            [available[i], available[j]] = [available[j], available[i]];
         }
 
         const amount = Math.min(count, available.length);
@@ -58,6 +52,28 @@ export default class GatheringField {
                 ...available[i]
             });
         }
+    }
+
+    gatherNode(node, event = null) {
+        if (!this.nodes.some(item => item.id === node?.id)) {
+            return false;
+        }
+
+        const { materialId, name } = this.field;
+
+        const succeeded = this.onGather?.(event, {
+            id: materialId,
+            name
+        });
+
+        if (succeeded !== true) return false;
+
+        this.nodes = this.nodes.filter(item => item.id !== node.id);
+
+        this.spawnNodes(1);
+        this.update();
+
+        return true;
     }
 
     getElement() {
@@ -77,19 +93,23 @@ export default class GatheringField {
 
         const { id, name, materialId, description } = this.field;
 
-        const heading = el("div", {
-            className: "gathering-heading"
-        }, [
-            el("div", {
-                className: "eyebrow",
-                text: "FIELD OPERATIONS // RAW MATERIALS"
-            }),
-            el("h2", { text: name }),
-            el("p", {
-                className: "muted",
-                text: description
-            })
-        ]);
+        const heading = el(
+            "div",
+            {
+                className: "gathering-heading"
+            },
+            [
+                el("div", {
+                    className: "eyebrow",
+                    text: "FIELD OPERATIONS // RAW MATERIALS"
+                }),
+                el("h2", { text: name }),
+                el("p", {
+                    className: "muted",
+                    text: description
+                })
+            ]
+        );
 
         const plane = el("div", {
             className: "gathering-field"
@@ -99,39 +119,29 @@ export default class GatheringField {
         plane.style.setProperty("--gathering-rows", ROWS);
 
         for (const node of this.nodes) {
-            const button = el("button", {
-                type: "button",
-                className: "gathering-node",
-                "aria-label":
-                    `Gather ${name} node at grid position ` +
-                    `${node.x + 1}, ${node.y + 1}`,
-                onClick: event => {
-                    const succeeded = this.onGather?.(event, {
-                        id: materialId,
-                        name
-                    });
+            const button = el(
+                "button",
+                {
+                    type: "button",
+                    className: "gathering-node",
+                    "aria-label":
+                        `Gather ${name} node at grid position ` +
+                        `${node.x + 1}, ${node.y + 1}`,
+                    onClick: event => {
+                        this.gatherNode(node, event);
+                    }
+                },
+                [
+                    MaterialIcon(materialId, {
+                        size: 30,
+                        className: "gathering-node__icon"
+                    })
+                ]
+            );
 
-                    if (succeeded !== true) return;
+            button.style.left = `${((node.x + 0.5) / COLUMNS) * 100}%`;
 
-                    this.nodes = this.nodes.filter(
-                        item => item.id !== node.id
-                    );
-
-                    this.spawnNodes(1);
-                    this.update();
-                }
-            }, [
-                MaterialIcon(materialId, {
-                    size: 30,
-                    className: "gathering-node__icon"
-                })
-            ]);
-
-            button.style.left =
-                `${((node.x + 0.5) / COLUMNS) * 100}%`;
-
-            button.style.top =
-                `${((node.y + 0.5) / ROWS) * 100}%`;
+            button.style.top = `${((node.y + 0.5) / ROWS) * 100}%`;
 
             plane.append(button);
         }

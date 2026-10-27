@@ -1175,6 +1175,7 @@ body:not(.debug-mode) {
     opacity: 0.8;
 }
 
+.ui-badge,
 .tab-unread-badge {
     display: inline-flex;
     align-items: center;
@@ -1189,6 +1190,13 @@ body:not(.debug-mode) {
     font-weight: 700;
     line-height: 1;
     flex-shrink: 0;
+    white-space: nowrap;
+}
+
+/* Text-based NEW badge */
+.ui-badge--new {
+    padding: 0 6px;
+    letter-spacing: 0.04em;
 }
 
 .list-item.is-unread,
@@ -1732,4 +1740,10 @@ body:not(.debug-mode) {
     background: rgba(66, 217, 239, 0.22);
     outline: 2px solid rgba(66, 217, 239, 0.35);
     outline-offset: 2px;
+}
+
+.secondary-button.has-new-field-selection {
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 12px rgba(56, 230, 203, 0.28);
 }

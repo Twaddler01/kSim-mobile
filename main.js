@@ -88,7 +88,9 @@ const FIELD_DEFINITIONS = [
     }
 ];
 
+let fieldWorkView = "selector";
 let gatheringField = null;
+let hasNewFieldSelection = false;
 
 const resourcePopups = new ResourcePopups({
     formatNumber,
@@ -286,9 +288,56 @@ function renderLabTab() {
     return ui.labContent;
 }
 
+
 function renderGatheringTab() {
+    if (fieldWorkView === "field") {
+        return renderFieldWorkContent(renderActiveField());
+    }
+
+    updateFieldCards();
+
+    return renderFieldWorkContent(renderFieldSelector());
+}
+
+function renderFieldSelector() {
+    updateFieldCards();
+    return ui.fieldSelection;
+}
+
+function renderActiveField() {
     gatheringField = getGatheringField();
-    return gatheringField.getElement();
+
+    const selectionButton = Button(
+        "← FIELD SELECTIONS",
+        () => {
+            hasNewFieldSelection = false;
+            fieldWorkView = "selector";
+            ui.fieldSelectionButton = null;
+
+            ui.tabs?.update({ refreshContent: true });
+        },
+        { variant: "secondary-button" }
+    );
+
+    ui.fieldSelectionButton = selectionButton;
+
+    if (hasNewFieldSelection) {
+        selectionButton.classList.add("has-new-field-selection");
+    }
+
+    return el("div", { className: "field-work-active-view" }, [
+        el("div", { className: "field-work-toolbar" }, [
+            selectionButton
+        ]),
+        gatheringField.getElement()
+    ]);
+}
+
+function renderFieldWorkContent(content) {
+    return el("div", { className: "field-work-content" }, [
+        ui.fieldAnnouncementOverlay?.element,
+        content
+    ]);
 }
 
 function renderOperationsTab() {
@@ -341,8 +390,16 @@ function renderLogTab() {
 
 function renderTabContent() {
     const tabDefinitions = [
-        { id: "lab", label: "LAB", render: renderLabTab },
-        { id: "gathering", label: "GATHER", render: renderGatheringTab },
+        {
+            id: "lab",
+            label: "LAB",
+            render: renderLabTab
+        },
+        {
+            id: "gathering",
+            label: "FIELD WORK",
+            render: renderGatheringTab
+        },
         {
             id: "operations",
             label: "OPERATIONS",
@@ -373,9 +430,13 @@ function renderTabContent() {
         unreadManager,
         tabs: tabDefinitions.map(tab => ({
             ...tab,
-            unread: ["observations", "equipment", "log", "operations"].includes(
-                tab.id
-            )
+            unread: [
+                "gathering",
+                "observations",
+                "equipment",
+                "log",
+                "operations"
+            ].includes(tab.id)
         })),
         onChange: id => {
             activeTab = id;
@@ -559,10 +620,21 @@ function unlockField(fieldId) {
     game.operations.fieldUnlocks[fieldId] = {
         unlockedAt: Date.now()
     };
-
-    notifyUnread("operations", `announcement-field-${fieldId}`);
+    
+    // Highlight the return button only if the player is
+    // currently working inside a field.
+    if (activeTab === "gathering" && fieldWorkView === "field") {
+        hasNewFieldSelection = true;
+        ui.fieldSelectionButton?.classList.add(
+            "has-new-field-selection"
+        );
+    }
+    
+    notifyUnread("gathering", `announcement-field-${fieldId}`);
 
     save();
+    updateAnnouncementOverlay();
+
     return true;
 }
 
@@ -651,26 +723,19 @@ function updateFieldCards() {
         const unlocked = Boolean(unlockedFields[field.id]);
         const active = game.operations?.activeFieldId === field.id;
 
-        return el(
+        const selectButton = el(
             "button",
             {
                 type: "button",
-                className: [
-                    "field-selection-card",
-                    unlocked ? "is-unlocked" : "is-locked",
-                    active ? "is-active" : ""
-                ]
-                    .filter(Boolean)
-                    .join(" "),
+                className: "field-selection-card__main",
                 disabled: !unlocked,
                 "aria-label": unlocked
-                    ? `${field.name}${active ? ", selected" : ""}`
+                    ? `Select ${field.name}`
                     : `${field.name}, locked`,
                 onClick: () => {
                     if (!unlocked) return;
 
                     game.operations.activeFieldId = field.id;
-
                     save();
                     updateFieldCards();
                 }
@@ -694,52 +759,60 @@ function updateFieldCards() {
                                 : "Requires 10 Copper Samples"
                         })
                     ]
-                ),
-                
-el("span", {
-    className: "field-selection-card__actions"
-}, [
-    el("span", {
-        className: "field-selection-card__status",
-        text: !unlocked
-            ? "LOCKED"
-            : active
-                ? "SELECTED"
-                : "AVAILABLE"
-    }),
-    ...(unlocked && active
-        ? [
-            Button(
-                "GO",
-                () => {
-                    const fieldId = game.operations.activeFieldId;
-
-                    gatheringField = getGatheringField(fieldId);
-
-                    ui.tabs?.setActiveTab("gathering", {
-                        notify: true
-                    });
-                },
-                {
-                    variant: "primary-button"
-                }
-            )
-        ]
-        : [])
-])
-
+                )
             ]
+        );
+
+        const actions = el(
+            "span",
+            { className: "field-selection-card__actions" },
+            [
+                el("span", {
+                    className: "field-selection-card__status",
+                    text: !unlocked
+                        ? "LOCKED"
+                        : active
+                          ? "SELECTED"
+                          : "AVAILABLE"
+                }),
+                ...(unlocked && active
+                    ? [
+                          Button(
+                              "GO",
+                              () => {
+                                  game.operations.activeFieldId = field.id;
+                                  save();
+
+                                  gatheringField = getGatheringField(field.id);
+                                  fieldWorkView = "field";
+
+                                  ui.tabs?.update({
+                                      refreshContent: true
+                                  });
+                              },
+                              { variant: "primary-button" }
+                          )
+                      ]
+                    : [])
+            ]
+        );
+
+        return el(
+            "div",
+            {
+                className: [
+                    "field-selection-card",
+                    unlocked ? "is-unlocked" : "is-locked",
+                    active ? "is-active" : ""
+                ]
+                    .filter(Boolean)
+                    .join(" ")
+            },
+            [selectButton, actions]
         );
     });
 
     ui.fieldCards.replaceChildren(...cards);
-
-    // Enable GO only when the selected field is unlocked.
-    const selectedFieldId = game.operations?.activeFieldId;
-
-    if (ui.fieldGoButton) {
-        ui.fieldGoButton.disabled = !unlockedFields[selectedFieldId];
-    }
 }
 
 function updateOperationsUI() {
@@ -807,7 +880,6 @@ function updateActiveTabUI() {
 
 function updateAnnouncementOverlay() {
     const materialRecords = game.operations?.discoveredMaterials ?? {};
-
     const fieldUnlockRecords = game.operations?.fieldUnlocks ?? {};
 
     const materialAnnouncements = Object.entries(materialRecords)
@@ -816,7 +888,6 @@ function updateAnnouncementOverlay() {
         )
         .map(([id, record]) => {
             const material = materialDefinitions.find(item => item.id === id);
-
             if (!material) return null;
 
             return {
@@ -835,14 +906,10 @@ function updateAnnouncementOverlay() {
 
     const fieldAnnouncements = Object.entries(fieldUnlockRecords)
         .filter(([fieldId]) =>
-            unreadManager.isUnread(
-                "operations",
-                `announcement-field-${fieldId}`
-            )
+            unreadManager.isUnread("gathering", `announcement-field-${fieldId}`)
         )
         .map(([fieldId, record]) => {
             const field = FIELD_DEFINITIONS.find(item => item.id === fieldId);
-
             if (!field) return null;
 
             return {
@@ -857,26 +924,32 @@ function updateAnnouncementOverlay() {
         })
         .filter(Boolean);
 
-    const announcements = [
-        ...materialAnnouncements,
-        ...fieldAnnouncements
-    ].sort((a, b) => b.discoveredAt - a.discoveredAt);
+    ui.announcementOverlay?.setAnnouncements(materialAnnouncements);
+    ui.fieldAnnouncementOverlay?.setAnnouncements(fieldAnnouncements);
 
-    const nextIds = new Set(announcements.map(item => item.id));
+    const nextIds = new Set([
+        ...materialAnnouncements.map(item => `operations:${item.id}`),
+        ...fieldAnnouncements.map(item => `gathering:${item.id}`)
+    ]);
 
     const hasNewAnnouncement = [...nextIds].some(
         id => !previousAnnouncementIds.has(id)
     );
 
-    ui.announcementOverlay?.setAnnouncements(announcements);
-
     if (hasNewAnnouncement) {
-        const operationsContent = ui.announcementOverlay?.element.parentElement;
+        if (materialAnnouncements.length) {
+            ui.announcementOverlay?.element.parentElement?.scrollTo({
+                top: 0,
+                behavior: "smooth"
+            });
+        }
 
-        operationsContent?.scrollTo({
-            top: 0,
-            behavior: "smooth"
-        });
+        if (fieldAnnouncements.length) {
+            ui.fieldAnnouncementOverlay?.element.parentElement?.scrollTo({
+                top: 0,
+                behavior: "smooth"
+            });
+        }
     }
 
     previousAnnouncementIds = nextIds;
@@ -911,8 +984,12 @@ function updateLabTab() {
 }
 
 function updateGatheringTab() {
-    gatheringField = getGatheringField();
-    gatheringField.update();
+    if (fieldWorkView === "field") {
+        gatheringField = getGatheringField();
+        gatheringField.update();
+    } else {
+        updateFieldCards();
+    }
 }
 
 function updateOperationsTab() {
@@ -1295,7 +1372,16 @@ function render() {
     ui.quantumFieldPanel = quantumFieldPanel;
     ui.materialRecoveryPanel = materialRecoveryPanel;
 
-    const fieldSelection = el(
+    const fieldAnnouncementOverlay = new AnnouncementOverlay({
+        onClose: id => {
+            unreadManager.markRead("gathering", id);
+            updateAnnouncementOverlay();
+        }
+    });
+
+    ui.fieldAnnouncementOverlay = fieldAnnouncementOverlay;
+
+    ui.fieldSelection = el(
         "section",
         {
             className: "field-selection-section"
@@ -1365,7 +1451,6 @@ function render() {
             className: "lab-tab-content operations-tab-content"
         },
         [
-            fieldSelection,
             materialRecoveryPanel.element,
             quantumFieldPanel.element,
             announcementOverlay.element
@@ -1497,5 +1582,29 @@ new DebugButton({
     run: () => {
         const log = kSim.data.log;
         console.log(log);
+    }
+});
+
+
+
+new DebugButton({
+    id: "gather_copper",
+    label: "Gather Copper",
+    run: () => {
+        const copperField = getGatheringField("copper");
+        const node = copperField.nodes[0];
+
+        if (!node) {
+            console.warn("No Copper nodes available.");
+            return;
+        }
+
+        const succeeded = copperField.gatherNode(node);
+
+        console.log(
+            succeeded
+                ? "Copper gathered through the normal field handler."
+                : "Copper gathering failed."
+        );
     }
 });

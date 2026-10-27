@@ -2,6 +2,7 @@ import { el } from "../Element.js";
 import { Component } from "../Component.js";
 import { createTabBar, updateTabBar } from "./createTabBar.js";
 import { createTabPanel } from "./createTabPanel.js";
+import Badge from "../Badge.js";
 
 /**
  * Reusable accessible tabs component.
@@ -314,10 +315,10 @@ export class Tabs extends Component {
 
             if (count <= 0) continue;
 
-            const badge = el("span", {
+            const badge = Badge({
+                text: count,
                 className: "tab-unread-badge",
-                text: String(count),
-                "aria-label": `${count} unread`
+                ariaLabel: `${count} unread`
             });
 
             button.append(badge);

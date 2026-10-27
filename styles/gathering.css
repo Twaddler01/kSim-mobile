@@ -202,3 +202,61 @@ Gathering Field
     font-size: 0.75rem;
     line-height: 1.2;
 }
+
+.field-selection-card {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.field-selection-card__main {
+    display: flex;
+    flex: 1;
+    min-width: 0;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+}
+
+.field-selection-card__main:disabled {
+    opacity: 0.65;
+}
+
+.field-selection-card__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    flex-shrink: 0;
+    padding: 8px 12px 8px 0;
+}
+
+.field-selection-card__status {
+    line-height: 1.2;
+}
+
+.field-selection-card__actions .primary-button {
+    padding: 6px 12px;
+    min-height: 0;
+    font-size: 0.75rem;
+    line-height: 1.2;
+}
+
+.field-work-toolbar {
+    display: flex;
+    justify-content: flex-start;
+    margin-bottom: 12px;
+}
+
+/* FIELD WORK announcement overlay */
+.field-work-content {
+    position: relative;
+    min-width: 0;
+}
