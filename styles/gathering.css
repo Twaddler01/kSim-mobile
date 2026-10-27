@@ -1,0 +1,112 @@
+/* ========================================
+Gathering Field
+======================================== */
+
+.gathering-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    min-width: 0;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.gathering-heading h2 {
+    margin: 6px 0;
+}
+
+.gathering-heading p {
+    margin: 8px 0 0;
+}
+
+.gathering-field {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 12 / 8;
+    min-height: 220px;
+    max-height: 520px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background:
+        radial-gradient(
+            circle at 50% 50%,
+            rgba(90, 167, 255, 0.08),
+            transparent 70%
+        ),
+        var(--panel);
+    isolation: isolate;
+}
+
+/* The grid is logical and intentionally invisible. */
+
+.gathering-node {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    width: 42px;
+    height: 42px;
+    aspect-ratio: 1 / 1;
+    padding: 0;
+    transform: translate(-50%, -50%);
+    border: 1px solid rgba(98, 228, 244, 0.35);
+    border-radius: 50%;
+    color: var(--cyan);
+    background: rgba(12, 27, 45, 0.94);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+        transform 120ms ease,
+        background 120ms ease,
+        border-color 120ms ease;
+}
+
+.gathering-node:active {
+    transform: translate(-50%, -50%) scale(0.9);
+    background: rgba(98, 228, 244, 0.2);
+}
+
+.gathering-node:focus-visible {
+    outline: 2px solid var(--cyan);
+    outline-offset: 3px;
+}
+
+.material-icon {
+    display: block;
+    width: 30px;
+    height: 30px;
+    aspect-ratio: 1 / 1;
+    flex: 0 0 30px;
+    object-fit: contain;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.gathering-node__icon {
+    filter: drop-shadow(0 0 5px rgba(230, 160, 120, 0.3));
+}
+
+.gathering-node {
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+}
+
+.gathering-status {
+    color: var(--muted);
+    font-size: 12px;
+    text-align: right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .gathering-node {
+        transition: none;
+    }
+}

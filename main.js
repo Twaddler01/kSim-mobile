@@ -37,6 +37,7 @@ import UpgradePanel from "./src/ui/UpgradePanel.js";
 import LogPanel from "./src/ui/LogPanel.js";
 import PlanPanel from "./src/ui/PlanPanel.js";
 import { SynthesisPanel } from "./src/ui/SynthesisPanel.js";
+import GatheringField from "./src/ui/GatheringField.js";
 
 import { ensureManufacturingState } from "./src/systems/SynthesisEngine.js";
 
@@ -62,6 +63,7 @@ let toastText = "";
 let toastTimer = null;
 let ui = {};
 let previousAnnouncementIds = new Set();
+let gatheringField = null;
 
 const resourcePopups = new ResourcePopups({
     formatNumber,
@@ -212,6 +214,11 @@ function renderTabContent(labContent, operationsContent) {
             id: "lab",
             label: "LAB",
             render: () => labContent
+        },
+        {
+            id: "gathering",
+            label: "GATHER",
+            render: () => gatheringField.getElement()
         },
         {
             id: "operations",
@@ -966,6 +973,60 @@ function render() {
         formatNumber
     });
 
+    gatheringField ??= new GatheringField({
+        onGather: (event, target) => {
+            const result = recoverMaterial(game, target.id, 1);
+
+            if (!result.ok) {
+                showToast(result.reason);
+                return false;
+            }
+
+            resourcePopups.show(
+                [{ amount: result.amount ?? 1, icon: result.item.icon }],
+                event
+            );
+
+            const newlyDiscovered = discoverMaterial(
+                result.item,
+                "gathering-field"
+            );
+
+            if (newlyDiscovered) {
+                showToast(`New material discovered: ${result.item.name}`);
+            }
+
+            if (result.unlockedQuantumField) {
+                quantumFieldPanel.unlock({
+                    unread: false,
+                    expanded: false
+                });
+
+                logEvent(
+                    game,
+                    "NEW SYSTEM AVAILABLE: Quantum Field unlocked after recovering five Copper Samples.",
+                    {
+                        category: "activity",
+                        tab: "log",
+                        notificationTargets: [
+                            {
+                                tab: "operations",
+                                itemId: "quantum-field"
+                            }
+                        ]
+                    }
+                );
+
+                showToast("Quantum Field unlocked!");
+            }
+
+            save();
+            refreshUI({ database: true });
+
+            return true;
+        }
+    });
+
     const layout = el("div", { className: "game-layout" }, [
         topbar,
         ui.inventory.element,
@@ -1058,4 +1119,3 @@ new DebugButton({
         console.log("randomizeMaterialTarget");
     }
 });
-

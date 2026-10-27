@@ -1,4 +1,7 @@
-import { materialDefinitions, recipeDefinitions } from "../data/manufacturing.js";
+import {
+    materialDefinitions,
+    recipeDefinitions
+} from "../data/manufacturing.js";
 
 const RESOURCE_NAMES = {
     energy: "Quantum Energy",
@@ -21,7 +24,8 @@ export function ensureManufacturingState(game) {
 
     game.manufacturing.completedRecipes ??= [];
     game.manufacturing.unlocked = true;
-    game.manufacturing.machineBuilt = game.inventory.particleReconfigurationArray > 0;
+    game.manufacturing.machineBuilt =
+        game.inventory.particleReconfigurationArray > 0;
     return game.manufacturing;
 }
 
@@ -30,14 +34,18 @@ export function hasDiscovery(game, id) {
 
     // The first check is the preferred stable ID. The other two support
     // common plan-save shapes without requiring plan code to import this system.
-    return (game.discoveries ?? []).includes(id) ||
+    return (
+        (game.discoveries ?? []).includes(id) ||
         (game.completedPlans ?? []).includes("plan-001") ||
         game.plans?.["plan-001"]?.complete === true ||
-        game.planProgress?.["plan-001"]?.complete === true;
+        game.planProgress?.["plan-001"]?.complete === true
+    );
 }
 
 export function recipeUnlocked(game, recipe) {
-    return !recipe.unlock?.discovery || hasDiscovery(game, recipe.unlock.discovery);
+    return (
+        !recipe.unlock?.discovery || hasDiscovery(game, recipe.unlock.discovery)
+    );
 }
 
 export function getCostStatus(game, recipe) {
@@ -69,12 +77,14 @@ export function getCostStatus(game, recipe) {
 }
 
 export function canCraftRecipe(game, recipeOrId) {
-    const recipe = typeof recipeOrId === "string"
-        ? recipeDefinitions.find(item => item.id === recipeOrId)
-        : recipeOrId;
+    const recipe =
+        typeof recipeOrId === "string"
+            ? recipeDefinitions.find(item => item.id === recipeOrId)
+            : recipeOrId;
 
     if (!recipe || !recipeUnlocked(game, recipe)) return false;
-    if (recipe.unique && (game.inventory?.[recipe.output.id] ?? 0) >= 1) return false;
+    if (recipe.unique && (game.inventory?.[recipe.output.id] ?? 0) >= 1)
+        return false;
     return getCostStatus(game, recipe).affordable;
 }
 
@@ -84,10 +94,16 @@ export function craftRecipe(game, recipeId) {
 
     if (!recipe) return { ok: false, reason: "Unknown recipe." };
     if (!recipeUnlocked(game, recipe)) {
-        return { ok: false, reason: "This recipe requires the Temporal Resonance discovery." };
+        return {
+            ok: false,
+            reason: "This recipe requires the Temporal Resonance discovery."
+        };
     }
     if (recipe.unique && (game.inventory[recipe.output.id] ?? 0) >= 1) {
-        return { ok: false, reason: `${recipe.name} has already been assembled.` };
+        return {
+            ok: false,
+            reason: `${recipe.name} has already been assembled.`
+        };
     }
 
     const status = getCostStatus(game, recipe);
@@ -105,7 +121,8 @@ export function craftRecipe(game, recipeId) {
     for (const [id, amount] of Object.entries(recipe.costs?.items ?? {})) {
         game.inventory[id] -= amount;
     }
-    game.inventory[recipe.output.id] = (game.inventory[recipe.output.id] ?? 0) + recipe.output.amount;
+    game.inventory[recipe.output.id] =
+        (game.inventory[recipe.output.id] ?? 0) + recipe.output.amount;
     if (!game.manufacturing.completedRecipes.includes(recipe.id)) {
         game.manufacturing.completedRecipes.push(recipe.id);
     }
@@ -115,7 +132,9 @@ export function craftRecipe(game, recipeId) {
     }
 
     game.log ??= [];
-    game.log.unshift(`SYNTHESIS: ${recipe.name} produced (${recipe.output.amount}).`);
+    game.log.unshift(
+        `SYNTHESIS: ${recipe.name} produced (${recipe.output.amount}).`
+    );
     game.log = game.log.slice(0, 60);
 
     return { ok: true, recipe, output: recipe.output };
@@ -128,9 +147,7 @@ export function craftRecipe(game, recipeId) {
 export function gatherMaterial(game, materialId, amount = 1) {
     ensureManufacturingState(game);
 
-    const material = materialDefinitions.find(
-        item => item.id === materialId
-    );
+    const material = materialDefinitions.find(item => item.id === materialId);
 
     if (!material || material.category !== "raw") {
         return {
@@ -148,13 +165,10 @@ export function gatherMaterial(game, materialId, amount = 1) {
         };
     }
 
-    game.inventory[material.id] =
-        (game.inventory[material.id] ?? 0) + quantity;
+    game.inventory[material.id] = (game.inventory[material.id] ?? 0) + quantity;
 
     game.log ??= [];
-    game.log.unshift(
-        `MATERIAL RECOVERY: +${quantity} ${material.name}.`
-    );
+    game.log.unshift(`MATERIAL RECOVERY: +${quantity} ${material.name}.`);
     game.log = game.log.slice(0, 60);
 
     return {
@@ -170,32 +184,59 @@ export function gatherMaterial(game, materialId, amount = 1) {
  * batch, with chance-based yields. This keeps raw material gathering tied to
  * the existing experiment button rather than adding another currency loop.
  */
-export function gatherMaterialSamples(game, experimentCount = 1, random = Math.random) {
+
+export function gatherMaterialSamples(
+    game,
+    experimentCount = 1,
+    random = Math.random
+) {
     ensureManufacturingState(game);
 
     const drops = [];
     const count = Math.max(1, Math.floor(Number(experimentCount) || 1));
-    const dropTable = [
-        { id: "copper", chance: 0.12 },
-        { id: "silicon", chance: 0.10 },
-        { id: "silica", chance: 0.09 },
-        { id: "aluminum", chance: 0.08 }
-    ];
 
     for (let i = 0; i < count; i++) {
-        for (const drop of dropTable) {
+        for (const drop of MaterialDropTable) {
             if (random() < drop.chance) {
+                // Ignore invalid entries instead of creating
+                // inventory keys for undefined materials.
+                const material = materialDefinitions.find(
+                    item => item.id === drop.id && item.category === "raw"
+                );
+
+                if (!material) continue;
+
                 game.inventory[drop.id] += 1;
+
                 const found = drops.find(item => item.id === drop.id);
-                if (found) found.amount += 1;
-                else drops.push({ id: drop.id, amount: 1 });
+
+                if (found) {
+                    found.amount += 1;
+                } else {
+                    drops.push({
+                        id: drop.id,
+                        amount: 1
+                    });
+                }
             }
         }
     }
 
     if (drops.length) {
         game.log ??= [];
-        game.log.unshift(`MATERIAL RECOVERY: ${drops.map(item => `+${item.amount} ${materialDefinitions.find(def => def.id === item.id).name}`).join(", ")}.`);
+
+        game.log.unshift(
+            `MATERIAL RECOVERY: ${drops
+                .map(item => {
+                    const material = materialDefinitions.find(
+                        definition => definition.id === item.id
+                    );
+
+                    return `+${item.amount} ${material.name}`;
+                })
+                .join(", ")}.`
+        );
+
         game.log = game.log.slice(0, 60);
     }
 

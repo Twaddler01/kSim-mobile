@@ -215,3 +215,10 @@ export const upgradeDefinitions = [
             "Requires at least one level of Field Amplifier or Particle Stabilization."
     }
 ];
+
+export const MaterialDropTable = [
+    { id: "copper", chance: 0.12 },
+    { id: "silicon", chance: 0.10 },
+    { id: "silica", chance: 0.09 },
+    { id: "aluminum", chance: 0.08 }
+];
