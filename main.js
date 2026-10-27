@@ -833,6 +833,11 @@ function render() {
                 return;
             }
 
+            resourcePopups.show(
+                [{ amount: result.amount ?? 1, icon: result.item.icon }],
+                event
+            );
+
             const newlyDiscovered = discoverMaterial(result.item, "recovery");
 
             if (newlyDiscovered) {
