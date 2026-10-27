@@ -1,4 +1,3 @@
-
 import { el } from "./Element.js";
 
 export default class CollapsiblePanel {
@@ -10,55 +9,69 @@ export default class CollapsiblePanel {
         expanded = true,
         unread = false,
         locked = false,
-        onToggle = null
+        onToggle = null,
+        onAcknowledge = null
     }) {
         this.expanded = Boolean(expanded);
         this.unread = Boolean(unread);
         this.locked = Boolean(locked);
         this.status = status;
         this.onToggle = onToggle;
+        this.onAcknowledge = onAcknowledge;
 
         this.element = el("section", {
             className: "sim-card collapsible-panel",
             "data-status": status.toLowerCase()
         });
 
-        this.header = el("button", {
-            className: "collapsible-panel-header",
-            type: "button",
-            "aria-expanded": String(this.expanded),
-            onClick: () => this.toggle()
-        }, [
-            el("div", { className: "collapsible-panel-heading" }, [
-                el("div", {
-                    className: "eyebrow",
-                    text: eyebrow
-                }),
-                el("h2", { text: title })
-            ]),
+        this.header = el(
+            "button",
+            {
+                className: "collapsible-panel-header",
+                type: "button",
+                "aria-expanded": String(this.expanded),
+                onClick: () => this.toggle()
+            },
+            [
+                el("div", { className: "collapsible-panel-heading" }, [
+                    el("div", {
+                        className: "eyebrow",
+                        text: eyebrow
+                    }),
+                    el("h2", { text: title })
+                ]),
 
-            el("div", {
-                className: "collapsible-panel-status"
-            }, [
-                el("span", {
-                    className: "live-indicator",
-                    text: `● ${status}`
-                }),
-                el("span", {
-                    className: "collapsible-panel-unread",
-                    text: "NEW",
-                    "aria-label": "New content"
-                }),
-                el("span", {
-                    className: "collapsible-panel-chevron",
-                    "aria-hidden": "true"
-                })
-            ])
-        ]);
+                el(
+                    "div",
+                    {
+                        className: "collapsible-panel-status"
+                    },
+                    [
+                        el("span", {
+                            className: "live-indicator",
+                            text: `● ${status}`
+                        }),
+                        el("span", {
+                            className: "collapsible-panel-unread",
+                            text: "NEW",
+                            "aria-label": "New content"
+                        }),
+                        el("span", {
+                            className: "collapsible-panel-chevron",
+                            "aria-hidden": "true"
+                        })
+                    ]
+                )
+            ]
+        );
 
-        this.body = el("div", {
-            className: "collapsible-panel-body"
-        }, [content]);
+        this.body = el(
+            "div",
+            {
+                className: "collapsible-panel-body"
+            },
+            [content]
+        );
 
         this.element.append(this.header, this.body);
 
@@ -70,9 +83,9 @@ export default class CollapsiblePanel {
 
         this.setExpanded(!this.expanded);
 
-        // Opening a newly unlocked panel acknowledges its new content.
         if (this.expanded && this.unread) {
             this.setUnread(false);
+            this.onAcknowledge?.();
         }
 
         this.onToggle?.(this.expanded);
@@ -126,18 +139,9 @@ export default class CollapsiblePanel {
 
         this.element.dataset.status = this.status.toLowerCase();
 
-        this.element.classList.toggle(
-            "is-collapsed",
-            !this.expanded
-        );
-        this.element.classList.toggle(
-            "is-locked",
-            this.locked
-        );
-        this.element.classList.toggle(
-            "is-unread",
-            this.unread
-        );
+        this.element.classList.toggle("is-collapsed", !this.expanded);
+        this.element.classList.toggle("is-locked", this.locked);
+        this.element.classList.toggle("is-unread", this.unread);
 
         const indicator = this.header.querySelector(".live-indicator");
         if (indicator) {
@@ -154,16 +158,14 @@ export default class CollapsiblePanel {
             unreadIndicator.hidden = !this.unread || this.locked;
         }
 
-        const chevron = this.header.querySelector(
-            ".collapsible-panel-chevron"
-        );
+        const chevron = this.header.querySelector(".collapsible-panel-chevron");
 
         if (chevron) {
             chevron.textContent = this.locked
                 ? "🔒"
                 : this.expanded
-                    ? "▾"
-                    : "▸";
+                  ? "▾"
+                  : "▸";
         }
     }
 }

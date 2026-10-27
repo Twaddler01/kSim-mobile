@@ -29,21 +29,27 @@ export function addLog(
         onceKey = null
     } = {}
 ) {
+    if (typeof message !== "string" || !message.trim()) {
+        console.warn("Ignored empty log entry:", {
+            message,
+            category,
+            tab
+        });
+        return null;
+    }
+
     game.log ??= [];
     game.logSequence ??= Math.max(0, ...game.log.map(entry => entry.id ?? 0));
     game.logOnce ??= {};
-    
-    const alreadyLogged =
-        onceKey != null && game.logOnce[onceKey];
-    
-    const effectiveCategory = alreadyLogged
-        ? "activity"
-        : category;
-    
+
+    const alreadyLogged = onceKey != null && game.logOnce[onceKey];
+
+    const effectiveCategory = alreadyLogged ? "activity" : category;
+
     if (onceKey != null) {
         game.logOnce[onceKey] = true;
     }
-    
+
     const id = ++game.logSequence;
 
     game.log.unshift({

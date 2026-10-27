@@ -74,12 +74,14 @@ export default class SaveManager {
     }
 
     save(game) {
-        try {
-            localStorage.setItem(this.key, JSON.stringify(game));
-        } catch (error) {
-            console.warn("Could not save Quantum Foundations:", error);
-        }
+    try {
+        localStorage.setItem(this.key, JSON.stringify(game));
+        return true;
+    } catch (error) {
+        console.warn("Could not save Quantum Foundations:", error);
+        return false;
     }
+}
 
     clear() {
         localStorage.removeItem(this.key);

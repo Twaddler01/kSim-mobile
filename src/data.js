@@ -55,7 +55,7 @@ export const initialGameData = {
         items: {
             observations: [],
             equipment: [],
-            log: []
+            log: [1, 2]
         },
         pending: {
             observations: [],

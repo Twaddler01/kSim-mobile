@@ -17,16 +17,24 @@ export default class LogPanel {
     getEntries() {
         const game = this.getGame();
 
-        return (game.log ?? []).map(entry => ({
-            id: entry.id,
-            message: entry.message ?? "",
-            category: entry.category === "important" ? "important" : "activity",
-            timestamp: entry.timestamp ?? null,
-            unread:
-                entry.category === "important" &&
-                this.unreadManager?.isUnread("log", entry.id),
-            link: entry.link ?? null
-        }));
+        return (game.log ?? [])
+            .filter(
+                entry =>
+                    entry.tab === "log" &&
+                    typeof entry.message === "string" &&
+                    entry.message.trim().length > 0
+            )
+            .map(entry => ({
+                id: entry.id,
+                message: entry.message,
+                category:
+                    entry.category === "important" ? "important" : "activity",
+                timestamp: entry.timestamp ?? null,
+                unread:
+                    entry.category === "important" &&
+                    this.unreadManager?.isUnread("log", entry.id),
+                link: entry.link ?? null
+            }));
     }
 
     render() {
