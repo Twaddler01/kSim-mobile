@@ -2,10 +2,43 @@ import { discoveries, upgradeDefinitions } from "./data.js";
 import { evaluateTrigger } from "./triggers/conditions.js";
 import { applyEffects, describeEffects } from "./triggers/effects.js";
 
+export const LOG_RETENTION = {
+    important: 100,
+    activity: 50
+};
+
 export function formatNumber(value) {
     return new Intl.NumberFormat(undefined, {
         maximumFractionDigits: value < 10 ? 1 : 0
     }).format(value || 0);
+}
+
+export function trimLog(game, limits = LOG_RETENTION) {
+    game.log ??= [];
+
+    for (const category of ["important", "activity"]) {
+        const limit = Math.max(
+            0,
+            Math.floor(limits[category] ?? LOG_RETENTION[category])
+        );
+
+        const matching = game.log.filter(entry =>
+            category === "important"
+                ? entry.category === "important"
+                : entry.category !== "important"
+        );
+
+        if (matching.length <= limit) continue;
+
+        // Newest entries are first; remove the oldest excess entries.
+        const removedIds = new Set(
+            matching.slice(limit).map(entry => entry.id)
+        );
+
+        game.log = game.log.filter(
+            entry => !removedIds.has(entry.id)
+        );
+    }
 }
 
 /* 
@@ -61,7 +94,7 @@ export function addLog(
         ...(link ? { link } : {})
     });
 
-    game.log = game.log.slice(0, 60);
+    trimLog(game);
 
     // Explicit targets notify their own tabs independently of log category.
     if (notificationTargets) {

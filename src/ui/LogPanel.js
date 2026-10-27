@@ -11,8 +11,15 @@ export default class LogPanel {
         this.unreadManager = unreadManager;
         this.onChange = onChange;
         this.onNavigate = onNavigate;
+
         this.activeCategory = "important";
         this.element = null;
+
+        this.entries = new Map();
+        this.categoryButtons = new Map();
+        this.categoryCounts = new Map();
+        this.list = null;
+        this.emptyMessage = null;
     }
 
     getEntries() {
@@ -39,132 +46,202 @@ export default class LogPanel {
     }
 
     render() {
-        if (!this.element) {
-            this.element = el("div", {
-                className: "log-panel"
-            });
+        if (this.element) {
+            this.update();
+            return this.element;
         }
+
+        this.element = el("div", {
+            className: "log-panel"
+        });
+
+        const categoryTabs = el("div", {
+            className: "log-category-tabs",
+            role: "group",
+            "aria-label": "Log categories"
+        });
+
+        for (const [category, label] of [
+            ["important", "IMPORTANT"],
+            ["activity", "ACTIVITY"]
+        ]) {
+            const count = el("span", {
+                className: "log-category-count",
+                text: "0"
+            });
+
+            const button = el(
+                "button",
+                {
+                    type: "button",
+                    className: "log-category-button",
+                    "aria-pressed": "false",
+                    onClick: () => {
+                        if (this.activeCategory === category) return;
+
+                        this.activeCategory = category;
+                        this.update();
+                        this.onChange();
+                    }
+                },
+                [el("span", { text: label }), count]
+            );
+
+            this.categoryButtons.set(category, button);
+            this.categoryCounts.set(category, count);
+            categoryTabs.append(button);
+        }
+
+        this.list = el("div", {
+            className: "log-list"
+        });
+
+        this.emptyMessage = el("div", {
+            className: "log-empty"
+        });
+
+        this.element.append(categoryTabs, this.list, this.emptyMessage);
 
         this.update();
         return this.element;
+    }
+
+    createEntry(entry) {
+        const marker = el("span", {
+            className: "log-marker"
+        });
+
+        const messageContainer = el("div", {
+            className: "log-entry-content"
+        });
+
+        const timestamp = el("span", {
+            className: "log-timestamp"
+        });
+
+        messageContainer.append(timestamp);
+
+        const element = el(
+            "div",
+            {
+                className: "log-entry",
+                onClick: () => {
+                    if (this.unreadManager?.isUnread("log", entry.id)) {
+                        this.unreadManager.markRead("log", entry.id);
+                        this.update();
+                    }
+                }
+            },
+            [marker, messageContainer]
+        );
+
+        const record = {
+            element,
+            marker,
+            messageContainer,
+            timestamp,
+            message: null,
+            link: null
+        };
+
+        this.updateEntry(record, entry);
+        this.entries.set(entry.id, record);
+
+        return record;
+    }
+
+    updateEntry(record, entry) {
+        const { element, marker, messageContainer, timestamp } = record;
+
+        element.className =
+            `log-entry log-entry--${entry.category}` +
+            (entry.unread ? " is-unread" : "");
+
+        element.style.display =
+            entry.category === this.activeCategory ? "" : "none";
+
+        marker.textContent = entry.category === "important" ? "!" : "›";
+
+        timestamp.textContent = this.formatTimestamp(entry.timestamp);
+
+        const linkKey = entry.link ? JSON.stringify(entry.link) : null;
+
+        if (record.message !== entry.message || record.link !== linkKey) {
+            const message = this.renderMessage(entry);
+
+            // Keep the timestamp element stable.
+            messageContainer.replaceChildren(message, timestamp);
+
+            record.message = entry.message;
+            record.link = linkKey;
+        }
     }
 
     update() {
         if (!this.element) return this;
 
         const entries = this.getEntries();
+        const activeIds = new Set(entries.map(entry => entry.id));
 
-        const importantCount = entries.filter(
-            entry => entry.category === "important"
-        ).length;
+        let importantCount = 0;
+        let activityCount = 0;
+        let visibleCount = 0;
 
-        const activityCount = entries.filter(
-            entry => entry.category === "activity"
-        ).length;
+        for (const entry of entries) {
+            if (entry.category === "important") {
+                importantCount++;
+            } else {
+                activityCount++;
+            }
 
-        const visibleEntries = entries.filter(
-            entry => entry.category === this.activeCategory
-        );
+            if (entry.category === this.activeCategory) {
+                visibleCount++;
+            }
 
-        const categoryTabs = el(
-            "div",
-            {
-                className: "log-category-tabs",
-                role: "group",
-                "aria-label": "Log categories"
-            },
-            [
-                this.renderCategoryButton(
-                    "important",
-                    "IMPORTANT",
-                    importantCount
-                ),
-                this.renderCategoryButton("activity", "ACTIVITY", activityCount)
-            ]
-        );
+            let record = this.entries.get(entry.id);
 
-        const entryList = visibleEntries.length
-            ? el(
-                  "div",
-                  { className: "log-list" },
-                  visibleEntries.map(entry =>
-                      el(
-                          "div",
-                          {
-                              className:
-                                  `log-entry log-entry--${entry.category}` +
-                                  (entry.unread ? " is-unread" : ""),
-                              onClick: () => {
-                                  if (entry.unread) {
-                                      this.unreadManager?.markRead(
-                                          "log",
-                                          entry.id
-                                      );
-                                      this.update();
-                                  }
-                              }
-                          },
-                          [
-                              el("span", {
-                                  className: "log-marker",
-                                  text:
-                                      entry.category === "important" ? "!" : "›"
-                              }),
-                              el("div", { className: "log-entry-content" }, [
-                                  this.renderMessage(entry),
-                                  el("span", {
-                                      className: "log-timestamp",
-                                      text: this.formatTimestamp(
-                                          entry.timestamp
-                                      )
-                                  })
-                              ])
-                          ]
-                      )
-                  )
-              )
-            : el("div", {
-                  className: "log-empty",
-                  text:
-                      this.activeCategory === "important"
-                          ? "No important events recorded yet."
-                          : "No routine activity recorded yet."
-              });
+            if (!record) {
+                record = this.createEntry(entry);
+                this.list.append(record.element);
+            } else {
+                this.updateEntry(record, entry);
+            }
+        }
 
-        this.element.replaceChildren(categoryTabs, entryList);
+        // Remove entries that no longer exist in the game log.
+        for (const [id, record] of this.entries) {
+            if (!activeIds.has(id)) {
+                record.element.remove();
+                this.entries.delete(id);
+            }
+        }
+
+        this.categoryCounts.get("important").textContent =
+            String(importantCount);
+
+        this.categoryCounts.get("activity").textContent = String(activityCount);
+
+        for (const [category, button] of this.categoryButtons) {
+            const selected = this.activeCategory === category;
+
+            button.className =
+                "log-category-button" +
+                (selected ? " is-active" : "") +
+                (category === "important"
+                    ? " log-category-button--important"
+                    : " log-category-button--activity");
+
+            button.setAttribute("aria-pressed", String(selected));
+        }
+
+        this.emptyMessage.textContent =
+            this.activeCategory === "important"
+                ? "No important events recorded yet."
+                : "No routine activity recorded yet.";
+
+        this.emptyMessage.style.display = visibleCount === 0 ? "" : "none";
 
         return this;
-    }
-
-    renderCategoryButton(category, label, count) {
-        const selected = this.activeCategory === category;
-
-        return el(
-            "button",
-            {
-                type: "button",
-                className:
-                    `log-category-button` +
-                    (selected ? " is-active" : "") +
-                    (category === "important"
-                        ? " log-category-button--important"
-                        : " log-category-button--activity"),
-                "aria-pressed": String(selected),
-                onClick: () => {
-                    if (this.activeCategory === category) return;
-
-                    this.activeCategory = category;
-                    this.onChange();
-                }
-            },
-            [
-                el("span", { text: label }),
-                el("span", {
-                    className: "log-category-count",
-                    text: String(count)
-                })
-            ]
-        );
     }
 
     formatTimestamp(timestamp) {
@@ -195,8 +272,9 @@ export default class LogPanel {
             onClick: event => {
                 event.stopPropagation();
 
-                if (entry.unread) {
-                    this.unreadManager?.markRead("log", entry.id);
+                if (this.unreadManager?.isUnread("log", entry.id)) {
+                    this.unreadManager.markRead("log", entry.id);
+                    this.update();
                 }
 
                 this.onNavigate(link);
@@ -205,7 +283,6 @@ export default class LogPanel {
 
         const index = message.indexOf(link.label);
 
-        // If the label is part of the message, link just that phrase.
         if (index !== -1) {
             return el("span", { className: "log-message" }, [
                 el("span", { text: message.slice(0, index) }),
@@ -216,7 +293,6 @@ export default class LogPanel {
             ]);
         }
 
-        // Otherwise, append a useful link after the message.
         return el("span", { className: "log-message" }, [
             el("span", { text: `${message} ` }),
             linkButton
