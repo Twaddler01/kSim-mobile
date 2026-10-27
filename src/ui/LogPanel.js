@@ -12,6 +12,7 @@ export default class LogPanel {
         this.onChange = onChange;
         this.onNavigate = onNavigate;
         this.activeCategory = "important";
+        this.element = null;
     }
 
     getEntries() {
@@ -38,6 +39,19 @@ export default class LogPanel {
     }
 
     render() {
+        if (!this.element) {
+            this.element = el("div", {
+                className: "log-panel"
+            });
+        }
+
+        this.update();
+        return this.element;
+    }
+
+    update() {
+        if (!this.element) return this;
+
         const entries = this.getEntries();
 
         const importantCount = entries.filter(
@@ -86,6 +100,7 @@ export default class LogPanel {
                                           "log",
                                           entry.id
                                       );
+                                      this.update();
                                   }
                               }
                           },
@@ -116,7 +131,9 @@ export default class LogPanel {
                           : "No routine activity recorded yet."
               });
 
-        return el("div", { className: "log-panel" }, [categoryTabs, entryList]);
+        this.element.replaceChildren(categoryTabs, entryList);
+
+        return this;
     }
 
     renderCategoryButton(category, label, count) {

@@ -1,3 +1,4 @@
+import { el, append } from "./Element.js";
 import { planDefinitions } from "../data/plans.js";
 
 export default class PlanPanel {
@@ -19,10 +20,14 @@ export default class PlanPanel {
         this.onComplete = onComplete;
 
         this.selectedPlanId = planDefinitions[0]?.id ?? null;
+        this.boardPlanId = null;
 
-        this.element = document.createElement("section");
-        this.element.className = "plan-panel";
+        this.planCards = new Map();
+        this.tileButtons = new Map();
 
+        this.element = el("section", {
+            className: "plan-panel"
+        });
         this.render();
     }
 
@@ -44,49 +49,60 @@ export default class PlanPanel {
 
     render() {
         this.element.replaceChildren();
+        this.planCards.clear();
 
-        const heading = document.createElement("div");
-        heading.className = "plan-panel__heading";
+        const heading = el(
+            "div",
+            {
+                className: "plan-panel__heading"
+            },
+            [
+                el("h2", { text: "PLAN" }),
+                el("p", { text: "SCIENTIFIC MODEL ARCHIVE" })
+            ]
+        );
 
-        const title = document.createElement("h2");
-        title.textContent = "PLAN";
-
-        const subtitle = document.createElement("p");
-        subtitle.textContent = "SCIENTIFIC MODEL ARCHIVE";
-
-        heading.append(title, subtitle);
-
-        const cards = document.createElement("div");
-        cards.className = "plan-cards";
+        const cards = el("div", {
+            className: "plan-cards"
+        });
 
         for (const plan of planDefinitions) {
-            const state = this.getPlanState(plan.id);
-            const count = state.revealed.length;
-            const total = plan.tiles.length;
-
-            const card = document.createElement("button");
-            card.type = "button";
-            card.className = "plan-card";
-            card.dataset.selected = String(plan.id === this.selectedPlanId);
-
-            const name = document.createElement("strong");
-            name.textContent = `PLAN ${plan.number}`;
-
-            const description = document.createElement("span");
-            description.textContent = plan.name;
-
-            const progress = document.createElement("span");
-            progress.className = "plan-card__progress";
-            progress.textContent = `${count} / ${total} fragments`;
-
-            card.append(name, description, progress);
-
-            card.addEventListener("click", () => {
-                this.selectedPlanId = plan.id;
-                this.render();
+            const progress = el("span", {
+                className: "plan-card__progress"
             });
 
+            const card = el(
+                "button",
+                {
+                    type: "button",
+                    className: "plan-card",
+                    onClick: () => {
+                        if (this.selectedPlanId === plan.id) {
+                            return;
+                        }
+
+                        this.selectedPlanId = plan.id;
+                        this.renderBoard(plan);
+                        this.update();
+                    }
+                },
+                [
+                    el("strong", {
+                        text: `PLAN ${plan.number}`
+                    }),
+                    el("span", {
+                        text: plan.name
+                    }),
+                    progress
+                ]
+            );
+
             cards.append(card);
+
+            this.planCards.set(plan.id, {
+                element: card,
+                progress
+            });
         }
 
         this.element.append(heading, cards);
@@ -98,41 +114,141 @@ export default class PlanPanel {
         if (plan) {
             this.renderBoard(plan);
         }
+
+        this.update();
     }
 
     renderBoard(plan) {
-        const state = this.getPlanState(plan.id);
-        const revealed = new Set(state.revealed);
-        const completed = plan.tiles.every(tile => revealed.has(tile.id));
+        this.boardSection?.remove();
 
-        const section = document.createElement("section");
-        section.className = "plan-board-section";
+        this.completionArtwork = null;
+        this.boardPlanId = plan.id;
+        this.tileButtons.clear();
 
-        const heading = document.createElement("div");
-        heading.className = "plan-board__heading";
+        const name = el("h3", {
+            text: plan.name
+        });
 
-        const name = document.createElement("h3");
-        name.textContent = plan.name;
+        const progress = el("span");
 
-        const progress = document.createElement("span");
-        progress.textContent = `${revealed.size} / ${plan.tiles.length} REVEALED`;
+        const heading = el(
+            "div",
+            {
+                className: "plan-board__heading"
+            },
+            [name, progress]
+        );
 
-        heading.append(name, progress);
+        const board = el("div", {
+            className: "plan-grid",
+            style: {
+                "--plan-columns": plan.columns,
+                "--plan-rows": plan.rows
+            }
+        });
 
-        const board = document.createElement("div");
-        board.className = "plan-grid";
-        board.style.setProperty("--plan-columns", plan.columns);
-        board.style.setProperty("--plan-rows", plan.rows);
+        const section = el(
+            "section",
+            {
+                className: "plan-board-section"
+            },
+            [heading, board]
+        );
 
-        board.dataset.completed = String(completed);
+        this.element.append(section);
+
+        this.boardSection = section;
+        this.boardProgress = progress;
+        this.boardElement = board;
 
         for (const cell of plan.tiles) {
-            const isRevealed = revealed.has(cell.id);
+            const button = el("button", {
+                type: "button",
+                className: "plan-grid__cell",
+                dataset: {
+                    cellId: cell.id
+                },
+                onClick: () => {
+                    const state = this.getPlanState(plan.id);
+                    const isRevealed = state.revealed.includes(cell.id);
 
-            const button = document.createElement("button");
-            button.type = "button";
-            button.className = "plan-grid__cell";
-            button.dataset.cellId = cell.id;
+                    if (isRevealed) {
+                        this.onCellSelect(plan, cell, {
+                            revealed: true
+                        });
+                        return;
+                    }
+
+                    const success = this.revealTile(plan, cell);
+
+                    if (!success) {
+                        this.onCellSelect(plan, cell, {
+                            revealed: false,
+                            insufficientResearch: true
+                        });
+                    }
+                }
+            });
+
+            board.append(button);
+
+            this.tileButtons.set(cell.id, {
+                element: button,
+                cell
+            });
+        }
+
+        this.updateBoard(plan);
+    }
+
+    update() {
+        // Update every plan card without recreating it.
+        for (const plan of planDefinitions) {
+            const refs = this.planCards.get(plan.id);
+
+            if (!refs) continue;
+
+            const state = this.getPlanState(plan.id);
+            const count = state.revealed.length;
+
+            refs.progress.textContent = `${count} / ${plan.tiles.length} fragments`;
+
+            refs.element.dataset.selected = String(
+                plan.id === this.selectedPlanId
+            );
+        }
+
+        const plan = planDefinitions.find(
+            item => item.id === this.selectedPlanId
+        );
+
+        if (!plan) return;
+
+        // Rebuild the board only when switching to a different plan
+        // or when its board has not yet been created.
+        if (this.boardPlanId !== plan.id || !this.boardElement) {
+            this.renderBoard(plan);
+            return;
+        }
+
+        this.updateBoard(plan);
+    }
+
+    updateBoard(plan) {
+        const state = this.getPlanState(plan.id);
+        const revealed = new Set(state.revealed);
+
+        const completed = plan.tiles.every(tile => revealed.has(tile.id));
+
+        this.boardProgress.textContent = `${revealed.size} / ${plan.tiles.length} REVEALED`;
+
+        this.boardElement.dataset.completed = String(completed);
+
+        // Update existing tile buttons in place.
+        for (const [cellId, refs] of this.tileButtons) {
+            const { element: button, cell } = refs;
+            const isRevealed = revealed.has(cellId);
+
             button.dataset.revealed = String(isRevealed);
 
             button.setAttribute(
@@ -142,66 +258,60 @@ export default class PlanPanel {
                     : `${cell.id}, costs ${cell.cost} research points`
             );
 
-            if (isRevealed) {
-                const expression = document.createElement("span");
-                expression.className = "plan-grid__expression";
-                expression.textContent = cell.expression;
-                button.append(expression);
-            } else {
-                const seal = document.createElement("span");
-                seal.className = "plan-grid__seal";
-                seal.textContent = "?";
+            const currentlyRenderedAsRevealed =
+                button.dataset.renderedRevealed === String(isRevealed);
 
-                const cost = document.createElement("span");
-                cost.className = "plan-grid__cost";
-                cost.textContent = `${cell.cost} RP`;
+            if (currentlyRenderedAsRevealed) continue;
 
-                button.append(seal, cost);
-            }
+            button.replaceChildren();
 
-            // Attach the listener to EVERY tile.
-            button.addEventListener("click", () => {
-                if (isRevealed) {
-                    this.onCellSelect(plan, cell, {
-                        revealed: true
-                    });
-                    return;
-                }
-
-                const success = this.revealTile(plan, cell);
-
-                if (!success) {
-                    this.onCellSelect(plan, cell, {
-                        revealed: false,
-                        insufficientResearch: true
-                    });
-                }
-            });
-
-            // This line is essential!
-            board.append(button);
-        }
-
-        if (completed) {
-            const artwork = document.createElement("img");
-            artwork.className = "plan-board__completed-art";
-            artwork.src = plan.completeSvg;
-            artwork.alt = `Completed formula: ${plan.name}`;
-            artwork.draggable = false;
-
-            artwork.addEventListener(
-                "error",
-                () => {
-                    artwork.remove();
-                },
-                { once: true }
+            append(
+                button,
+                isRevealed
+                    ? el("span", {
+                          className: "plan-grid__expression",
+                          text: cell.expression
+                      })
+                    : [
+                          el("span", {
+                              className: "plan-grid__seal",
+                              text: "?"
+                          }),
+                          el("span", {
+                              className: "plan-grid__cost",
+                              text: `${cell.cost} RP`
+                          })
+                      ]
             );
 
-            section.append(artwork);
+            button.dataset.renderedRevealed = String(isRevealed);
         }
 
-        section.append(heading, board);
-        this.element.append(section);
+        // Add or remove completion artwork only when needed.
+        if (completed && !this.completionArtwork) {
+            const artwork = el("img", {
+                className: "plan-board__completed-art",
+                src: plan.completeSvg,
+                alt: `Completed formula: ${plan.name}`,
+                draggable: false,
+                onError: [
+                    () => {
+                        artwork.remove();
+
+                        if (this.completionArtwork === artwork) {
+                            this.completionArtwork = null;
+                        }
+                    },
+                    { once: true }
+                ]
+            });
+
+            this.boardSection.prepend(artwork);
+            this.completionArtwork = artwork;
+        } else if (!completed && this.completionArtwork) {
+            this.completionArtwork.remove();
+            this.completionArtwork = null;
+        }
     }
 
     revealTile(plan, cell) {
@@ -252,7 +362,8 @@ export default class PlanPanel {
         }
 
         this.save();
-        this.render();
+
+        // The main UI refresh will call update() for the active tab.
         this.refreshUI({ database: true });
 
         return true;
@@ -264,5 +375,10 @@ export default class PlanPanel {
 
     destroy() {
         this.element.remove();
+        this.planCards.clear();
+        this.tileButtons.clear();
+        this.completionArtwork = null;
+        this.boardElement = null;
+        this.boardSection = null;
     }
 }

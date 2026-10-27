@@ -518,6 +518,22 @@ function updateActiveTabUI() {
         case "observations":
             updateObservationsTab();
             break;
+
+        case "equipment":
+            updateEquipmentTab();
+            break;
+
+        case "plan":
+            updatePlanTab();
+            break;
+        
+        case "synthesis":
+            updateSynthesisTab();
+            break; 
+
+        case "log":
+            updateLogTab();
+            break;
     }
 }
 
@@ -607,6 +623,22 @@ function updateOperationsTab() {
 
 function updateObservationsTab() {
     discoveryPanel.update();
+}
+
+function updateEquipmentTab() {
+    upgradePanel.update();
+}
+
+function updatePlanTab() {
+    planPanel.update();
+}
+
+function updateSynthesisTab() {
+    // TODO: SynthesisPanel.update() for in-place updates.
+}
+
+function updateLogTab() {
+    logPanel.update();
 }
 
 function updateSharedUI() {
