@@ -1,5 +1,6 @@
 import { el } from "./Element.js";
 import { MaterialIcon } from "../assets/icons/materials/MaterialIcon.js";
+import { materials } from "../data/materials.js";
 
 const COLUMNS = 12;
 const ROWS = 8;
@@ -47,9 +48,15 @@ export default class GatheringField {
         const amount = Math.min(count, available.length);
 
         for (let i = 0; i < amount; i++) {
+            const materialId = this.selectMaterial();
+
+            if (!materialId) continue;
+
             this.nodes.push({
                 id: this.nextId++,
-                ...available[i]
+                ...available[i],
+                materialId,
+                richness: this.selectRichness()
             });
         }
     }
@@ -59,11 +66,14 @@ export default class GatheringField {
             return false;
         }
 
-        const { materialId, name } = this.field;
+        const material = materials.find(item => item.id === node.materialId);
+
+        if (!material) return false;
 
         const succeeded = this.onGather?.(event, {
-            id: materialId,
-            name
+            id: material.id,
+            name: material.name,
+            richness: node.richness
         });
 
         if (succeeded !== true) return false;
@@ -75,7 +85,6 @@ export default class GatheringField {
 
         return true;
     }
-
     getElement() {
         if (!this.element) {
             this.element = el("section", {
@@ -91,7 +100,7 @@ export default class GatheringField {
     update() {
         if (!this.element) return this;
 
-        const { id, name, materialId, description } = this.field;
+        const { name, description } = this.field;
 
         const heading = el(
             "div",
@@ -119,29 +128,38 @@ export default class GatheringField {
         plane.style.setProperty("--gathering-rows", ROWS);
 
         for (const node of this.nodes) {
-            const button = el(
-                "button",
-                {
-                    type: "button",
-                    className: [
-                        "gathering-node",
-                        `gathering-node--${this.field.visualVariant ?? "default"}`
-                    ].join(" "),
-                    "aria-label":
-                        `Gather ${name} node at grid position ` +
-                        `${node.x + 1}, ${node.y + 1}`,
-                    onClick: event => {
-                        this.gatherNode(node, event);
-                    }
-                },
-                [
-                    MaterialIcon(materialId, {
-                        size: 30,
-                        className: "gathering-node__icon",
-                        variant: "core"
-                    })
-                ]
+            const material = materials.find(
+                item => item.id === node.materialId
             );
+
+            const materialName = material?.name ?? "Unknown material";
+
+            const icon = MaterialIcon(node.materialId, {
+    size: 30,
+    className: "gathering-node__icon",
+    variant: "core"
+});
+
+const scale = 1 + (node.richness - 1) * 0.125;
+
+icon.style.transform = `scale(${scale})`;
+
+const button = el(
+    "button",
+    {
+        type: "button",
+        className: [
+            "gathering-node",
+            `gathering-node--${this.field.visualVariant ?? "default"}`
+        ].join(" "),
+        "aria-label":
+            `Gather ${materialName} deposit, yield ${node.richness}`,
+        onClick: event => {
+            this.gatherNode(node, event);
+        }
+    },
+    [icon]
+);
 
             button.style.left = `${((node.x + 0.5) / COLUMNS) * 100}%`;
 
@@ -158,5 +176,67 @@ export default class GatheringField {
         this.element.replaceChildren(heading, plane, status);
 
         return this;
+    }
+
+    selectMaterial() {
+        const table = this.field.spawnTable ?? [];
+
+        // Backward compatibility while old fields are migrated.
+        if (table.length === 0 && this.field.materialId) {
+            return this.field.materialId;
+        }
+
+        const validEntries = table.filter(
+            entry =>
+                materials.some(material => material.id === entry.materialId) &&
+                Number.isFinite(entry.weight) &&
+                entry.weight > 0
+        );
+
+        const totalWeight = validEntries.reduce(
+            (total, entry) => total + entry.weight,
+            0
+        );
+
+        if (totalWeight === 0) return null;
+
+        let roll = Math.random() * totalWeight;
+
+        for (const entry of validEntries) {
+            roll -= entry.weight;
+
+            if (roll < 0) return entry.materialId;
+        }
+
+        return validEntries[validEntries.length - 1].materialId;
+    }
+
+    selectRichness() {
+        const table = this.field.richnessTable ?? [{ amount: 1, weight: 1 }];
+
+        const validEntries = table.filter(
+            entry =>
+                Number.isFinite(entry.amount) &&
+                entry.amount >= 1 &&
+                Number.isFinite(entry.weight) &&
+                entry.weight > 0
+        );
+
+        const totalWeight = validEntries.reduce(
+            (total, entry) => total + entry.weight,
+            0
+        );
+
+        if (totalWeight === 0) return 1;
+
+        let roll = Math.random() * totalWeight;
+
+        for (const entry of validEntries) {
+            roll -= entry.weight;
+
+            if (roll < 0) return entry.amount;
+        }
+
+        return validEntries[validEntries.length - 1].amount;
     }
 }

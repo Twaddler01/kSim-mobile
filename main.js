@@ -196,11 +196,13 @@ game.operations ??= {};
 game.operations.quantumFieldUnlocked ??= (game.inventory.copper ?? 0) >= 5;
 
 game.operations.unlockedFields ??= {
-    copper: true
+    labValley: true,
+    copper: true,
+    quartz: true
 };
 
-game.operations.unlockedFields.copper = true;
-game.operations.activeFieldId ??= "copper";
+//game.operations.unlockedFields.copper = true;
+game.operations.activeFieldId ??= "stone";
 
 // Initialize or migrate equipment unlocks without creating
 // fresh notifications for conditions already satisfied in a save.
@@ -679,8 +681,11 @@ function getGatheringField(fieldId = game.operations.activeFieldId) {
             new GatheringField({
                 field,
                 onGather: (event, target) => {
-                    const result = recoverMaterial(game, target.id, 1);
-
+                    const result = recoverMaterial(
+                        game,
+                        target.id,
+                        target.richness ?? 1
+                    );
                     if (!result.ok) {
                         showToast(result.reason);
                         return false;
