@@ -21,6 +21,7 @@ export default class UnreadManager {
 
         game.unread.items ??= {};
         game.unread.pending ??= {};
+        game.unread.badgeExcluded ??= {};
 
         return game.unread;
     }
@@ -30,24 +31,32 @@ export default class UnreadManager {
     }
 
     getUnreadCount(tabId) {
-        return this.getUnreadItems(tabId).length;
+        const state = this.getState();
+        const items = state.items[tabId] ?? [];
+        const excluded = state.badgeExcluded[tabId] ?? [];
+
+        return items.filter(id => !excluded.includes(id)).length;
     }
 
     isUnread(tabId, itemId) {
         return this.getUnreadItems(tabId).includes(itemId);
     }
 
-    notify(tabId, itemId) {
+    notify(tabId, itemId, { showBadge = true } = {}) {
         const state = this.getState();
 
         state.items[tabId] ??= [];
+        state.badgeExcluded[tabId] ??= [];
 
         if (state.items[tabId].includes(itemId)) {
             return false;
         }
 
-        // Every notification stays unread until explicitly acknowledged.
         state.items[tabId].push(itemId);
+
+        if (!showBadge && !state.badgeExcluded[tabId].includes(itemId)) {
+            state.badgeExcluded[tabId].push(itemId);
+        }
 
         this.changed();
         return true;
@@ -65,6 +74,10 @@ export default class UnreadManager {
         if (!items.includes(itemId)) return false;
 
         state.items[tabId] = items.filter(id => id !== itemId);
+
+        state.badgeExcluded[tabId] = (state.badgeExcluded[tabId] ?? []).filter(
+            id => id !== itemId
+        );
 
         // Clean up any pending state left by an older save.
         state.pending[tabId] = (state.pending[tabId] ?? []).filter(

@@ -216,18 +216,12 @@ export const upgradeDefinitions = [
     }
 ];
 
-export const MaterialDropTable = [
-    { id: "copper", chance: 0.12 },
-    { id: "silicon", chance: 0.10 },
-    { id: "silica", chance: 0.09 },
-    { id: "aluminum", chance: 0.08 }
-];
-
 export const FIELD_DEFINITIONS = [
     {
         id: "copper",
         name: "Copper Field",
         materialId: "copper",
+        visualVariant: "ore",
         description: "Locate Copper nodes and recover raw samples.",
         unlockTrigger: null
     },
@@ -235,175 +229,15 @@ export const FIELD_DEFINITIONS = [
         id: "silicon",
         name: "Silicon Field",
         materialId: "silicon",
+        visualVariant: "crystal",
         description: "Locate Silicon nodes and recover mineral samples.",
         unlockTrigger: {
             type: "inventoryAmount",
             item: "copper",
-            amount: 30
+            amount: 12
         }
     }
 ];
-
-
-export const MaterialTable = [
-    // LEVEL 1 — Basic minerals and feedstocks
-    {
-        id: "quartz",
-        level: 1,
-        category: "mineral",
-        fieldId: "quartz",
-        chance: 0.30
-    },
-    {
-        id: "silica",
-        level: 1,
-        category: "mineral",
-        fieldId: "quartz",
-        chance: 0.20
-    },
-    {
-        id: "graphite",
-        level: 1,
-        category: "mineral",
-        fieldId: "carbon",
-        chance: 0.16
-    },
-    {
-        id: "clay",
-        level: 1,
-        category: "mineral",
-        fieldId: "surface",
-        chance: 0.20
-    },
-    {
-        id: "sulfur",
-        level: 1,
-        category: "mineral",
-        fieldId: "sulfur",
-        chance: 0.12
-    },
-    {
-        id: "ironOre",
-        level: 1,
-        category: "ore",
-        fieldId: "iron",
-        chance: 0.12
-    },
-
-    // LEVEL 2 — Industrial materials
-    {
-        id: "copper",
-        level: 2,
-        category: "ore",
-        fieldId: "copper",
-        chance: 0.22
-    },
-    {
-        id: "bauxite",
-        level: 2,
-        category: "ore",
-        fieldId: "aluminum",
-        chance: 0.12
-    },
-    {
-        id: "nickelOre",
-        level: 2,
-        category: "ore",
-        fieldId: "nickel",
-        chance: 0.08
-    },
-    {
-        id: "zincOre",
-        level: 2,
-        category: "ore",
-        fieldId: "zinc",
-        chance: 0.10
-    },
-
-    // LEVEL 3 — Advanced materials
-    {
-        id: "lithiumOre",
-        level: 3,
-        category: "ore",
-        fieldId: "lithium",
-        chance: 0.08
-    },
-    {
-        id: "cobaltOre",
-        level: 3,
-        category: "ore",
-        fieldId: "cobalt",
-        chance: 0.06
-    },
-    {
-        id: "titaniumOre",
-        level: 3,
-        category: "ore",
-        fieldId: "titanium",
-        chance: 0.05
-    },
-    {
-        id: "rareEarthOre",
-        level: 3,
-        category: "ore",
-        fieldId: "rareEarth",
-        chance: 0.04
-    },
-
-    // LEVEL 4 — Exotic feedstocks
-    {
-        id: "tungstenOre",
-        level: 4,
-        category: "ore",
-        fieldId: "tungsten",
-        chance: 0.035
-    },
-    {
-        id: "tantalumOre",
-        level: 4,
-        category: "ore",
-        fieldId: "tantalum",
-        chance: 0.025
-    },
-    {
-        id: "platinumOre",
-        level: 4,
-        category: "ore",
-        fieldId: "deepRock",
-        chance: 0.015
-    },
-    {
-        id: "meteoriteFragment",
-        level: 4,
-        category: "anomalous",
-        fieldId: "meteorSite",
-        chance: 0.02
-    },
-
-    // LEVEL 5 — Speculative discoveries
-    {
-        id: "unstableIsotope",
-        level: 5,
-        category: "anomalous",
-        fieldId: "meteorSite",
-        chance: 0.01
-    },
-    {
-        id: "anomalousCrystal",
-        level: 5,
-        category: "anomalous",
-        fieldId: "anomalyZone",
-        chance: 0.005
-    },
-    {
-        id: "quantumParticleTrace",
-        level: 5,
-        category: "discovery",
-        fieldId: "anomalyZone",
-        chance: 0.002
-    }
-];
-
 
 export const RefinementRecipes = [
     {

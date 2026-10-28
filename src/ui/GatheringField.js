@@ -1,5 +1,5 @@
 import { el } from "./Element.js";
-import { MaterialIcon } from "./MaterialIcon.js";
+import { MaterialIcon } from "../assets/icons/materials/MaterialIcon.js";
 
 const COLUMNS = 12;
 const ROWS = 8;
@@ -123,7 +123,10 @@ export default class GatheringField {
                 "button",
                 {
                     type: "button",
-                    className: "gathering-node",
+                    className: [
+                        "gathering-node",
+                        `gathering-node--${this.field.visualVariant ?? "default"}`
+                    ].join(" "),
                     "aria-label":
                         `Gather ${name} node at grid position ` +
                         `${node.x + 1}, ${node.y + 1}`,
@@ -134,7 +137,8 @@ export default class GatheringField {
                 [
                     MaterialIcon(materialId, {
                         size: 30,
-                        className: "gathering-node__icon"
+                        className: "gathering-node__icon",
+                        variant: "core"
                     })
                 ]
             );

@@ -78,10 +78,7 @@ Gathering Field
 
 .material-icon {
     display: block;
-    width: 30px;
-    height: 30px;
-    aspect-ratio: 1 / 1;
-    flex: 0 0 30px;
+    flex: 0 0 auto;
     object-fit: contain;
     pointer-events: none;
     user-select: none;
@@ -97,6 +94,27 @@ Gathering Field
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
+}
+
+/* Field-specific node identities */
+.gathering-node--ore {
+    color: #f0a078;
+    border-color: rgba(240, 160, 120, 0.45);
+    background: rgba(40, 24, 22, 0.94);
+}
+
+.gathering-node--ore .gathering-node__icon {
+    filter: drop-shadow(0 0 5px rgba(230, 140, 90, 0.35));
+}
+
+.gathering-node--crystal {
+    color: #72d9ff;
+    border-color: rgba(114, 217, 255, 0.5);
+    background: rgba(12, 30, 48, 0.94);
+}
+
+.gathering-node--crystal .gathering-node__icon {
+    filter: drop-shadow(0 0 5px rgba(80, 190, 255, 0.35));
 }
 
 .gathering-status {

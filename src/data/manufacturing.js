@@ -8,6 +8,7 @@
  * Keep this file data-only so future formula cards and experimental objects can
  * use the same recipe system.
  */
+
 export const materialDefinitions = [
     {
         id: "copper",

@@ -1,7 +1,6 @@
 
 import { gatherMaterial } from "./SynthesisEngine.js";
 import { materials } from "../data/materials.js";
-import { MaterialDropTable } from "../data.js";
 
 const DEFAULT_TARGET = "copper";
 

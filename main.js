@@ -110,8 +110,8 @@ const unreadManager = new UnreadManager({
     isTabActive: tabId => activeTab === tabId
 });
 
-function notifyUnread(tabId, itemId) {
-    unreadManager.notify(tabId, itemId);
+function notifyUnread(tabId, itemId, options = {}) {
+    unreadManager.notify(tabId, itemId, options);
 }
 
 function logEvent(game, message, options = {}) {
@@ -654,8 +654,13 @@ function unlockField(fieldId) {
     notifyUnread("gathering", `field-${fieldId}`);
 
     // Announcement notification: remains independent.
-    notifyUnread("gathering", `announcement-field-${fieldId}`);
-
+    notifyUnread(
+        "gathering",
+        `announcement-field-${fieldId}`,
+        // Disable extra badge since NEW field-${fieldId} does it
+        { showBadge: false }
+    );
+    
     save();
     updateAnnouncementOverlay();
 
