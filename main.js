@@ -91,7 +91,6 @@ const FIELD_DEFINITIONS = [
 
 let fieldWorkView = "selector";
 let gatheringField = null;
-let hasNewFieldSelection = false;
 
 const resourcePopups = new ResourcePopups({
     formatNumber,
@@ -122,6 +121,7 @@ const unreadManager = new UnreadManager({
     save,
     onChange: () => {
         ui.tabs?.update({ refreshContent: false });
+        updateFieldSelectionButtonBadge();
     },
     isTabActive: tabId => activeTab === tabId
 });
@@ -227,15 +227,9 @@ checkGatheringFieldUnlocks();
 for (const field of FIELD_DEFINITIONS) {
     if (
         game.operations.unlockedFields[field.id] &&
-        unreadManager.isUnread(
-            "gathering",
-            `announcement-field-${field.id}`
-        )
+        unreadManager.isUnread("gathering", `announcement-field-${field.id}`)
     ) {
-        unreadManager.notify(
-            "gathering",
-            `field-${field.id}`
-        );
+        unreadManager.notify("gathering", `field-${field.id}`);
     }
 }
 
@@ -320,13 +314,38 @@ function renderFieldSelector() {
     return ui.fieldSelection;
 }
 
+function hasUnreadFieldContent() {
+    return FIELD_DEFINITIONS.some(field =>
+        unreadManager.isUnread("gathering", `field-${field.id}`)
+    );
+}
+
+function updateFieldSelectionButtonBadge() {
+    const button = ui.fieldSelectionButton;
+
+    if (!button) return;
+
+    // Remove the previous badge before recalculating.
+    button.querySelector(".field-selection-button__badge")?.remove();
+
+    if (!hasUnreadFieldContent()) return;
+
+    button.append(
+        Badge({
+            text: "NEW",
+            variant: "new",
+            className: "field-selection-button__badge",
+            ariaLabel: "New field content"
+        })
+    );
+}
+
 function renderActiveField() {
     gatheringField = getGatheringField();
 
     const selectionButton = Button(
         "← FIELD SELECTIONS",
         () => {
-            hasNewFieldSelection = false;
             fieldWorkView = "selector";
             ui.fieldSelectionButton = null;
 
@@ -337,14 +356,26 @@ function renderActiveField() {
 
     ui.fieldSelectionButton = selectionButton;
 
-    if (hasNewFieldSelection) {
-        selectionButton.classList.add("has-new-field-selection");
-    }
+    // Show NEW if any field-selection content is unread.
+    updateFieldSelectionButtonBadge();
 
-    return el("div", { className: "field-work-active-view" }, [
-        el("div", { className: "field-work-toolbar" }, [selectionButton]),
-        gatheringField.getElement()
-    ]);
+    return el(
+        "div",
+        {
+            className: "field-work-active-view"
+        },
+        [
+            el(
+                "div",
+                {
+                    className: "field-work-toolbar"
+                },
+                [selectionButton]
+            ),
+
+            gatheringField.getElement()
+        ]
+    );
 }
 
 function renderFieldWorkContent(content) {
@@ -634,13 +665,6 @@ function unlockField(fieldId) {
     game.operations.fieldUnlocks[fieldId] = {
         unlockedAt: Date.now()
     };
-
-    // Highlight the return button only if the player is
-    // currently working inside a field.
-    if (activeTab === "gathering" && fieldWorkView === "field") {
-        hasNewFieldSelection = true;
-        ui.fieldSelectionButton?.classList.add("has-new-field-selection");
-    }
 
     // Content notification: controls the NEW badge on the field card.
     notifyUnread("gathering", `field-${fieldId}`);

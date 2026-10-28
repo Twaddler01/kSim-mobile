@@ -256,6 +256,10 @@ Gathering Field
     gap: 8px;
 }
 
+.field-selection-button__badge {
+    margin-left: 8px;
+}
+
 .field-work-toolbar {
     display: flex;
     justify-content: flex-start;
