@@ -218,18 +218,33 @@ export const upgradeDefinitions = [
 
 export const FIELD_DEFINITIONS = [
     {
+        id: "stone",
+        name: "Stone Field",
+        materialId: "stone",
+        visualVariant: "stone",
+        icon: "🪨",
+        description: "Locate stone deposits and recover raw samples.",
+        unlockTrigger: null
+    },
+    {
         id: "copper",
         name: "Copper Field",
         materialId: "copper",
         visualVariant: "ore",
+        icon: "🟠",
         description: "Locate Copper nodes and recover raw samples.",
-        unlockTrigger: null
+        unlockTrigger: {
+            type: "inventoryAmount",
+            item: "stone",
+            amount: 10
+        }
     },
     {
         id: "silicon",
         name: "Silicon Field",
         materialId: "silicon",
         visualVariant: "crystal",
+        icon: "🔹",
         description: "Locate Silicon nodes and recover mineral samples.",
         unlockTrigger: {
             type: "inventoryAmount",

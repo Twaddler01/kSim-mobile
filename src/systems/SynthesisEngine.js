@@ -2,6 +2,7 @@ import {
     materialDefinitions,
     recipeDefinitions
 } from "../data/manufacturing.js";
+import { materials } from "../data/materials.js";
 
 const RESOURCE_NAMES = {
     energy: "Quantum Energy",
@@ -144,10 +145,13 @@ export function craftRecipe(game, recipeId) {
  * Deliberate material gathering.
  * Adds a fixed amount of a defined raw material to inventory.
  */
-export function gatherMaterial(game, materialId, amount = 1) {
-    ensureManufacturingState(game);
 
-    const material = materialDefinitions.find(item => item.id === materialId);
+/**
+ * Deliberate material gathering.
+ * Adds a fixed amount of a defined raw material to inventory.
+ */
+export function gatherMaterial(game, materialId, amount = 1) {
+    const material = materials.find(item => item.id === materialId);
 
     if (!material || material.category !== "raw") {
         return {
@@ -165,6 +169,7 @@ export function gatherMaterial(game, materialId, amount = 1) {
         };
     }
 
+    game.inventory ??= {};
     game.inventory[material.id] = (game.inventory[material.id] ?? 0) + quantity;
 
     game.log ??= [];

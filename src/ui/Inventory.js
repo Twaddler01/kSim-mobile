@@ -31,12 +31,14 @@ export default class Inventory {
                 inventoryType: "resources"
             }));
 
-        // Keep raw materials visible from the beginning.
-        // Show processed items once they have been produced.
+        // Show discovered materials and any processed items already produced.
+        const discoveredMaterials =
+            this.game.operations?.discoveredMaterials ?? {};
+
         const materials = this.materials
             .filter(
                 item =>
-                    item.category === "raw" ||
+                    Boolean(discoveredMaterials[item.id]) ||
                     (this.game.inventory?.[item.id] ?? 0) > 0
             )
             .map(item => ({

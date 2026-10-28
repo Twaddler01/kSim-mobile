@@ -5,6 +5,26 @@ export const materials = [
     // RAW MATERIALS — recovered from gathering fields
     // --------------------------------------------------
     {
+        id: "stone",
+        name: "Stone Sample",
+        category: "raw",
+        subtype: "mineral",
+        tier: 1,
+        icon: "🪨",
+        description: "A rough fragment of common stone recovered from the field.",
+        field: { id: "stone", dropChance: 0.22 }
+    },
+    {
+        id: "quartz",
+        name: "Quartz",
+        category: "raw",
+        subtype: "mineral",
+        tier: 1,
+        icon: "💎",
+        description: "A crystalline mineral suitable for processing.",
+        field: { id: "quartz", dropChance: 0.30 }
+    },
+    {
         id: "copper",
         name: "Copper Sample",
         category: "raw",
@@ -33,16 +53,6 @@ export const materials = [
         icon: "💎",
         description: "A mineral precursor for engineered crystal structures.",
         field: { id: "quartz", dropChance: 0.20 }
-    },
-    {
-        id: "quartz",
-        name: "Quartz",
-        category: "raw",
-        subtype: "mineral",
-        tier: 1,
-        icon: "💎",
-        description: "A crystalline mineral suitable for processing.",
-        field: { id: "quartz", dropChance: 0.30 }
     },
     {
         id: "graphite",

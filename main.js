@@ -27,9 +27,9 @@ import {
 
 import CollapsiblePanel from "./src/ui/CollapsiblePanel.js";
 
-// TODO Migrate ALL materialDefinitions => materials 
+// TODO Migrate ALL materialDefinitions => materials
 import Inventory from "./src/ui/Inventory.js";
-import { materials } from "./src/data/materials.js"
+import { materials } from "./src/data/materials.js";
 
 import ResourcePopups from "./src/ui/ResourcePopups.js";
 import SaveManager from "./src/SaveManager.js";
@@ -126,6 +126,7 @@ function checkGatheringFieldUnlocks() {
     game.operations.unlockedFields ??= {};
 
     game.operations.unlockedFields.copper = true;
+    game.operations.unlockedFields.stone = true;
 
     for (const field of FIELD_DEFINITIONS) {
         if (!field.unlockTrigger) continue;
@@ -660,7 +661,7 @@ function unlockField(fieldId) {
         // Disable extra badge since NEW field-${fieldId} does it
         { showBadge: false }
     );
-    
+
     save();
     updateAnnouncementOverlay();
 
@@ -689,7 +690,8 @@ function getGatheringField(fieldId = game.operations.activeFieldId) {
                         [
                             {
                                 amount: result.amount ?? 1,
-                                icon: result.item.icon
+                                icon: result.item.icon,
+                                materialId: result.item.id
                             }
                         ],
                         event
@@ -772,7 +774,7 @@ function updateFieldCards() {
             [
                 el("span", {
                     className: "field-selection-card__icon",
-                    text: field.materialId === "copper" ? "🟠" : "🔹"
+                    text: field.icon ?? "◈"
                 }),
                 el(
                     "span",
@@ -808,7 +810,9 @@ function updateFieldCards() {
                             className: "field-selection-card__description",
                             text: unlocked
                                 ? field.description
-                                : "Requires 10 Copper Samples"
+                                : `Requires ${field.unlockTrigger?.amount ?? 0} ${
+                                      field.unlockTrigger?.item ?? "resources"
+                                  } Samples`
                         })
                     ]
                 )
@@ -946,7 +950,7 @@ function updateAnnouncementOverlay() {
             unreadManager.isUnread("operations", `material-${id}`)
         )
         .map(([id, record]) => {
-            const material = materialDefinitions.find(item => item.id === id);
+            const material = materials.find(item => item.id === id);
             if (!material) return null;
 
             return {
@@ -1348,7 +1352,13 @@ function render() {
             }
 
             resourcePopups.show(
-                [{ amount: result.amount ?? 1, icon: result.item.icon }],
+                [
+                    {
+                        amount: result.amount ?? 1,
+                        icon: result.item.icon,
+                        materialId: result.item.id
+                    }
+                ],
                 event
             );
 

@@ -1041,6 +1041,10 @@ body:not(.debug-mode) {
     pointer-events: none;
     white-space: nowrap;
 
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
     padding: 5px 9px;
     border: 1px solid rgba(100, 220, 255, 0.35);
     border-radius: 999px;
@@ -1052,6 +1056,13 @@ body:not(.debug-mode) {
 
     transform: translate(-50%, -50%);
     animation: resource-float-up 850ms ease-out forwards;
+}
+
+.resource-float-icon--svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
 }
 
 .resource-gain {
@@ -1746,4 +1757,12 @@ body:not(.debug-mode) {
     border-color: var(--accent);
     color: var(--accent);
     box-shadow: 0 0 12px rgba(56, 230, 203, 0.28);
+}
+
+.orb-material-icon {
+    display: block;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    overflow: visible;
 }

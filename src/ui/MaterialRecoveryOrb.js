@@ -1,4 +1,6 @@
 import { el } from "./Element.js";
+import { createSvgElement } from "../assets/icons/materials/svgHelpers.js";
+import { materialDrawings } from "../assets/icons/materials/materialDrawings.js";
 
 export default class MaterialRecoveryOrb {
     constructor({ getGame, getTarget, onGather }) {
@@ -17,10 +19,39 @@ export default class MaterialRecoveryOrb {
         return this.getTarget();
     }
 
+    createMaterialIcon(target) {
+        const svg = createSvgElement("svg", {
+            class: "orb-material-icon",
+            viewBox: "0 0 48 48",
+            width: "32",
+            height: "32",
+            "aria-hidden": "true",
+            focusable: "false"
+        });
+
+        const drawing = materialDrawings[target.id];
+
+        if (drawing?.core) {
+            drawing.core(svg);
+        } else {
+            // Fall back to the material's existing icon.
+            const text = createSvgElement("text", {
+                x: "24",
+                y: "32",
+                "text-anchor": "middle",
+                "font-size": "28"
+            });
+
+            text.textContent = target.icon ?? "◈";
+            svg.append(text);
+        }
+
+        return svg;
+    }
+
     render() {
         this.symbol = el("span", {
-            className: "orb-symbol",
-            text: this.target.icon
+            className: "orb-symbol"
         });
 
         this.label = el("span", {
@@ -29,8 +60,7 @@ export default class MaterialRecoveryOrb {
         });
 
         this.description = el("span", {
-            className: "orb-sub-label",
-            text: this.target.name.toUpperCase()
+            className: "orb-sub-label"
         });
 
         this.count = el("div", {
@@ -70,7 +100,13 @@ export default class MaterialRecoveryOrb {
     update() {
         const target = this.target;
 
-        this.symbol.textContent = target.icon;
+        // Replace the icon only when the target material changes.
+        if (this.currentIconId !== target.id) {
+            this.symbol.replaceChildren(this.createMaterialIcon(target));
+
+            this.currentIconId = target.id;
+        }
+
         this.label.textContent = "GATHER MATERIALS";
         this.description.textContent = (
             target.description || target.name

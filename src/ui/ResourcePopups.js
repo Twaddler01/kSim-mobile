@@ -1,4 +1,6 @@
 import { el } from "./Element.js";
+import { createSvgElement } from "../assets/icons/materials/svgHelpers.js";
+import { materialDrawings } from "../assets/icons/materials/materialDrawings.js";
 
 export default class ResourcePopups {
     constructor({ formatNumber, maxVisible = 5 } = {}) {
@@ -25,19 +27,28 @@ export default class ResourcePopups {
             const horizontalOffset =
                 (index - (gains.length - 1) / 2) * horizontalSpacing;
 
-            const popup = el("div", {
-                className: `resource-float ${
-                    gain.amount < 0 ? "resource-loss" : "resource-gain"
-                }`,
-                text: `${gain.amount < 0 ? "−" : "+"}${this.formatNumber(
-                    Math.abs(gain.amount)
-                )} ${gain.icon}`,
-                style: {
-                    left: `${x + horizontalOffset}px`,
-                    top: `${y - stackOffset}px`
+            const popup = el(
+                "div",
+                {
+                    className: `resource-float ${
+                        gain.amount < 0 ? "resource-loss" : "resource-gain"
+                    }`,
+                    style: {
+                        left: `${x + horizontalOffset}px`,
+                        top: `${y - stackOffset}px`
+                    },
+                    "aria-hidden": "true"
                 },
-                "aria-hidden": "true"
-            });
+                [
+                    el("span", {
+                        className: "resource-float-amount",
+                        text: `${gain.amount < 0 ? "−" : "+"}${this.formatNumber(
+                            Math.abs(gain.amount)
+                        )}`
+                    }),
+                    this.createIcon(gain)
+                ]
+            );
 
             const entry = { element: popup, timer: null };
             this.active.push(entry);
@@ -71,6 +82,31 @@ export default class ResourcePopups {
         if (index !== -1) {
             this.active.splice(index, 1);
         }
+    }
+
+    createIcon(gain) {
+        const drawing = gain.materialId
+            ? materialDrawings[gain.materialId]
+            : null;
+
+        if (!drawing?.core) {
+            return el("span", {
+                className: "resource-float-icon",
+                text: gain.icon ?? ""
+            });
+        }
+
+        const svg = createSvgElement("svg", {
+            class: "resource-float-icon resource-float-icon--svg",
+            viewBox: "0 0 48 48",
+            width: "20",
+            height: "20",
+            "aria-hidden": "true",
+            focusable: "false"
+        });
+
+        drawing.core(svg);
+        return svg;
     }
 
     destroy() {
