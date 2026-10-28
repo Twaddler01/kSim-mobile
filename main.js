@@ -4,7 +4,8 @@ import {
     initialGameData,
     resourceDefinitions,
     discoveries,
-    upgradeDefinitions
+    upgradeDefinitions,
+    FIELD_DEFINITIONS
 } from "./src/data.js";
 import { el } from "./src/ui/Element.js";
 import { Button } from "./src/ui/Button.js";
@@ -25,7 +26,11 @@ import {
 } from "./src/functions.js";
 
 import CollapsiblePanel from "./src/ui/CollapsiblePanel.js";
+
+// TODO Migrate ALL materialDefinitions => materials 
 import Inventory from "./src/ui/Inventory.js";
+import { materials } from "./src/data/materials.js"
+
 import ResourcePopups from "./src/ui/ResourcePopups.js";
 import SaveManager from "./src/SaveManager.js";
 import { navigateToItem as navigateTabToItem } from "./src/ui/itemNavigation.js";
@@ -67,27 +72,6 @@ let toastTimer = null;
 let ui = {};
 let previousAnnouncementIds = new Set();
 const gatheringFields = new Map();
-
-const FIELD_DEFINITIONS = [
-    {
-        id: "copper",
-        name: "Copper Field",
-        materialId: "copper",
-        description: "Locate Copper nodes and recover raw samples.",
-        unlockTrigger: null
-    },
-    {
-        id: "silicon",
-        name: "Silicon Field",
-        materialId: "silicon",
-        description: "Locate Silicon nodes and recover mineral samples.",
-        unlockTrigger: {
-            type: "inventoryAmount",
-            item: "copper",
-            amount: 10
-        }
-    }
-];
 
 let fieldWorkView = "selector";
 let gatheringField = null;
@@ -1550,7 +1534,7 @@ function render() {
     ui.inventory = new Inventory({
         getGame: () => game,
         resources: resourceDefinitions,
-        materials: materialDefinitions,
+        materials: materials, // OLD materialDefinitions,
         formatNumber
     });
 

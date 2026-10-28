@@ -1,6 +1,6 @@
 
 import { gatherMaterial } from "./SynthesisEngine.js";
-import { materialDefinitions } from "../data/manufacturing.js";
+import { materials } from "../data/materials.js";
 import { MaterialDropTable } from "../data.js";
 
 const DEFAULT_TARGET = "copper";
@@ -9,7 +9,7 @@ export function getRecoveryTarget(game) {
     game.materialRecovery ??= {};
     game.materialRecovery.currentTarget ??= DEFAULT_TARGET;
 
-    const target = materialDefinitions.find(
+    const target = materials.find(
         item => item.id === game.materialRecovery.currentTarget
     );
 
@@ -17,7 +17,7 @@ export function getRecoveryTarget(game) {
     if (!target) {
         game.materialRecovery.currentTarget = DEFAULT_TARGET;
 
-        return materialDefinitions.find(
+        return materials.find(
             item => item.id === DEFAULT_TARGET
         );
     }
@@ -27,7 +27,7 @@ export function getRecoveryTarget(game) {
 
 
 export function selectRandomRecoveryTarget(game) {
-    const candidates = materialDefinitions.filter(
+    const candidates = materials.filter(
         item => item.category === "raw"
     );
 
