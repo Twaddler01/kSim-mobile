@@ -30,6 +30,7 @@ import ResourcePopups from "./src/ui/ResourcePopups.js";
 import SaveManager from "./src/SaveManager.js";
 import { navigateToItem as navigateTabToItem } from "./src/ui/itemNavigation.js";
 import AnnouncementOverlay from "./src/ui/AnnouncementOverlay.js";
+import Badge from "./src/ui/Badge.js";
 
 // TABS
 import DiscoveryPanel from "./src/ui/DiscoveryPanel.js";
@@ -222,6 +223,22 @@ checkUpgradeUnlocks(game, notifyUnread, { notify: false });
 
 checkGatheringFieldUnlocks();
 
+// Migrate existing unread field announcements to field-card badges.
+for (const field of FIELD_DEFINITIONS) {
+    if (
+        game.operations.unlockedFields[field.id] &&
+        unreadManager.isUnread(
+            "gathering",
+            `announcement-field-${field.id}`
+        )
+    ) {
+        unreadManager.notify(
+            "gathering",
+            `field-${field.id}`
+        );
+    }
+}
+
 save();
 
 const discoveryPanel = new DiscoveryPanel({
@@ -288,7 +305,6 @@ function renderLabTab() {
     return ui.labContent;
 }
 
-
 function renderGatheringTab() {
     if (fieldWorkView === "field") {
         return renderFieldWorkContent(renderActiveField());
@@ -326,9 +342,7 @@ function renderActiveField() {
     }
 
     return el("div", { className: "field-work-active-view" }, [
-        el("div", { className: "field-work-toolbar" }, [
-            selectionButton
-        ]),
+        el("div", { className: "field-work-toolbar" }, [selectionButton]),
         gatheringField.getElement()
     ]);
 }
@@ -620,16 +634,18 @@ function unlockField(fieldId) {
     game.operations.fieldUnlocks[fieldId] = {
         unlockedAt: Date.now()
     };
-    
+
     // Highlight the return button only if the player is
     // currently working inside a field.
     if (activeTab === "gathering" && fieldWorkView === "field") {
         hasNewFieldSelection = true;
-        ui.fieldSelectionButton?.classList.add(
-            "has-new-field-selection"
-        );
+        ui.fieldSelectionButton?.classList.add("has-new-field-selection");
     }
-    
+
+    // Content notification: controls the NEW badge on the field card.
+    notifyUnread("gathering", `field-${fieldId}`);
+
+    // Announcement notification: remains independent.
     notifyUnread("gathering", `announcement-field-${fieldId}`);
 
     save();
@@ -751,7 +767,30 @@ function updateFieldCards() {
                         className: "field-selection-card__copy"
                     },
                     [
-                        el("strong", { text: field.name }),
+                        el(
+                            "span",
+                            {
+                                className: "field-selection-card__title"
+                            },
+                            [
+                                el("strong", { text: field.name }),
+
+                                ...(unlocked &&
+                                unreadManager.isUnread(
+                                    "gathering",
+                                    `field-${field.id}`
+                                )
+                                    ? [
+                                          Badge({
+                                              text: "NEW",
+                                              variant: "new",
+                                              ariaLabel: "New field"
+                                          })
+                                      ]
+                                    : [])
+                            ]
+                        ),
+
                         el("span", {
                             className: "field-selection-card__description",
                             text: unlocked
@@ -781,6 +820,13 @@ function updateFieldCards() {
                               "GO",
                               () => {
                                   game.operations.activeFieldId = field.id;
+
+                                  // Acknowledge this field's content notification.
+                                  unreadManager.markRead(
+                                      "gathering",
+                                      `field-${field.id}`
+                                  );
+
                                   save();
 
                                   gatheringField = getGatheringField(field.id);
@@ -1584,8 +1630,6 @@ new DebugButton({
         console.log(log);
     }
 });
-
-
 
 new DebugButton({
     id: "gather_copper",

@@ -249,6 +249,13 @@ Gathering Field
     line-height: 1.2;
 }
 
+.field-selection-card__title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
 .field-work-toolbar {
     display: flex;
     justify-content: flex-start;
