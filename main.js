@@ -9,6 +9,7 @@ import {
 } from "./src/data.js";
 import { el } from "./src/ui/Element.js";
 import { Button } from "./src/ui/Button.js";
+import { Card } from "./src/ui/Card.js";
 import { ProgressBar } from "./src/ui/ProgressBar.js";
 import { Tabs } from "./src/ui/Tabs/Tabs.js";
 import {
@@ -32,7 +33,12 @@ import { materials } from "./src/data/materials.js";
 
 import ResourcePopups from "./src/ui/ResourcePopups.js";
 import SaveManager from "./src/SaveManager.js";
-import { navigateToItem as navigateTabToItem } from "./src/ui/itemNavigation.js";
+
+import {
+    navigateTo as coordinateNavigation,
+    navigateToItem as navigateTabToItem,
+    registerPage
+} from "./src/ui/itemNavigation.js";
 import Badge from "./src/ui/Badge.js";
 
 // TABS
@@ -274,22 +280,56 @@ function updateInventory() {
     ui.inventory?.update();
 }
 
-function navigateTo({ tab } = {}) {
-    if (!ui.tabs || !tab) return false;
-
-    const tabExists = ui.tabs.tabs.some(
-        item => item.id === tab
-    );
-
-    if (!tabExists) return false;
-
-    ui.tabs.setActiveTab(tab, { notify: true });
-    return true;
+function navigateTo(target = {}) {
+    return coordinateNavigation(ui.tabs, target);
 }
 
 function navigateToItem(target) {
     return navigateTabToItem(ui.tabs, target);
 }
+
+function registerFieldNavigationPages() {
+    registerPage("gathering", "selector", {
+        activate: () => {
+            fieldWorkView = "selector";
+            ui.fieldSelectionButton = null;
+            ui.tabs?.update({ refreshContent: true });
+            return true;
+        }
+    });
+
+    for (const field of FIELD_DEFINITIONS) {
+        registerPage("gathering", field.id, {
+            activate: () => {
+                if (!game.operations?.unlockedFields?.[field.id]) {
+                    console.warn(
+                        `[Navigation] Failed: gathering/${field.id}`,
+                        { reason: "field-locked" }
+                    );
+                    return false;
+                }
+
+                game.operations.activeFieldId = field.id;
+
+                unreadManager.markRead(
+                    "gathering",
+                    `field-${field.id}`
+                );
+
+                save();
+
+                gatheringField = getGatheringField(field.id);
+                fieldWorkView = "field";
+
+                ui.tabs?.update({ refreshContent: true });
+
+                return true;
+            }
+        });
+    }
+}
+
+registerFieldNavigationPages();
 
 function renderDatabasePanel(title, count, content) {
     return el("section", { className: "database-view" }, [
@@ -428,7 +468,39 @@ function renderActiveField() {
                 [selectionButton]
             ),
 
-            gatheringField.getElement()
+            gatheringField.getElement(),
+
+            el("div", { className: "field-upgrade-grid" }, [
+                Card(
+                    "Improved Tools",
+                    el("p", {
+                        className: "muted",
+                        text: "Better equipment could improve material recovery."
+                    }),
+                    "FIELD UPGRADE",
+                    {
+                        tabId: "gathering",
+                        itemId: "field-upgrade-tools",
+                        icon: "🛠️",
+                        variant: "upgrade"
+                    }
+                ),
+
+                Card(
+                    "Efficient Extraction",
+                    el("p", {
+                        className: "muted",
+                        text: "Refine field procedures to recover samples more efficiently."
+                    }),
+                    "FIELD UPGRADE",
+                    {
+                        tabId: "gathering",
+                        itemId: "field-upgrade-extraction",
+                        icon: "⚙️",
+                        variant: "upgrade"
+                    }
+                )
+            ])
         ]
     );
 }
@@ -1378,6 +1450,71 @@ new DebugButton({
         });
     }
 });
+
+
+
+
+
+const navigationTests = [
+    {
+        name: "Open FIELD WORK",
+        target: { tab: "gathering" }
+    },
+    {
+        name: "Open field selector",
+        target: { tab: "gathering", pageId: "selector" }
+    },
+    {
+        name: "Open Quartz Field",
+        target: { tab: "gathering", pageId: "copper" }
+    },
+    {
+        name: "Open Quartz upgrade card",
+        target: {
+            tab: "gathering",
+            pageId: "copper",
+            itemId: "field-upgrade-tools"
+        }
+    },
+    {
+        name: "Test invalid page",
+        target: {
+            tab: "gathering",
+            pageId: "not-a-real-field"
+        }
+    }
+];
+
+let navigationTestIndex = 0;
+
+async function runNextNavigationTest() {
+    const test = navigationTests[navigationTestIndex];
+
+    if (!test) {
+        console.log("[Navigation Test] All tests completed. Resetting cycle.");
+        navigationTestIndex = 0;
+        return;
+    }
+
+    console.log(
+        `[Navigation Test ${navigationTestIndex + 1}/${navigationTests.length}] ${test.name}`,
+        test.target
+    );
+
+    const result = await navigateTo(test.target);
+
+    console.log(`[Navigation Test] ${test.name}:`, result);
+
+    navigationTestIndex =
+        (navigationTestIndex + 1) % navigationTests.length;
+}
+
+new DebugButton({
+    id: "navigationTestCycle",
+    label: "Navigation Test →",
+    run: () => runNextNavigationTest()
+});
+
 
 
 

@@ -1623,3 +1623,19 @@ body:not(.debug-mode) {
 .card-body > :last-child {
     margin-bottom: 0;
 }
+
+/* FIELD WORK upgrade-card test layout */
+.field-upgrade-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.field-upgrade-grid .card {
+    min-width: 0;
+}
+
+.field-upgrade-grid .card-body p {
+    margin-bottom: 0;
+}
