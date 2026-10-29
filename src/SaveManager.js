@@ -25,44 +25,91 @@ export default class SaveManager {
             }
 
             const parsed = JSON.parse(saved);
+            const fresh = this.freshGame();
 
             return {
-                ...this.freshGame(),
+                ...fresh,
                 ...parsed,
 
                 resources: {
-                    ...this.initialData.resources,
+                    ...fresh.resources,
                     ...(parsed.resources ?? {})
                 },
 
                 upgrades: {
-                    ...this.initialData.upgrades,
+                    ...fresh.upgrades,
                     ...(parsed.upgrades ?? {})
                 },
+
+                unlockedUpgrades: Array.isArray(parsed.unlockedUpgrades)
+                    ? parsed.unlockedUpgrades
+                    : [...(fresh.unlockedUpgrades ?? [])],
 
                 discoveries: Array.isArray(parsed.discoveries)
                     ? parsed.discoveries
                     : [],
 
-                log: Array.isArray(parsed.log) ? parsed.log : [],
+                log: Array.isArray(parsed.log)
+                    ? parsed.log
+                    : fresh.log,
 
                 triggered: Array.isArray(parsed.triggered)
                     ? parsed.triggered
                     : [],
 
+                logOnce: {
+                    ...(fresh.logOnce ?? {}),
+                    ...(parsed.logOnce ?? {})
+                },
+
+                tabReadIds: {
+                    ...(fresh.tabReadIds ?? {}),
+                    ...(parsed.tabReadIds ?? {})
+                },
+
+                unread: {
+                    ...(fresh.unread ?? {}),
+                    ...(parsed.unread ?? {}),
+                    items: {
+                        ...(fresh.unread?.items ?? {}),
+                        ...(parsed.unread?.items ?? {})
+                    },
+                    pending: {
+                        ...(fresh.unread?.pending ?? {}),
+                        ...(parsed.unread?.pending ?? {})
+                    },
+                    badgeExcluded: {
+                        ...(fresh.unread?.badgeExcluded ?? {}),
+                        ...(parsed.unread?.badgeExcluded ?? {})
+                    }
+                },
+
                 inventory: {
-                    ...(this.initialData.inventory ?? {}),
+                    ...(fresh.inventory ?? {}),
                     ...(parsed.inventory ?? {})
                 },
-                
+
+                operations: {
+                    ...(fresh.operations ?? {}),
+                    ...(parsed.operations ?? {}),
+                    unlockedFields: {
+                        ...(fresh.operations?.unlockedFields ?? {}),
+                        ...(parsed.operations?.unlockedFields ?? {})
+                    },
+                    discoveredMaterials: {
+                        ...(fresh.operations?.discoveredMaterials ?? {}),
+                        ...(parsed.operations?.discoveredMaterials ?? {})
+                    }
+                },
+
                 manufacturing: {
-                    ...(this.initialData.manufacturing ?? {}),
+                    ...(fresh.manufacturing ?? {}),
                     ...(parsed.manufacturing ?? {}),
                     completedRecipes: Array.isArray(
                         parsed.manufacturing?.completedRecipes
                     )
                         ? parsed.manufacturing.completedRecipes
-                        : []
+                        : [...(fresh.manufacturing?.completedRecipes ?? [])]
                 }
             };
         } catch (error) {
@@ -72,14 +119,14 @@ export default class SaveManager {
     }
 
     save(game) {
-    try {
-        localStorage.setItem(this.key, JSON.stringify(game));
-        return true;
-    } catch (error) {
-        console.warn("Could not save Quantum Foundations:", error);
-        return false;
+        try {
+            localStorage.setItem(this.key, JSON.stringify(game));
+            return true;
+        } catch (error) {
+            console.warn("Could not save Quantum Foundations:", error);
+            return false;
+        }
     }
-}
 
     clear() {
         localStorage.removeItem(this.key);
