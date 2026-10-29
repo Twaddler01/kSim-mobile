@@ -4,6 +4,7 @@ export default class Announce {
     constructor({ mountPoint = document.body } = {}) {
         this.mountPoint = mountPoint;
         this.current = null;
+        this.queue = [];
 
         this.element = el("div", {
             className: "ksim-announce",
@@ -20,13 +21,11 @@ export default class Announce {
         });
 
         this.eyebrow = el("div", {
-            className: "ksim-announce__eyebrow",
-            text: "⚠ PRIORITY LAB ALERT"
+            className: "ksim-announce__eyebrow"
         });
 
         this.symbol = el("div", {
             className: "ksim-announce__symbol",
-            text: "◉",
             "aria-hidden": "true"
         });
 
@@ -66,31 +65,47 @@ export default class Announce {
         symbol = "◉",
         onClose = null
     } = {}) {
-        this.current = { onClose };
+        // Queue only in memory. Nothing is persisted or replayed on load.
+        this.queue.push({ title, message, eyebrow, symbol, onClose });
+        this.showNext();
+    }
+
+    showNext() {
+        if (this.current || this.queue.length === 0) return;
+
+        this.current = this.queue.shift();
+
+        const { title, message, eyebrow, symbol } = this.current;
 
         this.eyebrow.textContent = eyebrow;
         this.symbol.textContent = symbol;
         this.titleElement.textContent = title;
         this.messageElement.textContent = message;
 
+        // Restart the entrance animation for each queued announcement.
         this.element.hidden = false;
+        this.panel.style.animation = "none";
+        void this.panel.offsetWidth;
+        this.panel.style.animation = "";
+
         this.closeButton.focus();
     }
 
     close() {
-        if (this.element.hidden) return;
+        if (!this.current) return;
 
-        const current = this.current;
-
+        const finished = this.current;
         this.current = null;
         this.element.hidden = true;
 
-        current?.onClose?.();
+        finished.onClose?.();
+        this.showNext();
     }
 
     destroy() {
-        this.close();
-        this.element.remove();
+        // Destruction discards queued announcements without acknowledging them.
         this.current = null;
+        this.queue.length = 0;
+        this.element.remove();
     }
 }

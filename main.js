@@ -33,7 +33,6 @@ import { materials } from "./src/data/materials.js";
 import ResourcePopups from "./src/ui/ResourcePopups.js";
 import SaveManager from "./src/SaveManager.js";
 import { navigateToItem as navigateTabToItem } from "./src/ui/itemNavigation.js";
-import AnnouncementOverlay from "./src/ui/AnnouncementOverlay.js";
 import Badge from "./src/ui/Badge.js";
 
 // TABS
@@ -67,7 +66,6 @@ let activeTab = "lab";
 let toastText = "";
 let toastTimer = null;
 let ui = {};
-let previousAnnouncementIds = new Set();
 const gatheringFields = new Map();
 const fieldNewBadges = new Map();
 
@@ -76,7 +74,11 @@ let gatheringField = null;
 
 const announce = new Announce();
 
+let announcementsEnabled = false;
+
 function showAnnouncement(announcement) {
+    if (!announcementsEnabled) return;
+
     announce.show({
         title: announcement.title,
         message: announcement.message
@@ -189,11 +191,19 @@ function discoverMaterial(material, source = "recovery") {
         ]
     });
 
+    showAnnouncement({
+        title: "NEW MATERIAL DISCOVERED",
+        message: `${material.name}: ${
+            material.description ??
+            "A new raw material has been added to the research inventory."
+        }`
+    });
+
     return true;
 }
 
 // Process any event triggers already satisfied by a loaded save.
-checkDiscoveries(game, notifyUnread, showAnnouncement);
+checkDiscoveries(game, notifyUnread);
 
 ensureManufacturingState(game);
 
@@ -405,7 +415,6 @@ function renderActiveField() {
 
 function renderFieldWorkContent(content) {
     return el("div", { className: "field-work-content" }, [
-        ui.fieldAnnouncementOverlay?.element,
         content
     ]);
 }
@@ -601,16 +610,16 @@ function unlockField(fieldId) {
     // Content notification: controls the NEW badge on the field card.
     notifyUnread("gathering", `field-${fieldId}`);
 
-    // Announcement notification: remains independent.
-    notifyUnread(
-        "gathering",
-        `announcement-field-${fieldId}`,
-        // Disable extra badge since NEW field-${fieldId} does it
-        { showBadge: false }
-    );
-
     save();
-    updateAnnouncementOverlay();
+
+    const field = FIELD_DEFINITIONS.find(item => item.id === fieldId);
+
+    if (field) {
+        showAnnouncement({
+            title: "NEW FIELD AVAILABLE",
+            message: `${field.name}: ${field.description}`
+        });
+    }
 
     return true;
 }
@@ -792,7 +801,6 @@ function updateFieldCards() {
 
 function updateOperationsUI() {
     // Announcements are independent of the Quantum Field panel.
-    updateAnnouncementOverlay();
     updateFieldCards();
 
     const unlocked = Boolean(game.operations?.quantumFieldUnlocked);
@@ -839,83 +847,6 @@ function updateActiveTabUI() {
             updateLogTab();
             break;
     }
-}
-
-function updateAnnouncementOverlay() {
-    const materialRecords = game.operations?.discoveredMaterials ?? {};
-    const fieldUnlockRecords = game.operations?.fieldUnlocks ?? {};
-
-    const materialAnnouncements = Object.entries(materialRecords)
-        .filter(([id]) =>
-            unreadManager.isUnread("operations", `material-${id}`)
-        )
-        .map(([id, record]) => {
-            const material = materials.find(item => item.id === id);
-            if (!material) return null;
-
-            return {
-                id: `material-${id}`,
-                discoveredAt: record.discoveredAt ?? 0,
-                title: "NEW MATERIAL DISCOVERED",
-                name: material.name,
-                message:
-                    material.description ??
-                    "A new raw material has been added to the research inventory.",
-                icon: material.icon ?? "◈",
-                category: "material"
-            };
-        })
-        .filter(Boolean);
-
-    const fieldAnnouncements = Object.entries(fieldUnlockRecords)
-        .filter(([fieldId]) =>
-            unreadManager.isUnread("gathering", `announcement-field-${fieldId}`)
-        )
-        .map(([fieldId, record]) => {
-            const field = FIELD_DEFINITIONS.find(item => item.id === fieldId);
-            if (!field) return null;
-
-            return {
-                id: `announcement-field-${fieldId}`,
-                discoveredAt: record.unlockedAt ?? 0,
-                title: "NEW FIELD AVAILABLE",
-                name: field.name,
-                message: field.description,
-                icon: "◈",
-                category: "field"
-            };
-        })
-        .filter(Boolean);
-
-    ui.announcementOverlay?.setAnnouncements(materialAnnouncements);
-    ui.fieldAnnouncementOverlay?.setAnnouncements(fieldAnnouncements);
-
-    const nextIds = new Set([
-        ...materialAnnouncements.map(item => `operations:${item.id}`),
-        ...fieldAnnouncements.map(item => `gathering:${item.id}`)
-    ]);
-
-    const hasNewAnnouncement = [...nextIds].some(
-        id => !previousAnnouncementIds.has(id)
-    );
-
-    if (hasNewAnnouncement) {
-        if (materialAnnouncements.length) {
-            ui.announcementOverlay?.element.parentElement?.scrollTo({
-                top: 0,
-                behavior: "smooth"
-            });
-        }
-
-        if (fieldAnnouncements.length) {
-            ui.fieldAnnouncementOverlay?.element.parentElement?.scrollTo({
-                top: 0,
-                behavior: "smooth"
-            });
-        }
-    }
-
-    previousAnnouncementIds = nextIds;
 }
 
 function updateExperimentUI() {
@@ -1231,15 +1162,6 @@ function render() {
 
     ui.quantumFieldPanel = quantumFieldPanel;
 
-    const fieldAnnouncementOverlay = new AnnouncementOverlay({
-        onClose: id => {
-            unreadManager.markRead("gathering", id);
-            updateAnnouncementOverlay();
-        }
-    });
-
-    ui.fieldAnnouncementOverlay = fieldAnnouncementOverlay;
-
     ui.fieldSelection = el(
         "section",
         {
@@ -1293,26 +1215,6 @@ function render() {
             className: "lab-tab-content"
         },
         [intro, resetPanel]
-    );
-
-    const announcementOverlay = new AnnouncementOverlay({
-        onClose: id => {
-            unreadManager.markRead("operations", id);
-            updateAnnouncementOverlay();
-        }
-    });
-
-    ui.announcementOverlay = announcementOverlay;
-
-    ui.operationsContent = el(
-        "div",
-        {
-            className: "lab-tab-content operations-tab-content"
-        },
-        [
-            quantumFieldPanel.element,
-            announcementOverlay.element
-        ]
     );
 
     const topbar = el("header", { className: "topbar" }, [
@@ -1379,6 +1281,8 @@ window.kSim = {
         })
 };
 
+// FINAL STATE
+announcementsEnabled = true;
 render();
 
 // DEBUG AREA
@@ -1441,18 +1345,13 @@ function debugLogState(label = "Manual log check") {
 }
 
 new DebugButton({
-    id: "Baseline",
-    label: "Baseline",
+    id: "testAnnouncement",
+    label: "testAnnouncement",
     run: () => {
-        debugLogState("Baseline");
-    }
-});
-
-new DebugButton({
-    id: "After",
-    label: "After",
-    run: () => {
-        debugLogState("After issue");
+        kSim.testAnnouncement();
+        setTimeout(() => {
+          kSim.testAnnouncement();
+        }, 2000);
     }
 });
 
@@ -1496,11 +1395,4 @@ new DebugButton({
     }
 });
 
-new DebugButton({
-    id: "testAnnouncement",
-    label: "testAnnouncement",
-    run: () => {
-        kSim.testAnnouncement()
-    }
-});
 */
