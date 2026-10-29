@@ -1485,15 +1485,6 @@ new DebugButton({
     }
 });
 
-new DebugButton({
-    id: "silicon",
-    label: "silicon",
-    run: () => {
-        kSim.data.materialRecovery.currentTarget = "silicon";
-        kSim.render();
-        console.log("+Silicon added!");
-    }
-});
 
 
 new DebugButton({
