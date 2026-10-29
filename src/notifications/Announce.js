@@ -39,6 +39,13 @@ export default class Announce {
             id: "ksim-announce-message"
         });
 
+        this.actionButton = el("button", {
+            className: "ksim-announce__action",
+            type: "button",
+            hidden: true,
+            onClick: () => this.goTo()
+        });
+
         this.closeButton = el("button", {
             className: "ksim-announce__close",
             type: "button",
@@ -51,6 +58,7 @@ export default class Announce {
             this.symbol,
             this.titleElement,
             this.messageElement,
+            this.actionButton,
             this.closeButton
         );
 
@@ -63,10 +71,22 @@ export default class Announce {
         message = "",
         eyebrow = "⚠ PRIORITY LAB ALERT",
         symbol = "◉",
-        onClose = null
+        actionLabel = "",
+        onClose = null,
+        onAcknowledge = null,
+        onGoTo = null
     } = {}) {
-        // Queue only in memory. Nothing is persisted or replayed on load.
-        this.queue.push({ title, message, eyebrow, symbol, onClose });
+        this.queue.push({
+            title,
+            message,
+            eyebrow,
+            symbol,
+            actionLabel,
+            onClose,
+            onAcknowledge,
+            onGoTo
+        });
+
         this.showNext();
     }
 
@@ -75,15 +95,22 @@ export default class Announce {
 
         this.current = this.queue.shift();
 
-        const { title, message, eyebrow, symbol } = this.current;
+        const { title, message, eyebrow, symbol, actionLabel, onGoTo } =
+            this.current;
 
         this.eyebrow.textContent = eyebrow;
         this.symbol.textContent = symbol;
         this.titleElement.textContent = title;
         this.messageElement.textContent = message;
 
-        // Restart the entrance animation for each queued announcement.
+        const hasAction = Boolean(actionLabel) && typeof onGoTo === "function";
+
+        this.actionButton.textContent = actionLabel;
+        this.actionButton.hidden = !hasAction;
+
         this.element.hidden = false;
+
+        // Restart the entrance animation for each queued announcement.
         this.panel.style.animation = "none";
         void this.panel.offsetWidth;
         this.panel.style.animation = "";
@@ -92,14 +119,37 @@ export default class Announce {
     }
 
     close() {
+        this.finish("acknowledge");
+    }
+
+    goTo() {
+        if (!this.current) return;
+
+        this.finish("goTo");
+    }
+
+    finish(action) {
         if (!this.current) return;
 
         const finished = this.current;
+
+        // Clear current state before callbacks to prevent duplicate actions.
         this.current = null;
         this.element.hidden = true;
 
-        finished.onClose?.();
-        this.showNext();
+        try {
+            if (action === "acknowledge") {
+                finished.onAcknowledge?.();
+            } else if (action === "goTo") {
+                finished.onGoTo?.();
+            }
+        } finally {
+            try {
+                finished.onClose?.(action);
+            } finally {
+                this.showNext();
+            }
+        }
     }
 
     destroy() {

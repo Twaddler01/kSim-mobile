@@ -78,11 +78,29 @@ let announcementsEnabled = false;
 function showAnnouncement(announcement) {
     if (!announcementsEnabled) return;
 
-    announce.show({
-        title: announcement.title,
-        message: announcement.message
-    });
+    announce.show(announcement);
 }
+
+/*
+
+showAnnouncement({
+    title: "LAB AVAILABLE",
+    message: "Return to the laboratory.",
+    actionLabel: "OPEN LAB",
+    onGoTo: () => navigateTo({ tab: "lab" })
+});
+
+showAnnouncement({
+    title: "NEW DISCOVERY",
+    message: "Review the new discovery in your log.",
+    actionLabel: "VIEW DISCOVERY",
+    onGoTo: () => navigateToItem({
+        tab: "log",
+        itemId: "your-actual-item-id"
+    })
+});
+
+*/
 
 const resourcePopups = new ResourcePopups({
     formatNumber,
@@ -254,6 +272,19 @@ const logPanel = new LogPanel({
 
 function updateInventory() {
     ui.inventory?.update();
+}
+
+function navigateTo({ tab } = {}) {
+    if (!ui.tabs || !tab) return false;
+
+    const tabExists = ui.tabs.tabs.some(
+        item => item.id === tab
+    );
+
+    if (!tabExists) return false;
+
+    ui.tabs.setActiveTab(tab, { notify: true });
+    return true;
 }
 
 function navigateToItem(target) {
@@ -1317,6 +1348,40 @@ new DebugButton({
         }, 2000);
     }
 });
+
+
+new DebugButton({
+    id: "showAnnouncementLab",
+    label: "showAnnouncementLab",
+    run: () => {
+        showAnnouncement({
+            title: "NAV: PLAN TAB",
+            message: "Go to PLAN tab.",
+            actionLabel: "OPEN PLAN",
+            onGoTo: () => navigateTo({ tab: "plan" })
+        });
+    }
+});
+
+new DebugButton({
+    id: "showAnnouncementField",
+    label: "showAnnouncementField",
+    run: () => {
+        showAnnouncement({
+            title: "NEW FIELD",
+            message: "Review the new discovery in FIELD WORK.",
+            actionLabel: "VIEW NOW",
+            onGoTo: () => navigateToItem({
+                tab: "gathering",
+                itemId: "field-quartz"
+            })
+        });
+    }
+});
+
+
+
+
 
 /*
 new DebugButton({
