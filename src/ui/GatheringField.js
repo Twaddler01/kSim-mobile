@@ -187,6 +187,7 @@ export default class GatheringField {
 
         const validEntries = table.filter(
             entry =>
+                entry.materialId !== "quantumParticleTrace" &&
                 materials.some(material => material.id === entry.materialId) &&
                 Number.isFinite(entry.weight) &&
                 entry.weight > 0

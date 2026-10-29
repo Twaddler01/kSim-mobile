@@ -25,7 +25,6 @@ export function ensureManufacturingState(game) {
     }
 
     game.manufacturing.completedRecipes ??= [];
-    game.manufacturing.unlocked = true;
     game.manufacturing.machineBuilt =
         game.inventory.particleReconfigurationArray > 0;
     return game.manufacturing;

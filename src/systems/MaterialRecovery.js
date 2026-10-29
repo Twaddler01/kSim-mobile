@@ -1,5 +1,4 @@
-
-import { gatherMaterial } from "./SynthesisEngine.js";
+import { gatherMaterial } from "./MaterialGathering.js";
 import { materials } from "../data/materials.js";
 
 const DEFAULT_TARGET = "copper";
@@ -16,19 +15,14 @@ export function getRecoveryTarget(game) {
     if (!target) {
         game.materialRecovery.currentTarget = DEFAULT_TARGET;
 
-        return materials.find(
-            item => item.id === DEFAULT_TARGET
-        );
+        return materials.find(item => item.id === DEFAULT_TARGET);
     }
 
     return target;
 }
 
-
 export function selectRandomRecoveryTarget(game) {
-    const candidates = materials.filter(
-        item => item.category === "raw"
-    );
+    const candidates = materials.filter(item => item.category === "raw");
 
     if (candidates.length === 0) {
         return getRecoveryTarget(game);
@@ -37,9 +31,7 @@ export function selectRandomRecoveryTarget(game) {
     const currentId = getRecoveryTarget(game).id;
 
     // Prefer a different material, if the pool has alternatives.
-    const alternatives = candidates.filter(
-        item => item.id !== currentId
-    );
+    const alternatives = candidates.filter(item => item.id !== currentId);
 
     const pool = alternatives.length > 0 ? alternatives : candidates;
     const target = pool[Math.floor(Math.random() * pool.length)];
@@ -51,30 +43,5 @@ export function selectRandomRecoveryTarget(game) {
 
 export function recoverMaterial(game, materialId = null, amount = 1) {
     const targetId = materialId ?? getRecoveryTarget(game).id;
-    const result = gatherMaterial(game, targetId, amount);
-
-    if (!result.ok) {
-        return {
-            ...result,
-            unlockedQuantumField: false
-        };
-    }
-
-    game.operations ??= {};
-
-    let unlockedQuantumField = false;
-
-    if (
-        targetId === "copper" &&
-        !game.operations.quantumFieldUnlocked &&
-        result.total >= 5
-    ) {
-        game.operations.quantumFieldUnlocked = true;
-        unlockedQuantumField = true;
-    }
-
-    return {
-        ...result,
-        unlockedQuantumField
-    };
+    return gatherMaterial(game, targetId, amount);
 }

@@ -27,7 +27,6 @@ import {
 
 import CollapsiblePanel from "./src/ui/CollapsiblePanel.js";
 
-// TODO Migrate ALL materialDefinitions => materials
 import Inventory from "./src/ui/Inventory.js";
 import { materials } from "./src/data/materials.js";
 
@@ -42,18 +41,13 @@ import DiscoveryPanel from "./src/ui/DiscoveryPanel.js";
 import UpgradePanel from "./src/ui/UpgradePanel.js";
 import LogPanel from "./src/ui/LogPanel.js";
 import PlanPanel from "./src/ui/PlanPanel.js";
-import { SynthesisPanel } from "./src/ui/SynthesisPanel.js";
 import GatheringField from "./src/ui/GatheringField.js";
 
 import { ensureManufacturingState } from "./src/systems/SynthesisEngine.js";
 
 import {
-    getRecoveryTarget,
-    recoverMaterial,
-    selectRandomRecoveryTarget
+    recoverMaterial
 } from "./src/systems/MaterialRecovery.js";
-import { materialDefinitions } from "./src/data/manufacturing.js";
-import MaterialRecoveryOrb from "./src/ui/MaterialRecoveryOrb.js";
 
 import UnreadManager from "./src/UnreadManager.js";
 import { evaluateTrigger } from "./src/triggers/conditions.js";
@@ -207,7 +201,8 @@ ensureManufacturingState(game);
 // Existing saves with 5+ Copper should already have Quantum Field unlocked.
 game.operations ??= {};
 
-game.operations.quantumFieldUnlocked ??= (game.inventory.copper ?? 0) >= 5;
+// Quantum Field is temporarily inactive.
+game.operations.quantumFieldUnlocked = false;
 
 game.operations.unlockedFields ??= {
     labValley: true,
@@ -324,11 +319,11 @@ function getFieldNewBadge(fieldId) {
                 tabId: "gathering",
                 itemId: `field-${fieldId}`,
                 getElement: () =>
-                    [...(ui.fieldCards?.querySelectorAll(
-                        "[data-field-title]"
-                    ) ?? [])].find(
-                        element => element.dataset.fieldTitle === fieldId
-                    ),
+                    [
+                        ...(ui.fieldCards?.querySelectorAll(
+                            "[data-field-title]"
+                        ) ?? [])
+                    ].find(element => element.dataset.fieldTitle === fieldId),
                 placement: "inline",
                 ariaLabel: "New field"
             })
@@ -415,36 +410,12 @@ function renderFieldWorkContent(content) {
     ]);
 }
 
-function renderOperationsTab() {
-    return ui.operationsContent;
-}
-
-function renderObservationsTab() {
-    return renderDatabasePanel(
-        "Observation Index",
-        `${game.discoveries.length}/${discoveries.length}`,
-        discoveryPanel.render()
-    );
-}
-
 function renderEquipmentTab() {
     return renderDatabasePanel(
         "Lab Equipment",
         `${Object.values(game.upgrades).reduce((a, b) => a + b, 0)} levels`,
         upgradePanel.render()
     );
-}
-
-function renderSynthesisTab() {
-    return new SynthesisPanel({
-        game,
-        onChange: () => {
-            save();
-            refreshUI({ database: true });
-            showToast("Synthesis complete.");
-        },
-        onToast: showToast
-    }).getElement();
 }
 
 function renderPlanTab() {
@@ -476,27 +447,20 @@ function renderTabContent() {
             render: renderGatheringTab
         },
         {
-            id: "operations",
-            label: "OPERATIONS",
-            render: renderOperationsTab
-        },
-        {
-            id: "observations",
-            label: "OBSERVATIONS",
-            render: renderObservationsTab
-        },
-        {
             id: "equipment",
             label: "EQUIPMENT",
             render: renderEquipmentTab
         },
         {
-            id: "synthesis",
-            label: "SYNTHESIS",
-            render: renderSynthesisTab
+            id: "plan",
+            label: "PLAN",
+            render: renderPlanTab
         },
-        { id: "plan", label: "PLAN", render: renderPlanTab },
-        { id: "log", label: "LAB LOG", render: renderLogTab }
+        {
+            id: "log",
+            label: "LAB LOG",
+            render: renderLogTab
+        }
     ];
 
     const tabs = new Tabs({
@@ -620,10 +584,6 @@ function getExperimentProgress() {
     };
 }
 
-function updateMaterialRecoveryUI() {
-    ui.materialRecoveryOrb?.update();
-}
-
 function unlockField(fieldId) {
     game.operations ??= {};
     game.operations.unlockedFields ??= {};
@@ -698,30 +658,6 @@ function getGatheringField(fieldId = game.operations.activeFieldId) {
                         );
                     }
 
-                    if (result.unlockedQuantumField) {
-                        ui.quantumFieldPanel?.unlock({
-                            unread: false,
-                            expanded: false
-                        });
-
-                        logEvent(
-                            game,
-                            "NEW SYSTEM AVAILABLE: Quantum Field unlocked after recovering five Copper Samples.",
-                            {
-                                category: "activity",
-                                tab: "log",
-                                notificationTargets: [
-                                    {
-                                        tab: "operations",
-                                        itemId: "quantum-field"
-                                    }
-                                ]
-                            }
-                        );
-
-                        showToast("Quantum Field unlocked!");
-                    }
-
                     checkGatheringFieldUnlocks();
                     save();
                     refreshUI({ database: true });
@@ -778,9 +714,7 @@ function updateFieldCards() {
                                 className: "field-selection-card__title",
                                 dataset: { fieldTitle: field.id }
                             },
-                            [
-                                el("strong", { text: field.name }),
-                            ]
+                            [el("strong", { text: field.name })]
                         ),
 
                         el("span", {
@@ -893,24 +827,12 @@ function updateActiveTabUI() {
             updateGatheringTab();
             break;
 
-        case "operations":
-            updateOperationsTab();
-            break;
-
-        case "observations":
-            updateObservationsTab();
-            break;
-
         case "equipment":
             updateEquipmentTab();
             break;
 
         case "plan":
             updatePlanTab();
-            break;
-
-        case "synthesis":
-            updateSynthesisTab();
             break;
 
         case "log":
@@ -1033,20 +955,6 @@ function updateGatheringTab() {
     }
 }
 
-function updateOperationsTab() {
-    updateOperationsUI();
-    updateExperimentUI();
-    updateMaterialRecoveryUI();
-}
-
-function updateObservationsTab() {
-    discoveryPanel.update();
-
-    updateActiveDatabaseCount(
-        `${game.discoveries.length}/${discoveries.length}`
-    );
-}
-
 function updateEquipmentTab() {
     upgradePanel.update();
 
@@ -1057,10 +965,6 @@ function updateEquipmentTab() {
 
 function updatePlanTab() {
     planPanel.update();
-}
-
-function updateSynthesisTab() {
-    // TODO: SynthesisPanel.update() for in-place updates.
 }
 
 function updateLogTab() {
@@ -1083,12 +987,8 @@ function refreshUI({ database = false } = {}) {
     updateSharedUI();
 
     if (database) {
-        // Refresh navigation and unread indicators independently.
-        // Synthesis still uses its full-render fallback until it has
-        // a dedicated in-place updater.
-        const refreshContent = activeTab === "synthesis";
-
-        ui.tabs.update({ refreshContent });
+        /// Refresh navigation, unread indicators, and the active panel.
+        ui.tabs.update({ refreshContent: true });
     }
 
     updateActiveTabUI();
@@ -1316,96 +1216,10 @@ function render() {
         experimentProgress
     ]);
 
-    const materialRecoveryOrb = new MaterialRecoveryOrb({
-        getGame: () => game,
-        getTarget: () => getRecoveryTarget(game),
-
-        onGather: (event, target) => {
-            const result = recoverMaterial(game, target.id, 1);
-
-            if (!result.ok) {
-                showToast(result.reason);
-                return;
-            }
-
-            resourcePopups.show(
-                [
-                    {
-                        amount: result.amount ?? 1,
-                        icon: result.item.icon,
-                        materialId: result.item.id
-                    }
-                ],
-                event
-            );
-
-            const newlyDiscovered = discoverMaterial(result.item, "recovery");
-
-            if (newlyDiscovered) {
-                showToast(`New material discovered: ${result.item.name}`);
-            }
-
-            if (result.unlockedQuantumField) {
-                quantumFieldPanel.unlock({
-                    unread: false,
-                    expanded: false
-                });
-
-                logEvent(
-                    game,
-                    "NEW SYSTEM AVAILABLE: Quantum Field unlocked after recovering five Copper Samples.",
-                    {
-                        category: "activity",
-                        tab: "log",
-                        notificationTargets: [
-                            {
-                                tab: "operations",
-                                itemId: "quantum-field"
-                            }
-                        ]
-                    }
-                );
-
-                showToast("Quantum Field unlocked!");
-            }
-
-            save();
-            refreshUI({ database: true });
-        }
-    });
-
-    ui.materialRecoveryOrb = materialRecoveryOrb;
-
-    const materialRecoveryContent = el(
-        "div",
-        { className: "field-panel-content" },
-        [
-            el("p", {
-                className: "muted",
-                text: "Recover raw materials for future synthesis and equipment."
-            }),
-
-            materialRecoveryOrb.getElement(),
-
-            el("p", {
-                className: "bonus-description",
-                text: "DEBUG: Recover 5 Copper to unlock Quantum Field."
-            })
-        ]
-    );
-
-    const materialRecoveryPanel = new CollapsiblePanel({
-        eyebrow: "FIELD OPERATIONS",
-        title: "Material Recovery",
-        status: "ONLINE",
-        content: materialRecoveryContent,
-        expanded: true
-    });
-
     const quantumFieldPanel = new CollapsiblePanel({
-        eyebrow: "ACTIVE SYSTEM",
+        eyebrow: "INACTIVE SYSTEM",
         title: "Quantum Field",
-        status: game.operations.quantumFieldUnlocked ? "AVAILABLE" : "LOCKED",
+        status: "INACTIVE",
         content: fieldContent,
         expanded: false,
         locked: !game.operations.quantumFieldUnlocked,
@@ -1416,7 +1230,6 @@ function render() {
     });
 
     ui.quantumFieldPanel = quantumFieldPanel;
-    ui.materialRecoveryPanel = materialRecoveryPanel;
 
     const fieldAnnouncementOverlay = new AnnouncementOverlay({
         onClose: id => {
@@ -1497,7 +1310,6 @@ function render() {
             className: "lab-tab-content operations-tab-content"
         },
         [
-            materialRecoveryPanel.element,
             quantumFieldPanel.element,
             announcementOverlay.element
         ]
@@ -1526,7 +1338,7 @@ function render() {
     ui.inventory = new Inventory({
         getGame: () => game,
         resources: resourceDefinitions,
-        materials: materials, // OLD materialDefinitions,
+        materials,
         formatNumber
     });
 
@@ -1560,21 +1372,11 @@ window.kSim = {
     experiment: runExperiments,
     clearStorage: () => saveManager.clear(),
     reset: resetGame,
-    // DEBUG
-    randomizeMaterialTarget: () => {
-        const target = selectRandomRecoveryTarget(game);
-
-        ui.materialRecoveryOrb?.update();
-        save();
-
-        showToast(`Recovery target: ${target.name}`);
-
-        return target;
-    },
-    testAnnouncement: () => showAnnouncement({
-        title: "NOTIFICATION TEST",
-        message: "The new announcement system is working."
-    })
+    testAnnouncement: () =>
+        showAnnouncement({
+            title: "NOTIFICATION TEST",
+            message: "The new announcement system is working."
+        })
 };
 
 render();
@@ -1590,10 +1392,11 @@ function debugLogState(label = "Manual log check") {
         time: new Date().toISOString(),
         logLength: entries.length,
 
-        visibleLogEntries: entries.filter(entry =>
-            entry?.tab === "log" &&
-            typeof entry.message === "string" &&
-            entry.message.trim().length > 0
+        visibleLogEntries: entries.filter(
+            entry =>
+                entry?.tab === "log" &&
+                typeof entry.message === "string" &&
+                entry.message.trim().length > 0
         ).length,
 
         entries: entries.map(entry => ({
@@ -1653,10 +1456,6 @@ new DebugButton({
     }
 });
 
-
-
-
-
 /*
 new DebugButton({
     id: "DebugButton",
@@ -1696,14 +1495,6 @@ new DebugButton({
     }
 });
 
-new DebugButton({
-    id: "randomizeMaterialTarget",
-    label: "randomizeMaterialTarget",
-    run: () => {
-        kSim.randomizeMaterialTarget();
-        console.log("randomizeMaterialTarget");
-    }
-});
 
 new DebugButton({
     id: "labLog",
