@@ -49,9 +49,7 @@ export default class SaveManager {
                     ? parsed.discoveries
                     : [],
 
-                log: Array.isArray(parsed.log)
-                    ? parsed.log
-                    : fresh.log,
+                log: Array.isArray(parsed.log) ? parsed.log : fresh.log,
 
                 triggered: Array.isArray(parsed.triggered)
                     ? parsed.triggered
@@ -110,6 +108,10 @@ export default class SaveManager {
                     )
                         ? parsed.manufacturing.completedRecipes
                         : [...(fresh.manufacturing?.completedRecipes ?? [])]
+                },
+                unlocks: {
+                    ...(fresh.unlocks ?? {}),
+                    ...(parsed.unlocks ?? {})
                 }
             };
         } catch (error) {

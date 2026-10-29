@@ -33,6 +33,7 @@ import { materials } from "./src/data/materials.js";
 
 import ResourcePopups from "./src/ui/ResourcePopups.js";
 import SaveManager from "./src/SaveManager.js";
+import UnlockManager from "./src/UnlockManager.js";
 
 import {
     navigateTo as coordinateNavigation,
@@ -69,6 +70,30 @@ const saveManager = new SaveManager({
 const app = document.getElementById("app");
 
 let game = saveManager.load();
+
+const unlockManager = new UnlockManager(game);
+
+// Migrate existing field states without overwriting saved unlocks.
+game.operations ??= {};
+game.operations.unlockedFields ??= {};
+game.unlocks ??= {};
+
+for (const field of FIELD_DEFINITIONS) {
+    if (typeof game.unlocks[field.id] !== "boolean") {
+        game.unlocks[field.id] =
+            game.operations.unlockedFields[field.id] === true;
+    }
+}
+
+for (const field of FIELD_DEFINITIONS) {
+    unlockManager.registerUnlock({
+        id: field.id,
+        initialUnlocked: false,
+        trigger: field.unlockTrigger
+    });
+}
+
+
 let activeTab = "lab";
 let ui = {};
 const gatheringFields = new Map();
@@ -157,18 +182,24 @@ function logEvent(game, message, options = {}) {
 function checkGatheringFieldUnlocks() {
     game.operations ??= {};
     game.operations.unlockedFields ??= {};
+    game.operations.fieldUnlocks ??= {};
 
-    game.operations.unlockedFields.copper = true;
-    game.operations.unlockedFields.stone = true;
+    const newlyUnlocked = unlockManager.checkUnlocks();
 
-    for (const field of FIELD_DEFINITIONS) {
-        if (!field.unlockTrigger) continue;
+    for (const fieldId of newlyUnlocked) {
+        const field = FIELD_DEFINITIONS.find(
+            item => item.id === fieldId
+        );
 
-        if (game.operations.unlockedFields[field.id]) continue;
+        // Compatibility mirror for the existing UI and navigation.
+        game.operations.unlockedFields[fieldId] = true;
 
-        if (!evaluateTrigger(game, field.unlockTrigger)) continue;
+        // Preserve existing timestamp and notification behavior.
+        game.operations.fieldUnlocks[fieldId] = {
+            unlockedAt: Date.now()
+        };
 
-        if (!unlockField(field.id)) continue;
+        notifyUnread("gathering", `field-${fieldId}`);
 
         logEvent(game, `NEW FIELD AVAILABLE: ${field.name} unlocked.`, {
             category: "activity",
@@ -176,10 +207,25 @@ function checkGatheringFieldUnlocks() {
         });
 
         showToast(`${field.name} unlocked!`);
+
+        showAnnouncement({
+            title: "NEW FIELD AVAILABLE",
+            message: `${field.name}: ${field.description}`
+        });
+    }
+
+    // Keep the old UI's field map synchronized with manager state.
+    for (const field of FIELD_DEFINITIONS) {
+        game.operations.unlockedFields[field.id] =
+            unlockManager.isUnlocked(field.id);
     }
 
     if (!game.operations.unlockedFields[game.operations.activeFieldId]) {
-        game.operations.activeFieldId = "copper";
+        const firstUnlocked = FIELD_DEFINITIONS.find(
+            field => unlockManager.isUnlocked(field.id)
+        );
+
+        game.operations.activeFieldId = firstUnlocked?.id ?? null;
     }
 }
 
@@ -658,37 +704,6 @@ function getExperimentProgress() {
             : finalRequirement,
         max: nextDiscovery ? nextRequirement : finalRequirement
     };
-}
-
-function unlockField(fieldId) {
-    game.operations ??= {};
-    game.operations.unlockedFields ??= {};
-    game.operations.fieldUnlocks ??= {};
-
-    if (game.operations.unlockedFields[fieldId]) {
-        return false;
-    }
-
-    game.operations.unlockedFields[fieldId] = true;
-    game.operations.fieldUnlocks[fieldId] = {
-        unlockedAt: Date.now()
-    };
-
-    // Content notification: controls the NEW badge on the field card.
-    notifyUnread("gathering", `field-${fieldId}`);
-
-    save();
-
-    const field = FIELD_DEFINITIONS.find(item => item.id === fieldId);
-
-    if (field) {
-        showAnnouncement({
-            title: "NEW FIELD AVAILABLE",
-            message: `${field.name}: ${field.description}`
-        });
-    }
-
-    return true;
 }
 
 function getGatheringField(fieldId = game.operations.activeFieldId) {
@@ -1515,20 +1530,21 @@ new DebugButton({
     run: () => runNextNavigationTest()
 });
 
-
-
-
-
-
-/*
 new DebugButton({
-    id: "DebugButton",
-    label: "Debug Button",
+    id: "DebugButton1",
+    label: "unlockManager.unlock(stone)",
     run: () => {
-        console.log("Debug Button clicked!");
+        console.log(unlockManager.isUnlocked("stone"));
+        unlockManager.unlock("stone")
+        console.log('unlock: stone');
+        console.log(
+            unlockManager.isUnlocked("stone")
+        );
     }
 });
 
+
+/*
 new DebugButton({
     id: "add_100_energy",
     label: "Add +100 energy",
