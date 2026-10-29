@@ -53,6 +53,7 @@ import { evaluateTrigger } from "./src/triggers/conditions.js";
 
 import Announce from "./src/notifications/Announce.js";
 import NewBadge from "./src/notifications/NewBadge.js";
+import Toast from "./src/notifications/Toast.js";
 
 const saveManager = new SaveManager({
     key: "ksim-quantum-foundations-v1",
@@ -63,8 +64,6 @@ const app = document.getElementById("app");
 
 let game = saveManager.load();
 let activeTab = "lab";
-let toastText = "";
-let toastTimer = null;
 let ui = {};
 const gatheringFields = new Map();
 const fieldNewBadges = new Map();
@@ -487,35 +486,10 @@ function renderTabContent() {
     return tabs.element;
 }
 
-function updateToast() {
-    if (!ui.layout) return;
+const toast = new Toast();
 
-    if (!toastText) {
-        ui.toast?.remove();
-        ui.toast = null;
-        return;
-    }
-
-    if (!ui.toast) {
-        ui.toast = el("div", {
-            className: "toast-message",
-            role: "status"
-        });
-        ui.layout.append(ui.toast);
-    }
-
-    ui.toast.textContent = toastText;
-}
-
-function showToast(message) {
-    toastText = message;
-    updateToast();
-
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => {
-        toastText = "";
-        updateToast();
-    }, 1800);
+function showToast(message, options) {
+    toast.show(message, options);
 }
 
 function runExperiments(count = 1, event = null, costs = []) {
@@ -896,7 +870,6 @@ function updateLogTab() {
 
 function updateSharedUI() {
     updateInventory();
-    updateToast();
 }
 
 function refreshUI({ database = false } = {}) {
