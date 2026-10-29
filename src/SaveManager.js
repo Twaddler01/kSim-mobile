@@ -50,8 +50,6 @@ export default class SaveManager {
                     ? parsed.triggered
                     : [],
 
-                announcement: parsed.announcement ?? null,
-
                 inventory: {
                     ...(this.initialData.inventory ?? {}),
                     ...(parsed.inventory ?? {})

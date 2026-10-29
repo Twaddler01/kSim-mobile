@@ -58,6 +58,9 @@ import MaterialRecoveryOrb from "./src/ui/MaterialRecoveryOrb.js";
 import UnreadManager from "./src/UnreadManager.js";
 import { evaluateTrigger } from "./src/triggers/conditions.js";
 
+import Announce from "./src/notifications/Announce.js";
+import NewBadge from "./src/notifications/NewBadge.js";
+
 const saveManager = new SaveManager({
     key: "ksim-quantum-foundations-v1",
     initialData: initialGameData
@@ -72,9 +75,19 @@ let toastTimer = null;
 let ui = {};
 let previousAnnouncementIds = new Set();
 const gatheringFields = new Map();
+const fieldNewBadges = new Map();
 
 let fieldWorkView = "selector";
 let gatheringField = null;
+
+const announce = new Announce();
+
+function showAnnouncement(announcement) {
+    announce.show({
+        title: announcement.title,
+        message: announcement.message
+    });
+}
 
 const resourcePopups = new ResourcePopups({
     formatNumber,
@@ -106,6 +119,7 @@ const unreadManager = new UnreadManager({
     onChange: () => {
         ui.tabs?.update({ refreshContent: false });
         updateFieldSelectionButtonBadge();
+        refreshFieldNewBadges();
     },
     isTabActive: tabId => activeTab === tabId
 });
@@ -185,7 +199,7 @@ function discoverMaterial(material, source = "recovery") {
 }
 
 // Process any event triggers already satisfied by a loaded save.
-checkDiscoveries(game);
+checkDiscoveries(game, notifyUnread, showAnnouncement);
 
 ensureManufacturingState(game);
 
@@ -299,6 +313,35 @@ function renderGatheringTab() {
 function renderFieldSelector() {
     updateFieldCards();
     return ui.fieldSelection;
+}
+
+function getFieldNewBadge(fieldId) {
+    if (!fieldNewBadges.has(fieldId)) {
+        fieldNewBadges.set(
+            fieldId,
+            new NewBadge({
+                unreadManager,
+                tabId: "gathering",
+                itemId: `field-${fieldId}`,
+                getElement: () =>
+                    [...(ui.fieldCards?.querySelectorAll(
+                        "[data-field-title]"
+                    ) ?? [])].find(
+                        element => element.dataset.fieldTitle === fieldId
+                    ),
+                placement: "inline",
+                ariaLabel: "New field"
+            })
+        );
+    }
+
+    return fieldNewBadges.get(fieldId);
+}
+
+function refreshFieldNewBadges() {
+    for (const field of FIELD_DEFINITIONS) {
+        getFieldNewBadge(field.id).refresh();
+    }
 }
 
 function hasUnreadFieldContent() {
@@ -501,18 +544,6 @@ function updateToast() {
     ui.toast.textContent = toastText;
 }
 
-function updateAnnouncement() {
-    ui.announcement?.remove();
-    ui.announcement = null;
-
-    const announcement = renderAnnouncement();
-
-    if (announcement && ui.layout) {
-        ui.announcement = announcement;
-        ui.layout.append(announcement);
-    }
-}
-
 function showToast(message) {
     toastText = message;
     updateToast();
@@ -525,7 +556,7 @@ function showToast(message) {
 }
 
 function runExperiments(count = 1, event = null, costs = []) {
-    const result = stir(game, count, notifyUnread);
+    const result = stir(game, count, notifyUnread, showAnnouncement);
 
     const changes = [
         ...costs,
@@ -555,52 +586,6 @@ function runExperiments(count = 1, event = null, costs = []) {
     save();
     refreshUI({ database: true });
     resourcePopups.show(popups, event);
-}
-
-function renderAnnouncement() {
-    const announcement = game.announcement;
-    if (!announcement) return null;
-
-    return el(
-        "div",
-        {
-            className: "announcement-overlay",
-            role: "alertdialog",
-            "aria-modal": "true",
-            "aria-label": announcement.title
-        },
-        [
-            el("section", { className: "announcement-panel" }, [
-                el("div", {
-                    className: "announcement-eyebrow",
-                    text: "⚠ PRIORITY LAB ALERT"
-                }),
-                el("div", {
-                    className: "announcement-symbol",
-                    text: "◉"
-                }),
-                el("h2", {
-                    text: announcement.title
-                }),
-                el("p", {
-                    text: announcement.message
-                }),
-                el("p", {
-                    className: "announcement-detail",
-                    text: "A new observation has been added to the laboratory database."
-                }),
-                Button(
-                    "ACKNOWLEDGE",
-                    () => {
-                        game.announcement = null;
-                        save();
-                        render();
-                    },
-                    { variant: "primary-button" }
-                )
-            ])
-        ]
-    );
 }
 
 function getExperimentProgress() {
@@ -790,24 +775,11 @@ function updateFieldCards() {
                         el(
                             "span",
                             {
-                                className: "field-selection-card__title"
+                                className: "field-selection-card__title",
+                                dataset: { fieldTitle: field.id }
                             },
                             [
                                 el("strong", { text: field.name }),
-
-                                ...(unlocked &&
-                                unreadManager.isUnread(
-                                    "gathering",
-                                    `field-${field.id}`
-                                )
-                                    ? [
-                                          Badge({
-                                              text: "NEW",
-                                              variant: "new",
-                                              ariaLabel: "New field"
-                                          })
-                                      ]
-                                    : [])
                             ]
                         ),
 
@@ -881,6 +853,7 @@ function updateFieldCards() {
     });
 
     ui.fieldCards.replaceChildren(...cards);
+    refreshFieldNewBadges();
 }
 
 function updateOperationsUI() {
@@ -1099,7 +1072,6 @@ function updateLogTab() {
 function updateSharedUI() {
     updateInventory();
     updateToast();
-    updateAnnouncement();
 }
 
 function refreshUI({ database = false } = {}) {
@@ -1580,7 +1552,7 @@ window.kSim = {
     save,
     render,
     stir: (multiplier = 1) => {
-        const result = stir(game, multiplier, notifyUnread);
+        const result = stir(game, multiplier, notifyUnread, showAnnouncement);
         save();
         refreshUI({ database: true });
         return result;
@@ -1598,10 +1570,16 @@ window.kSim = {
         showToast(`Recovery target: ${target.name}`);
 
         return target;
-    }
+    },
+    testAnnouncement: () => showAnnouncement({
+        title: "NOTIFICATION TEST",
+        message: "The new announcement system is working."
+    })
 };
 
 render();
+
+// DEBUG AREA
 
 new DebugButton({
     id: "DebugButton",
@@ -1660,23 +1638,9 @@ new DebugButton({
 });
 
 new DebugButton({
-    id: "gather_copper",
-    label: "Gather Copper",
+    id: "testAnnouncement",
+    label: "testAnnouncement",
     run: () => {
-        const copperField = getGatheringField("copper");
-        const node = copperField.nodes[0];
-
-        if (!node) {
-            console.warn("No Copper nodes available.");
-            return;
-        }
-
-        const succeeded = copperField.gatherNode(node);
-
-        console.log(
-            succeeded
-                ? "Copper gathered through the normal field handler."
-                : "Copper gathering failed."
-        );
+        kSim.testAnnouncement()
     }
 });

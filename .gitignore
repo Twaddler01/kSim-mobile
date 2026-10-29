@@ -1,0 +1,8 @@
+# Keystore files
+*.jks
+*.keystore
+
+# Debug
+**/node_modules/
+**/notes/
+**/gitignored/

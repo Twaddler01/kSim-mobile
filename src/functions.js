@@ -35,9 +35,7 @@ export function trimLog(game, limits = LOG_RETENTION) {
             matching.slice(limit).map(entry => entry.id)
         );
 
-        game.log = game.log.filter(
-            entry => !removedIds.has(entry.id)
-        );
+        game.log = game.log.filter(entry => !removedIds.has(entry.id));
     }
 }
 
@@ -170,7 +168,11 @@ export function upgradeCost(definition, level) {
     return cost;
 }
 
-export function checkDiscoveries(game, onUnread = () => {}) {
+export function checkDiscoveries(
+    game,
+    onUnread = () => {},
+    onAnnouncement = () => {}
+) {
     // Unlock ordinary observations through experiment milestones.
     for (const discovery of discoveries) {
         if (discovery.hidden) continue;
@@ -233,10 +235,10 @@ export function checkDiscoveries(game, onUnread = () => {}) {
         if (evaluateTrigger(game, trigger)) {
             game.triggered.push(observation.id);
 
-            game.announcement = {
+            onAnnouncement({
                 id: observation.id,
                 ...observation.announcement
-            };
+            });
 
             addLog(
                 game,
@@ -263,7 +265,12 @@ export function checkDiscoveries(game, onUnread = () => {}) {
     }
 }
 
-export function stir(game, multiplier = 1, onUnread = () => {}) {
+export function stir(
+    game,
+    multiplier = 1,
+    onUnread = () => {},
+    onAnnouncement = () => {}
+) {
     const result = {
         energy: 0,
         particles: 0,
@@ -297,7 +304,7 @@ export function stir(game, multiplier = 1, onUnread = () => {}) {
         }
 
         // Check milestones before evaluating the anomaly event for the next experiment.
-        checkDiscoveries(game, onUnread);
+        checkDiscoveries(game, onUnread, onAnnouncement);
         if (
             game.discoveries.includes("quantumAnomaly") &&
             Math.random() < 0.03

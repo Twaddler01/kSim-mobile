@@ -571,7 +571,6 @@ h2 {
     }
 }
 
-/* Triggered event announcement */
 .announcement-overlay {
     position: fixed;
     inset: 0;
@@ -581,54 +580,6 @@ h2 {
     padding: 1.25rem;
     background: rgba(2, 8, 18, 0.84);
     backdrop-filter: blur(8px);
-}
-
-.announcement-panel {
-    width: 100%;
-    max-width: 440px;
-    padding: 1.5rem;
-    border: 1px solid rgba(103, 217, 255, 0.5);
-    border-radius: 18px;
-    background: #0b1929;
-    box-shadow:
-        0 0 36px rgba(35, 166, 220, 0.18),
-        0 20px 60px rgba(0, 0, 0, 0.5);
-    text-align: center;
-}
-
-.announcement-eyebrow {
-    color: #ffcf78;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-}
-
-.announcement-symbol {
-    margin: 1rem 0;
-    color: #67d9ff;
-    font-size: 3rem;
-    text-shadow: 0 0 24px rgba(103, 217, 255, 0.7);
-}
-
-.announcement-panel h2 {
-    margin: 0 0 0.75rem;
-    color: #eaf8ff;
-    font-size: 1.25rem;
-}
-
-.announcement-panel p {
-    color: #c1d3e2;
-    line-height: 1.6;
-}
-
-.announcement-panel .announcement-detail {
-    margin: 1rem 0 1.25rem;
-    color: #819bb1;
-    font-size: 0.85rem;
-}
-
-.announcement-panel button {
-    width: 100%;
 }
 
 /* Layout mode: debug vs production */
@@ -1308,10 +1259,7 @@ body:not(.debug-mode) {
 
 .plan-cards {
     display: grid;
-    grid-template-columns: repeat(
-        auto-fit,
-        minmax(min(100%, 140px), 1fr)
-    );
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
     gap: 8px;
     margin: 16px 0;
 }
@@ -1352,14 +1300,8 @@ body:not(.debug-mode) {
 .plan-grid {
     position: relative;
     display: grid;
-    grid-template-columns: repeat(
-        var(--plan-columns, 4),
-        minmax(0, 1fr)
-    );
-    grid-template-rows: repeat(
-        var(--plan-rows, 4),
-        minmax(0, 1fr)
-    );
+    grid-template-columns: repeat(var(--plan-columns, 4), minmax(0, 1fr));
+    grid-template-rows: repeat(var(--plan-rows, 4), minmax(0, 1fr));
     gap: 2px;
     width: 100%;
     aspect-ratio: 1;

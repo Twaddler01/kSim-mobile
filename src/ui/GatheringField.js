@@ -135,31 +135,30 @@ export default class GatheringField {
             const materialName = material?.name ?? "Unknown material";
 
             const icon = MaterialIcon(node.materialId, {
-    size: 30,
-    className: "gathering-node__icon",
-    variant: "core"
-});
+                size: 30,
+                className: "gathering-node__icon",
+                variant: "core"
+            });
 
-const scale = 1 + (node.richness - 1) * 0.125;
+            const scale = 1 + (node.richness - 1) * 0.125;
 
-icon.style.transform = `scale(${scale})`;
+            icon.style.transform = `scale(${scale})`;
 
-const button = el(
-    "button",
-    {
-        type: "button",
-        className: [
-            "gathering-node",
-            `gathering-node--${this.field.visualVariant ?? "default"}`
-        ].join(" "),
-        "aria-label":
-            `Gather ${materialName} deposit, yield ${node.richness}`,
-        onClick: event => {
-            this.gatherNode(node, event);
-        }
-    },
-    [icon]
-);
+            const button = el(
+                "button",
+                {
+                    type: "button",
+                    className: [
+                        "gathering-node",
+                        `gathering-node--${this.field.visualVariant ?? "default"}`
+                    ].join(" "),
+                    "aria-label": `Gather ${materialName} deposit, yield ${node.richness}`,
+                    onClick: event => {
+                        this.gatherNode(node, event);
+                    }
+                },
+                [icon]
+            );
 
             button.style.left = `${((node.x + 0.5) / COLUMNS) * 100}%`;
 

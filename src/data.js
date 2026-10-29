@@ -43,7 +43,6 @@ export const initialGameData = {
     ],
     triggered: [],
     logOnce: {},
-    announcement: null,
     lastTick: Date.now(),
     logSequence: 2,
     tabReadIds: {
