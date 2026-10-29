@@ -1,3 +1,4 @@
+import { addLog } from "../functions.js";
 import {
     materialDefinitions,
     recipeDefinitions
@@ -132,12 +133,11 @@ export function craftRecipe(game, recipeId) {
         game.manufacturing.machineBuilt = true;
     }
 
-    game.log ??= [];
-    game.log.unshift(
-        `SYNTHESIS: ${recipe.name} produced (${recipe.output.amount}).`
+    addLog(
+        game,
+        `SYNTHESIS: ${recipe.name} produced (${recipe.output.amount}).`,
+        { category: "activity" }
     );
-    game.log = game.log.slice(0, 60);
-
     return { ok: true, recipe, output: recipe.output };
 }
 
@@ -172,10 +172,9 @@ export function gatherMaterial(game, materialId, amount = 1) {
     game.inventory ??= {};
     game.inventory[material.id] = (game.inventory[material.id] ?? 0) + quantity;
 
-    game.log ??= [];
-    game.log.unshift(`MATERIAL RECOVERY: +${quantity} ${material.name}.`);
-    game.log = game.log.slice(0, 60);
-
+    addLog(game, `MATERIAL RECOVERY: +${quantity} ${material.name}.`, {
+        category: "activity"
+    });
     return {
         ok: true,
         item: material,

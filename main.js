@@ -1581,6 +1581,83 @@ render();
 
 // DEBUG AREA
 
+function debugLogState(label = "Manual log check") {
+    const entries = game.log ?? [];
+    const unread = game.unread ?? {};
+
+    const snapshot = {
+        label,
+        time: new Date().toISOString(),
+        logLength: entries.length,
+
+        visibleLogEntries: entries.filter(entry =>
+            entry?.tab === "log" &&
+            typeof entry.message === "string" &&
+            entry.message.trim().length > 0
+        ).length,
+
+        entries: entries.map(entry => ({
+            id: entry?.id ?? null,
+            category: entry?.category ?? "LEGACY/UNKNOWN",
+            tab: entry?.tab ?? "MISSING",
+            message: entry?.message ?? String(entry),
+            timestamp: entry?.timestamp ?? null
+        })),
+
+        logSequence: game.logSequence ?? null,
+
+        unread: {
+            items: structuredClone(unread.items ?? {}),
+            pending: structuredClone(unread.pending ?? {})
+        },
+
+        savedLog: (() => {
+            try {
+                const saved = JSON.parse(
+                    localStorage.getItem("ksim-quantum-foundations-v1")
+                );
+
+                return {
+                    logLength: saved?.log?.length ?? 0,
+                    entries: (saved?.log ?? []).map(entry => ({
+                        id: entry?.id ?? null,
+                        category: entry?.category ?? "LEGACY/UNKNOWN",
+                        tab: entry?.tab ?? "MISSING",
+                        message: entry?.message ?? String(entry)
+                    })),
+                    unread: saved?.unread ?? null
+                };
+            } catch (error) {
+                return { error: String(error) };
+            }
+        })()
+    };
+
+    console.log(`[LOG DEBUG] ${label}`, snapshot);
+    return snapshot;
+}
+
+new DebugButton({
+    id: "Baseline",
+    label: "Baseline",
+    run: () => {
+        debugLogState("Baseline");
+    }
+});
+
+new DebugButton({
+    id: "After",
+    label: "After",
+    run: () => {
+        debugLogState("After issue");
+    }
+});
+
+
+
+
+
+/*
 new DebugButton({
     id: "DebugButton",
     label: "Debug Button",
@@ -1644,3 +1721,4 @@ new DebugButton({
         kSim.testAnnouncement()
     }
 });
+*/
