@@ -229,16 +229,6 @@ checkUpgradeUnlocks(game, notifyUnread, { notify: false });
 
 checkGatheringFieldUnlocks();
 
-// Migrate existing unread field announcements to field-card badges.
-for (const field of FIELD_DEFINITIONS) {
-    if (
-        game.operations.unlockedFields[field.id] &&
-        unreadManager.isUnread("gathering", `announcement-field-${field.id}`)
-    ) {
-        unreadManager.notify("gathering", `field-${field.id}`);
-    }
-}
-
 save();
 
 const discoveryPanel = new DiscoveryPanel({
