@@ -113,6 +113,10 @@ export async function navigateTo(tabs, target = {}) {
         }
     }
 
+    if (page) {
+        tabs.setScrollPosition(0);
+    }
+
     if (itemId == null) {
         return true;
     }

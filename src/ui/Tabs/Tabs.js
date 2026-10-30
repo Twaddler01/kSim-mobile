@@ -39,6 +39,7 @@ export class Tabs extends Component {
         this.rightArrow = null;
         this.handleTabScroll = () => this.updateScrollIndicators();
         this.resizeObserver = null;
+        this.scrollPositions = new Map();
 
         this.render();
     }
@@ -138,28 +139,63 @@ export class Tabs extends Component {
 
         if (refreshContent) {
             const content = tab?.render?.() ?? tab?.content ?? null;
-
             this.panel.replaceChildren(...(content == null ? [] : [content]));
         }
 
         return this;
     }
 
+    rememberScrollPosition(tabId = this.activeId) {
+        if (!this.panel || !tabId) return this;
+
+        this.scrollPositions.set(tabId, this.panel.scrollTop);
+        return this;
+    }
+
+    restoreScrollPosition(tabId = this.activeId) {
+        if (!this.panel || !tabId) return this;
+
+        this.panel.scrollTop = this.scrollPositions.get(tabId) ?? 0;
+        return this;
+    }
+
+    setScrollPosition(position = 0) {
+        if (!this.panel) return this;
+
+        this.panel.scrollTop = Math.max(0, Number(position) || 0);
+        this.rememberScrollPosition();
+        return this;
+    }
+
     setTabs(tabs, { activeId = this.activeId } = {}) {
+        const previousId = this.activeId;
+
+        this.rememberScrollPosition(previousId);
+
         this.tabs = Array.isArray(tabs) ? tabs : [];
         this.activeId = this.tabs.some(tab => tab.id === activeId)
             ? activeId
             : (this.tabs[0]?.id ?? null);
+
         this.render();
+        this.restoreScrollPosition();
+
         return this;
     }
 
     setActiveTab(id, { notify = false } = {}) {
         if (!this.tabs.some(tab => tab.id === id)) return this;
+
+        this.rememberScrollPosition();
+
         const changed = this.activeId !== id;
         this.activeId = id;
+
         this.render();
+        this.restoreScrollPosition();
+
         if (notify && changed) this.onChange?.(id, this.activeTab);
+
         return this;
     }
 
@@ -167,8 +203,13 @@ export class Tabs extends Component {
         if (!this.tabs.some(tab => tab.id === id) || this.activeId === id)
             return;
 
+        this.rememberScrollPosition();
+
         this.activeId = id;
+
         this.render();
+        this.restoreScrollPosition();
+
         this.onChange?.(id, this.activeTab);
     }
 

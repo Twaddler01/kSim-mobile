@@ -22,8 +22,7 @@ import {
     costLabel,
     formatNumber,
     consumeParticles,
-    checkDiscoveries,
-    checkUpgradeUnlocks
+    completeDiscovery
 } from "./src/functions.js";
 
 import CollapsiblePanel from "./src/ui/CollapsiblePanel.js";
@@ -52,13 +51,9 @@ import GatheringField from "./src/ui/GatheringField.js";
 
 import { ensureManufacturingState } from "./src/systems/SynthesisEngine.js";
 
-import {
-    recoverMaterial
-} from "./src/systems/MaterialRecovery.js";
+import { recoverMaterial } from "./src/systems/MaterialRecovery.js";
 
 import UnreadManager from "./src/UnreadManager.js";
-import { evaluateTrigger } from "./src/triggers/conditions.js";
-
 import Announce from "./src/notifications/Announce.js";
 import NewBadge from "./src/notifications/NewBadge.js";
 import Toast from "./src/notifications/Toast.js";
@@ -79,20 +74,57 @@ game.appState ??= {};
 game.appState.navigation ??= {};
 game.appState.navigation.activeFieldId ??= null;
 
-// Register permanent gathering-field unlocks.
+const eventProcessor = new EventProcessor(game);
+
+// Permanent gathering-field unlock definitions.
 for (const field of FIELD_DEFINITIONS) {
     unlockManager.registerUnlock({
         id: field.id,
-        trigger: field.unlockTrigger
+        initialUnlocked: false
     });
+
+    if (field.unlockTrigger) {
+        eventProcessor.registerEvent({
+            id: `field:${field.id}`,
+            trigger: field.unlockTrigger,
+            content: field
+        });
+    }
 }
 
-for (const field of FIELD_DEFINITIONS) {
+// Permanent upgrade unlock definitions.
+for (const upgrade of upgradeDefinitions) {
     unlockManager.registerUnlock({
-        id: field.id,
-        initialUnlocked: false,
-        trigger: field.unlockTrigger
+        id: upgrade.id,
+        initialUnlocked: ["energyYield", "particleStability"].includes(
+            upgrade.id
+        )
     });
+
+    if (upgrade.trigger) {
+        eventProcessor.registerEvent({
+            id: `upgrade:${upgrade.id}`,
+            trigger: upgrade.trigger,
+            content: upgrade
+        });
+    }
+}
+
+// Ordinary discoveries and hidden observations.
+for (const discovery of discoveries) {
+    if (discovery.hidden) {
+        eventProcessor.registerEvent({
+            id: `observation:${discovery.id}`,
+            trigger: discovery.trigger,
+            content: discovery
+        });
+    } else {
+        eventProcessor.registerEvent({
+            id: `discovery:${discovery.id}`,
+            trigger: discovery.trigger,
+            content: discovery
+        });
+    }
 }
 
 let activeTab = "lab";
@@ -148,14 +180,13 @@ const unreadManager = new UnreadManager({
     isTabActive: tabId => activeTab === tabId
 });
 
-
 function notifyUnread(tabId, itemId, options = {}) {
     unreadManager.notify(tabId, itemId, options);
 }
 
 // Starting conditions
-if (unlockManager.unlock('labValley')) {
-    notifyUnread('gathering', 'field-labValley');
+if (unlockManager.unlock("labValley")) {
+    notifyUnread("gathering", "field-labValley");
 }
 
 function logEvent(game, message, options = {}) {
@@ -165,23 +196,23 @@ function logEvent(game, message, options = {}) {
     });
 }
 
-function checkGatheringFieldUnlocks() {
-    const newlyUnlocked = unlockManager.checkUnlocks();
+function handleFieldUnlock(fieldId, { notify = true } = {}) {
+    if (!unlockManager.unlock(fieldId)) return false;
 
-    for (const fieldId of newlyUnlocked) {
-        const field = FIELD_DEFINITIONS.find(
-            item => item.id === fieldId
-        );
+    const field = FIELD_DEFINITIONS.find(item => item.id === fieldId);
 
-        if (!field) continue;
+    if (!field) return false;
 
+    if (notify) {
         notifyUnread("gathering", `field-${fieldId}`);
+    }
 
-        logEvent(game, `NEW FIELD AVAILABLE: ${field.name} unlocked.`, {
-            category: "activity",
-            tab: "log"
-        });
+    logEvent(game, `NEW FIELD AVAILABLE: ${field.name} unlocked.`, {
+        category: "activity",
+        tab: "log"
+    });
 
+    if (notify) {
         showToast(`${field.name} unlocked!`);
 
         showAnnouncement({
@@ -190,17 +221,7 @@ function checkGatheringFieldUnlocks() {
         });
     }
 
-    const navigation = game.appState.navigation;
-    const activeFieldId = navigation.activeFieldId;
-
-    // Clear a remembered selection if that field is no longer available.
-    if (activeFieldId && !unlockManager.isUnlocked(activeFieldId)) {
-        navigation.activeFieldId = null;
-    }
-
-    if (newlyUnlocked.length > 0) {
-        save();
-    }
+    return true;
 }
 
 function discoverMaterial(material, source = "recovery") {
@@ -245,9 +266,6 @@ function discoverMaterial(material, source = "recovery") {
     return true;
 }
 
-// Process any event triggers already satisfied by a loaded save.
-checkDiscoveries(game, notifyUnread);
-
 ensureManufacturingState(game);
 
 // Persistent Operations state.
@@ -256,26 +274,18 @@ game.operations ??= {};
 // Quantum Field is temporarily inactive.
 game.operations.quantumFieldUnlocked = false;
 
-// Initialize or migrate equipment unlocks without creating
-// fresh notifications for conditions already satisfied in a save.
-checkUpgradeUnlocks(game, notifyUnread, { notify: false });
-
-checkGatheringFieldUnlocks();
-
-save();
-
 const discoveryPanel = new DiscoveryPanel({
     getGame: () => game,
     discoveries,
     resourceDefinitions,
     canAfford,
-    payCost,
     costLabel,
-    addLog: logEvent,
-    save,
+
+    hasEventOccurred: id => eventProcessor.hasOccurred(`observation:${id}`),
+
+    completeInvestigation,
+
     showToast: message => showToast(message),
-    refreshUI: options => refreshUI(options),
-    onUnread: notifyUnread,
     unreadManager
 });
 
@@ -312,19 +322,15 @@ function registerFieldNavigationPages() {
         registerPage("gathering", field.id, {
             activate: () => {
                 if (!unlockManager.isUnlocked(field.id)) {
-                    console.warn(
-                        `[Navigation] Failed: gathering/${field.id}`,
-                        { reason: "field-locked" }
-                    );
+                    console.warn(`[Navigation] Failed: gathering/${field.id}`, {
+                        reason: "field-locked"
+                    });
                     return false;
                 }
 
                 game.appState.navigation.activeFieldId = field.id;
-                
-                unreadManager.markRead(
-                    "gathering",
-                    `field-${field.id}`
-                );
+
+                unreadManager.markRead("gathering", `field-${field.id}`);
 
                 save();
 
@@ -516,9 +522,7 @@ function renderActiveField() {
 }
 
 function renderFieldWorkContent(content) {
-    return el("div", { className: "field-work-content" }, [
-        content
-    ]);
+    return el("div", { className: "field-work-content" }, [content]);
 }
 
 function renderEquipmentTab() {
@@ -605,8 +609,173 @@ function showToast(message, options) {
     toast.show(message, options);
 }
 
+function processProgression({ notify = true } = {}) {
+    let changed = false;
+    let batch;
+
+    // Process repeatedly because completing one discovery
+    // can satisfy another event's trigger.
+    do {
+        batch = eventProcessor.process();
+
+        for (const event of batch) {
+            const { id, definition } = event;
+            const content = definition.content;
+
+            // Ordinary scientific discovery.
+            if (id.startsWith("discovery:")) {
+                const completed = completeDiscovery(
+                    game,
+                    content,
+                    notifyUnread
+                );
+
+                if (completed) {
+                    changed = true;
+                }
+
+                continue;
+            }
+
+            // Hidden observation becomes available.
+            if (id.startsWith("observation:")) {
+                const observation = content;
+                const announcement = observation.announcement;
+
+                logEvent(
+                    game,
+                    `ALERT: ${announcement?.message ?? observation.name}`,
+                    {
+                        category: "important",
+                        tab: "observations",
+                        contentId: observation.id,
+                        notificationTargets: [
+                            {
+                                tab: "observations",
+                                itemId: observation.id
+                            }
+                        ]
+                    }
+                );
+
+                if (notify && announcement) {
+                    showAnnouncement(announcement);
+                }
+
+                changed = true;
+                continue;
+            }
+
+            // Upgrade becomes permanently available.
+            if (id.startsWith("upgrade:")) {
+                const upgradeId = id.slice("upgrade:".length);
+
+                if (!unlockManager.unlock(upgradeId)) {
+                    continue;
+                }
+
+                const upgrade = content;
+
+                if (upgrade) {
+                    if (notify) {
+                        notifyUnread("equipment", upgradeId);
+                    }
+
+                    logEvent(
+                        game,
+                        `NEW EQUIPMENT AVAILABLE: ${upgrade.name}.`,
+                        {
+                            category: "activity",
+                            tab: "equipment"
+                        }
+                    );
+
+                    if (notify) {
+                        showToast(`${upgrade.name} unlocked!`);
+                    }
+                }
+
+                changed = true;
+                continue;
+            }
+
+            // Gathering field becomes permanently available.
+            if (id.startsWith("field:")) {
+                const fieldId = id.slice("field:".length);
+
+                if (handleFieldUnlock(fieldId, { notify })) {
+                    changed = true;
+                }
+            }
+        }
+    } while (batch.length > 0);
+
+    // The remembered field must always remain unlocked.
+    const navigation = game.appState.navigation;
+    const activeFieldId = navigation.activeFieldId;
+
+    if (activeFieldId && !unlockManager.isUnlocked(activeFieldId)) {
+        navigation.activeFieldId = null;
+        changed = true;
+    }
+
+    if (changed) {
+        save();
+    }
+
+    return changed;
+}
+
+function completeInvestigation(item) {
+    if (!item?.id) return false;
+
+    if (!eventProcessor.hasOccurred(`observation:${item.id}`)) {
+        return false;
+    }
+
+    game.discoveries ??= [];
+
+    if (game.discoveries.includes(item.id)) {
+        return false;
+    }
+
+    if (!payCost(game, item.cost ?? {})) {
+        return false;
+    }
+
+    game.discoveries.push(item.id);
+
+    logEvent(
+        game,
+        `INVESTIGATION COMPLETE: ${item.name}. ${item.description}`,
+        {
+            category: "important",
+            tab: "observations",
+            contentId: item.id,
+            notificationTargets: [
+                {
+                    tab: "observations",
+                    itemId: item.id
+                }
+            ]
+        }
+    );
+
+    save();
+    refreshUI({ database: true });
+
+    return true;
+}
+
+// Evaluate conditions already satisfied by the loaded save.
+// Suppress transient notifications during initial startup.
+processProgression({ notify: false });
+
 function runExperiments(count = 1, event = null, costs = []) {
-    const result = stir(game, count, notifyUnread, showAnnouncement);
+    const result = stir(game, count, {
+        onProgress: processProgression,
+        onUnread: notifyUnread
+    });
 
     const changes = [
         ...costs,
@@ -713,7 +882,7 @@ function getGatheringField(fieldId = game.appState.navigation.activeFieldId) {
                         );
                     }
 
-                    checkGatheringFieldUnlocks();
+                    processProgression();
                     save();
                     refreshUI({ database: true });
 
@@ -732,7 +901,7 @@ function updateFieldCards() {
     const cards = FIELD_DEFINITIONS.map(field => {
         const unlocked = unlockManager.isUnlocked(field.id);
         const active = game.appState.navigation.activeFieldId === field.id;
-            
+
         const selectButton = el(
             "button",
             {
@@ -800,21 +969,9 @@ function updateFieldCards() {
                           Button(
                               "GO",
                               () => {
-                                  game.appState.navigation.activeFieldId = field.id;
-
-                                  // Acknowledge this field's content notification.
-                                  unreadManager.markRead(
-                                      "gathering",
-                                      `field-${field.id}`
-                                  );
-
-                                  save();
-
-                                  gatheringField = getGatheringField(field.id);
-                                  fieldWorkView = "field";
-
-                                  ui.tabs?.update({
-                                      refreshContent: true
+                                  navigateTo({
+                                      tab: "gathering",
+                                      pageId: field.id
                                   });
                               },
                               { variant: "primary-button" }
@@ -974,12 +1131,23 @@ const upgradePanel = new UpgradePanel({
     resourceDefinitions,
     upgradeCost,
     canAfford,
-    buyUpgrade,
+
+    buyUpgrade: (game, id) => {
+        const purchased = buyUpgrade(game, id);
+
+        if (purchased) {
+            processProgression();
+        }
+
+        return purchased;
+    },
+
+    isUnlocked: id => unlockManager.isUnlocked(id),
+
     costLabel,
     save,
     showToast: message => showToast(message),
     refreshUI: options => refreshUI(options),
-    onUnread: notifyUnread,
     unreadManager
 });
 
@@ -1309,9 +1477,14 @@ window.kSim = {
     save,
     render,
     stir: (multiplier = 1) => {
-        const result = stir(game, multiplier, notifyUnread, showAnnouncement);
+        const result = stir(game, multiplier, {
+            onProgress: processProgression,
+            onUnread: notifyUnread
+        });
+
         save();
         refreshUI({ database: true });
+
         return result;
     },
     experiment: runExperiments,
@@ -1393,11 +1566,10 @@ new DebugButton({
     run: () => {
         kSim.testAnnouncement();
         setTimeout(() => {
-          kSim.testAnnouncement();
+            kSim.testAnnouncement();
         }, 2000);
     }
 });
-
 
 new DebugButton({
     id: "showAnnouncementLab",
@@ -1420,17 +1592,14 @@ new DebugButton({
             title: "NEW FIELD",
             message: "Review the new discovery in FIELD WORK.",
             actionLabel: "VIEW NOW",
-            onGoTo: () => navigateToItem({
-                tab: "gathering",
-                itemId: "field-quartz"
-            })
+            onGoTo: () =>
+                navigateToItem({
+                    tab: "gathering",
+                    itemId: "field-quartz"
+                })
         });
     }
 });
-
-
-
-
 
 const navigationTests = [
     {
@@ -1482,8 +1651,7 @@ async function runNextNavigationTest() {
 
     console.log(`[Navigation Test] ${test.name}:`, result);
 
-    navigationTestIndex =
-        (navigationTestIndex + 1) % navigationTests.length;
+    navigationTestIndex = (navigationTestIndex + 1) % navigationTests.length;
 }
 
 new DebugButton({
@@ -1491,12 +1659,6 @@ new DebugButton({
     label: "Navigation Test →",
     run: () => runNextNavigationTest()
 });
-
-
-
-
-
-
 
 /*
 new DebugButton({
