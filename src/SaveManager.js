@@ -27,9 +27,11 @@ export default class SaveManager {
             const parsed = JSON.parse(saved);
             const fresh = this.freshGame();
 
+            const savedData = parsed;
+            
             return {
                 ...fresh,
-                ...parsed,
+                ...savedData,
 
                 resources: {
                     ...fresh.resources,
@@ -41,19 +43,21 @@ export default class SaveManager {
                     ...(parsed.upgrades ?? {})
                 },
 
-                unlockedUpgrades: Array.isArray(parsed.unlockedUpgrades)
-                    ? parsed.unlockedUpgrades
-                    : [...(fresh.unlockedUpgrades ?? [])],
-
                 discoveries: Array.isArray(parsed.discoveries)
                     ? parsed.discoveries
                     : [],
 
-                log: Array.isArray(parsed.log) ? parsed.log : fresh.log,
+                events: {
+                    ...(fresh.events ?? {}),
+                    ...(parsed.events ?? {})
+                },
 
-                triggered: Array.isArray(parsed.triggered)
-                    ? parsed.triggered
-                    : [],
+                unlocks: {
+                    ...(fresh.unlocks ?? {}),
+                    ...(parsed.unlocks ?? {})
+                },
+
+                log: Array.isArray(parsed.log) ? parsed.log : fresh.log,
 
                 logOnce: {
                     ...(fresh.logOnce ?? {}),
@@ -113,10 +117,6 @@ export default class SaveManager {
                     )
                         ? parsed.manufacturing.completedRecipes
                         : [...(fresh.manufacturing?.completedRecipes ?? [])]
-                },
-                unlocks: {
-                    ...(fresh.unlocks ?? {}),
-                    ...(parsed.unlocks ?? {})
                 }
             };
         } catch (error) {

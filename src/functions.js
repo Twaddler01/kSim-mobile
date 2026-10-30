@@ -1,7 +1,5 @@
-import { discoveries, upgradeDefinitions } from "./data.js";
-import { evaluateTrigger } from "./triggers/conditions.js";
+import { upgradeDefinitions } from "./data.js";
 import { applyEffects, describeEffects } from "./triggers/effects.js";
-
 export const LOG_RETENTION = {
     important: 100,
     activity: 50
@@ -128,24 +126,6 @@ export function addLog(
     return id;
 }
 
-function notifyUpgradeUnlocked(game, definition, onUnread = () => {}) {
-    addLog(
-        game,
-        `NEW EQUIPMENT UNLOCKED: ${definition.name} is now available.`,
-        {
-            category: "activity",
-            tab: "equipment",
-            onUnread,
-            notificationTargets: [{ tab: "equipment", itemId: definition.id }],
-            link: {
-                tab: "equipment",
-                itemId: definition.id,
-                label: definition.name
-            }
-        }
-    );
-}
-
 export function canAfford(game, cost) {
     return Object.entries(cost).every(
         ([resource, amount]) => (game.resources[resource] ?? 0) >= amount
@@ -168,108 +148,68 @@ export function upgradeCost(definition, level) {
     return cost;
 }
 
-export function checkDiscoveries(
+/**
+ * Completes a discovery and applies its resource rewards.
+ *
+ * The caller is responsible for checking whether the
+ * discovery should occur and for recording its ID.
+ */
+export function completeDiscovery(
     game,
-    onUnread = () => {},
-    onAnnouncement = () => {}
+    discovery,
+    onUnread = () => {}
 ) {
-    // Unlock ordinary observations through experiment milestones.
-    for (const discovery of discoveries) {
-        if (discovery.hidden) continue;
+    if (!game || !discovery?.id) return false;
 
-        if (
-            game.discoveries.includes(discovery.id) ||
-            !evaluateTrigger(game, discovery.trigger)
-        ) {
-            continue;
-        }
+    game.discoveries ??= [];
 
-        game.discoveries.push(discovery.id);
-
-        const appliedEffects = applyEffects(game, discovery.effects);
-        const rewardText = describeEffects(appliedEffects);
-
-        addLog(
-            game,
-            `DISCOVERY: ${discovery.name}${
-                rewardText ? ` (${rewardText})` : ""
-            }.`,
-            {
-                category: "activity",
-                tab: "observations",
-                onUnread,
-                contentId: discovery.id,
-                notificationTargets: [
-                    { tab: "observations", itemId: discovery.id }
-                ],
-                link: {
-                    tab: "observations",
-                    itemId: discovery.id,
-                    label: discovery.name
-                }
-            }
-        );
-
-        for (const effect of appliedEffects) {
-            if (effect.type !== "unlockUpgrade") continue;
-
-            const definition = upgradeDefinitions.find(
-                item => item.id === effect.upgradeId
-            );
-
-            if (definition) {
-                notifyUpgradeUnlocked(game, definition, onUnread);
-            }
-        }
+    if (game.discoveries.includes(discovery.id)) {
+        return false;
     }
 
-    // Process event-triggered observations.
-    game.triggered ??= [];
+    game.discoveries.push(discovery.id);
 
-    for (const observation of discoveries) {
-        if (!observation.hidden) continue;
-        if (game.triggered.includes(observation.id)) continue;
+    const appliedEffects = applyEffects(
+        game,
+        discovery.effects
+    );
 
-        const trigger = observation.trigger;
+    const rewardText = describeEffects(appliedEffects);
 
-        if (evaluateTrigger(game, trigger)) {
-            game.triggered.push(observation.id);
-
-            onAnnouncement({
-                id: observation.id,
-                ...observation.announcement
-            });
-
-            addLog(
-                game,
-                `ALERT: ${
-                    observation.announcement?.message ?? observation.name
-                }`,
-
+    addLog(
+        game,
+        `DISCOVERY: ${discovery.name}${
+            rewardText ? ` (${rewardText})` : ""
+        }.`,
+        {
+            category: "activity",
+            tab: "observations",
+            onUnread,
+            contentId: discovery.id,
+            notificationTargets: [
                 {
-                    category: "activity",
                     tab: "observations",
-                    onUnread,
-                    contentId: observation.id,
-                    notificationTargets: [
-                        { tab: "observations", itemId: observation.id }
-                    ],
-                    link: {
-                        tab: "observations",
-                        itemId: observation.id,
-                        label: observation.name
-                    }
+                    itemId: discovery.id
                 }
-            );
+            ],
+            link: {
+                tab: "observations",
+                itemId: discovery.id,
+                label: discovery.name
+            }
         }
-    }
+    );
+
+    return true;
 }
 
 export function stir(
     game,
     multiplier = 1,
-    onUnread = () => {},
-    onAnnouncement = () => {}
+    {
+        onProgress = () => {},
+        onUnread = () => {}
+    } = {}
 ) {
     const result = {
         energy: 0,
@@ -278,8 +218,15 @@ export function stir(
         exoticMatter: 0,
         events: []
     };
-    const experiments = Math.max(1, Math.floor(Number(multiplier) || 1));
-    const energyPerExperiment = 1 + (game.upgrades.energyYield ?? 0);
+
+    const experiments = Math.max(
+        1,
+        Math.floor(Number(multiplier) || 1)
+    );
+
+    const energyPerExperiment =
+        1 + (game.upgrades.energyYield ?? 0);
+
     const particleChance = Math.min(
         0.65,
         0.25 + (game.upgrades.particleStability ?? 0) * 0.05
@@ -289,8 +236,10 @@ export function stir(
         0.6,
         0.08 + (game.upgrades.observation ?? 0) * 0.08
     );
+
     for (let i = 0; i < experiments; i++) {
         game.clicks += 1;
+
         game.resources.energy += energyPerExperiment;
         result.energy += energyPerExperiment;
 
@@ -298,13 +247,16 @@ export function stir(
             game.resources.particles += 1;
             result.particles += 1;
         }
+
         if (Math.random() < researchChance) {
             game.resources.research += 1;
             result.research += 1;
         }
 
-        // Check milestones before evaluating the anomaly event for the next experiment.
-        checkDiscoveries(game, onUnread, onAnnouncement);
+        // Process progression after every experiment.
+        onProgress();
+
+        // Anomaly chance becomes available after its discovery.
         if (
             game.discoveries.includes("quantumAnomaly") &&
             Math.random() < 0.03
@@ -314,81 +266,59 @@ export function stir(
         }
     }
 
-    if (result.particles)
-        result.events.push(`Particle formation: +${result.particles}`);
-    if (result.research)
-        result.events.push(`Useful observations: +${result.research}`);
-    if (result.exoticMatter) {
-        result.events.push(`ANOMALY: +${result.exoticMatter} Exotic Matter`);
+    if (result.particles) {
+        result.events.push(
+            `Particle formation: +${result.particles}`
+        );
+    }
 
-        // Anomaly: important, so it defaults to the LOG badge.
-        const anomalyMessage = `ANOMALY: Exotic matter detected (${result.exoticMatter}). The reading is inconsistent with known physics.`;
+    if (result.research) {
+        result.events.push(
+            `Useful observations: +${result.research}`
+        );
+    }
+
+    if (result.exoticMatter) {
+        result.events.push(
+            `ANOMALY: +${result.exoticMatter} Exotic Matter`
+        );
+
+        const anomalyMessage =
+            `ANOMALY: Exotic matter detected (${result.exoticMatter}). ` +
+            "The reading is inconsistent with known physics.";
+
         addLog(game, anomalyMessage, {
             category: "important",
             onceKey: "anomaly",
             onUnread
         });
     }
+
     return result;
 }
 
-export function checkUpgradeUnlocks(
-    game,
-    onUnread = () => {},
-    { notify = true } = {}
-) {
-    game.unlockedUpgrades ??= [];
+export function buyUpgrade(game, id) {
+    const definition = upgradeDefinitions.find(
+        item => item.id === id
+    );
 
-    const newlyUnlocked = [];
-
-    for (const definition of upgradeDefinitions) {
-        if (game.unlockedUpgrades.includes(definition.id)) {
-            continue;
-        }
-
-        const condition = definition.trigger;
-
-        // Equipment without a condition is available by default.
-        if (!condition) {
-            game.unlockedUpgrades.push(definition.id);
-            continue;
-        }
-
-        const satisfied = evaluateTrigger(game, condition);
-        if (!satisfied) continue;
-
-        const appliedEffects = applyEffects(game, [
-            {
-                type: "unlockUpgrade",
-                upgradeId: definition.id
-            }
-        ]);
-
-        if (appliedEffects.length === 0) continue;
-
-        newlyUnlocked.push(definition.id);
-
-        if (notify) {
-            notifyUpgradeUnlocked(game, definition, onUnread);
-        }
-    }
-
-    return newlyUnlocked;
-}
-
-export function buyUpgrade(game, id, onUnread = () => {}) {
-    const definition = upgradeDefinitions.find(item => item.id === id);
     if (!definition) return false;
+
     const level = game.upgrades[id] ?? 0;
+
     if (level >= definition.maxLevel) return false;
-    if (!payCost(game, upgradeCost(definition, level))) return false;
+
+    if (!payCost(game, upgradeCost(definition, level))) {
+        return false;
+    }
 
     game.upgrades[id] = level + 1;
 
-    const purchaseMessage = `EQUIPMENT UPDATED: ${definition.name} is now level ${level + 1}.`;
-    // Equipment purchase: activity, so no badge.
+    const purchaseMessage =
+        `EQUIPMENT UPDATED: ${definition.name} is now level ${level + 1}.`;
+
     addLog(game, purchaseMessage);
-    checkUpgradeUnlocks(game, onUnread);
+
     return true;
 }
 

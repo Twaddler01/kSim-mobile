@@ -34,6 +34,7 @@ import { materials } from "./src/data/materials.js";
 import ResourcePopups from "./src/ui/ResourcePopups.js";
 import SaveManager from "./src/SaveManager.js";
 import UnlockManager from "./src/UnlockManager.js";
+import EventProcessor from "./src/EventProcessor.js";
 
 import {
     navigateTo as coordinateNavigation,

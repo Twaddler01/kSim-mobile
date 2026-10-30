@@ -21,7 +21,6 @@ export const initialGameData = {
         particleStability: 0,
         observation: 0
     },
-    unlockedUpgrades: ["energyYield", "particleStability"],
     discoveries: [],
     log: [
         {
@@ -41,7 +40,7 @@ export const initialGameData = {
             timestamp: Date.now()
         }
     ],
-    triggered: [],
+    events: {},
     logOnce: {},
     lastTick: Date.now(),
     logSequence: 2,

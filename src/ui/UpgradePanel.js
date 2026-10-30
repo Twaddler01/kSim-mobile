@@ -10,11 +10,11 @@ export default class UpgradePanel {
         upgradeCost,
         canAfford,
         buyUpgrade,
+        isUnlocked,
         costLabel,
         save,
         showToast,
         refreshUI,
-        onUnread = () => {},
         unreadManager
     }) {
         this.getGame = getGame;
@@ -23,11 +23,11 @@ export default class UpgradePanel {
         this.upgradeCost = upgradeCost;
         this.canAfford = canAfford;
         this.buyUpgrade = buyUpgrade;
+        this.isUnlocked = isUnlocked;
         this.costLabel = costLabel;
         this.save = save;
         this.showToast = showToast;
         this.refreshUI = refreshUI;
-        this.onUnread = onUnread;
         this.unreadManager = unreadManager;
 
         this.element = null;
@@ -91,7 +91,7 @@ export default class UpgradePanel {
         article.addEventListener("click", () => {
             if (
                 this.unreadManager?.isUnread("equipment", item.id) &&
-                (this.game.unlockedUpgrades ?? []).includes(item.id)
+                this.isUnlocked(item.id)
             ) {
                 this.unreadManager.markRead("equipment", item.id);
                 this.updateCard(item);
@@ -118,7 +118,7 @@ export default class UpgradePanel {
 
         const game = this.game;
         const level = game.upgrades[item.id] ?? 0;
-        const unlocked = (game.unlockedUpgrades ?? []).includes(item.id);
+        const unlocked = this.isUnlocked(item.id);
         const unread =
             unlocked && this.unreadManager?.isUnread("equipment", item.id);
 
@@ -175,12 +175,12 @@ export default class UpgradePanel {
     install(item) {
         const game = this.game;
 
-        if (!(game.unlockedUpgrades ?? []).includes(item.id)) {
+        if (!this.isUnlocked(item.id)) {
             this.showToast("This upgrade is still locked.");
             return;
         }
 
-        if (this.buyUpgrade(game, item.id, this.onUnread)) {
+        if (this.buyUpgrade(game, item.id)) {
             this.save();
             this.refreshUI({ database: true });
         } else {

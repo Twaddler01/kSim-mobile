@@ -1,5 +1,3 @@
-import { evaluateTrigger } from "./triggers/conditions.js";
-
 /**
  * Tracks permanent progression unlocks.
  * Unlocks are permanent once earned.
@@ -23,9 +21,11 @@ export default class UnlockManager {
 
         this.definitions.set(definition.id, definition);
 
-        // Missing unlocks begin locked.
         if (typeof this.game.unlocks[definition.id] !== "boolean") {
-            this.game.unlocks[definition.id] = false;
+            this.game.unlocks[definition.id] =
+                definition.initialUnlocked === true;
+        } else if (definition.initialUnlocked === true) {
+            this.game.unlocks[definition.id] = true;
         }
 
         return this.getState(definition.id);
@@ -36,9 +36,7 @@ export default class UnlockManager {
     }
 
     getState(id) {
-        if (!this.definitions.has(id)) {
-            return undefined;
-        }
+        if (!this.definitions.has(id)) return undefined;
 
         return {
             id,
@@ -56,20 +54,9 @@ export default class UnlockManager {
         return true;
     }
 
-    checkUnlocks() {
-        const newlyUnlocked = [];
-
-        for (const [id, definition] of this.definitions) {
-            if (this.isUnlocked(id) || !definition.trigger) {
-                continue;
-            }
-
-            if (evaluateTrigger(this.game, definition.trigger)) {
-                this.unlock(id);
-                newlyUnlocked.push(id);
-            }
-        }
-
-        return newlyUnlocked;
+    getUnlocked() {
+        return [...this.definitions.keys()].filter(
+            id => this.isUnlocked(id)
+        );
     }
 }

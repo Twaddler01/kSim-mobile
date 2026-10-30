@@ -1,66 +1,28 @@
-/**
- * Applies data-driven effects to game state.
- *
- * Conditions determine when an event occurs.
- * Effects determine what changes when it occurs.
- */
 export function applyEffects(game, effects = []) {
     const applied = [];
 
     for (const effect of effects) {
         if (!effect || typeof effect !== "object") continue;
 
-        switch (effect.type) {
-            case "resource": {
-                const { resource, amount } = effect;
+        if (effect.type !== "resource") continue;
 
-                if (
-                    !resource ||
-                    !Number.isFinite(amount) ||
-                    !Object.hasOwn(game.resources ?? {}, resource)
-                ) {
-                    break;
-                }
+        const { resource, amount } = effect;
 
-                game.resources[resource] += amount;
-                applied.push({ ...effect });
-                break;
-            }
-
-            case "unlockUpgrade": {
-                const { upgradeId } = effect;
-
-                if (
-                    !upgradeId ||
-                    !Object.hasOwn(game.upgrades ?? {}, upgradeId)
-                ) {
-                    break;
-                }
-
-                game.unlockedUpgrades ??= [];
-
-                // Do not unlock an upgrade more than once.
-                if (game.unlockedUpgrades.includes(upgradeId)) {
-                    break;
-                }
-
-                game.unlockedUpgrades.push(upgradeId);
-                applied.push({ ...effect });
-                break;
-            }
-
-            default:
-                // Unsupported effects do not change game state.
-                break;
+        if (
+            !resource ||
+            !Number.isFinite(amount) ||
+            !Object.hasOwn(game.resources ?? {}, resource)
+        ) {
+            continue;
         }
+
+        game.resources[resource] += amount;
+        applied.push({ ...effect });
     }
 
     return applied;
 }
 
-/**
- * Creates a readable summary of resource effects.
- */
 export function describeEffects(effects = []) {
     return effects
         .filter(effect => effect?.type === "resource")

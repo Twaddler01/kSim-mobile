@@ -9,24 +9,20 @@ export default class DiscoveryPanel {
         discoveries,
         resourceDefinitions,
         canAfford,
-        payCost,
         costLabel,
-        addLog,
-        save,
+        hasEventOccurred,
+        completeInvestigation,
         showToast,
-        refreshUI,
         unreadManager
     }) {
         this.getGame = getGame;
         this.discoveries = discoveries;
         this.resourceDefinitions = resourceDefinitions;
         this.canAfford = canAfford;
-        this.payCost = payCost;
         this.costLabel = costLabel;
-        this.addLog = addLog;
-        this.save = save;
+        this.hasEventOccurred = hasEventOccurred;
+        this.completeInvestigation = completeInvestigation;
         this.showToast = showToast;
-        this.refreshUI = refreshUI;
         this.unreadManager = unreadManager;
 
         this.element = null;
@@ -138,7 +134,7 @@ export default class DiscoveryPanel {
         if (!card) return;
 
         const game = this.game;
-        const triggered = (game.triggered ?? []).includes(item.id);
+        const triggered = this.hasEventOccurred(item.id);
         const unlocked = game.discoveries.includes(item.id);
         const unread = this.unreadManager?.isUnread("observations", item.id);
 
@@ -233,27 +229,13 @@ export default class DiscoveryPanel {
     investigate(item) {
         const game = this.game;
 
-        if (!(game.triggered ?? []).includes(item.id)) return;
+        if (!this.hasEventOccurred(item.id)) return;
         if (game.discoveries.includes(item.id)) return;
 
-        const cost = item.cost ?? {};
+        const completed = this.completeInvestigation(item);
 
-        if (!this.payCost(game, cost)) {
+        if (!completed) {
             this.showToast("Insufficient research resources.");
-            return;
         }
-
-        game.discoveries.push(item.id);
-
-        const message = `INVESTIGATION COMPLETE: ${item.name}. ${item.description}`;
-
-        this.addLog(game, message, {
-            category: "important",
-            tab: "observations",
-            contentId: item.id
-        });
-
-        this.save();
-        this.refreshUI({ database: true });
     }
 }
