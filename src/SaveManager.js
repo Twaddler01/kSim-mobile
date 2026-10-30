@@ -90,13 +90,18 @@ export default class SaveManager {
                 operations: {
                     ...(fresh.operations ?? {}),
                     ...(parsed.operations ?? {}),
-                    unlockedFields: {
-                        ...(fresh.operations?.unlockedFields ?? {}),
-                        ...(parsed.operations?.unlockedFields ?? {})
-                    },
                     discoveredMaterials: {
                         ...(fresh.operations?.discoveredMaterials ?? {}),
                         ...(parsed.operations?.discoveredMaterials ?? {})
+                    }
+                },
+
+                appState: {
+                    ...(fresh.appState ?? {}),
+                    ...(parsed.appState ?? {}),
+                    navigation: {
+                        ...(fresh.appState?.navigation ?? {}),
+                        ...(parsed.appState?.navigation ?? {})
                     }
                 },
 

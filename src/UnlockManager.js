@@ -1,8 +1,8 @@
 import { evaluateTrigger } from "./triggers/conditions.js";
 
 /**
- * Tracks unlock state independently of UI and notifications.
- * Definitions use the existing trigger condition format.
+ * Tracks permanent progression unlocks.
+ * Unlocks are permanent once earned.
  */
 export default class UnlockManager {
     constructor(game) {
@@ -23,10 +23,9 @@ export default class UnlockManager {
 
         this.definitions.set(definition.id, definition);
 
-        // Preserve an existing saved state. Only initialize missing entries.
+        // Missing unlocks begin locked.
         if (typeof this.game.unlocks[definition.id] !== "boolean") {
-            this.game.unlocks[definition.id] =
-                definition.initialUnlocked === true;
+            this.game.unlocks[definition.id] = false;
         }
 
         return this.getState(definition.id);
@@ -54,15 +53,6 @@ export default class UnlockManager {
         }
 
         this.game.unlocks[id] = true;
-        return true;
-    }
-
-    lock(id) {
-        if (!this.definitions.has(id) || !this.isUnlocked(id)) {
-            return false;
-        }
-
-        this.game.unlocks[id] = false;
         return true;
     }
 

@@ -62,6 +62,12 @@ export const initialGameData = {
             log: []
         }
     },
+    unlocks: {},
+    appState: {
+        navigation: {
+            activeFieldId: null
+        }
+    },
     inventory: {},
     operations: {
         quantumFieldUnlocked: false

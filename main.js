@@ -73,16 +73,17 @@ let game = saveManager.load();
 
 const unlockManager = new UnlockManager(game);
 
-// Migrate existing field states without overwriting saved unlocks.
-game.operations ??= {};
-game.operations.unlockedFields ??= {};
-game.unlocks ??= {};
+// Application and domain-system state.
+game.appState ??= {};
+game.appState.navigation ??= {};
+game.appState.navigation.activeFieldId ??= null;
 
+// Register permanent gathering-field unlocks.
 for (const field of FIELD_DEFINITIONS) {
-    if (typeof game.unlocks[field.id] !== "boolean") {
-        game.unlocks[field.id] =
-            game.operations.unlockedFields[field.id] === true;
-    }
+    unlockManager.registerUnlock({
+        id: field.id,
+        trigger: field.unlockTrigger
+    });
 }
 
 for (const field of FIELD_DEFINITIONS) {
@@ -92,7 +93,6 @@ for (const field of FIELD_DEFINITIONS) {
         trigger: field.unlockTrigger
     });
 }
-
 
 let activeTab = "lab";
 let ui = {};
@@ -111,27 +111,6 @@ function showAnnouncement(announcement) {
 
     announce.show(announcement);
 }
-
-/*
-
-showAnnouncement({
-    title: "LAB AVAILABLE",
-    message: "Return to the laboratory.",
-    actionLabel: "OPEN LAB",
-    onGoTo: () => navigateTo({ tab: "lab" })
-});
-
-showAnnouncement({
-    title: "NEW DISCOVERY",
-    message: "Review the new discovery in your log.",
-    actionLabel: "VIEW DISCOVERY",
-    onGoTo: () => navigateToItem({
-        tab: "log",
-        itemId: "your-actual-item-id"
-    })
-});
-
-*/
 
 const resourcePopups = new ResourcePopups({
     formatNumber,
@@ -168,8 +147,14 @@ const unreadManager = new UnreadManager({
     isTabActive: tabId => activeTab === tabId
 });
 
+
 function notifyUnread(tabId, itemId, options = {}) {
     unreadManager.notify(tabId, itemId, options);
+}
+
+// Starting conditions
+if (unlockManager.unlock('labValley')) {
+    notifyUnread('gathering', 'field-labValley');
 }
 
 function logEvent(game, message, options = {}) {
@@ -180,10 +165,6 @@ function logEvent(game, message, options = {}) {
 }
 
 function checkGatheringFieldUnlocks() {
-    game.operations ??= {};
-    game.operations.unlockedFields ??= {};
-    game.operations.fieldUnlocks ??= {};
-
     const newlyUnlocked = unlockManager.checkUnlocks();
 
     for (const fieldId of newlyUnlocked) {
@@ -191,13 +172,7 @@ function checkGatheringFieldUnlocks() {
             item => item.id === fieldId
         );
 
-        // Compatibility mirror for the existing UI and navigation.
-        game.operations.unlockedFields[fieldId] = true;
-
-        // Preserve existing timestamp and notification behavior.
-        game.operations.fieldUnlocks[fieldId] = {
-            unlockedAt: Date.now()
-        };
+        if (!field) continue;
 
         notifyUnread("gathering", `field-${fieldId}`);
 
@@ -214,18 +189,16 @@ function checkGatheringFieldUnlocks() {
         });
     }
 
-    // Keep the old UI's field map synchronized with manager state.
-    for (const field of FIELD_DEFINITIONS) {
-        game.operations.unlockedFields[field.id] =
-            unlockManager.isUnlocked(field.id);
+    const navigation = game.appState.navigation;
+    const activeFieldId = navigation.activeFieldId;
+
+    // Clear a remembered selection if that field is no longer available.
+    if (activeFieldId && !unlockManager.isUnlocked(activeFieldId)) {
+        navigation.activeFieldId = null;
     }
 
-    if (!game.operations.unlockedFields[game.operations.activeFieldId]) {
-        const firstUnlocked = FIELD_DEFINITIONS.find(
-            field => unlockManager.isUnlocked(field.id)
-        );
-
-        game.operations.activeFieldId = firstUnlocked?.id ?? null;
+    if (newlyUnlocked.length > 0) {
+        save();
     }
 }
 
@@ -276,21 +249,11 @@ checkDiscoveries(game, notifyUnread);
 
 ensureManufacturingState(game);
 
-// Persistent Operations unlocks.
-// Existing saves with 5+ Copper should already have Quantum Field unlocked.
+// Persistent Operations state.
 game.operations ??= {};
 
 // Quantum Field is temporarily inactive.
 game.operations.quantumFieldUnlocked = false;
-
-game.operations.unlockedFields ??= {
-    labValley: true,
-    copper: true,
-    quartz: true
-};
-
-//game.operations.unlockedFields.copper = true;
-game.operations.activeFieldId ??= "stone";
 
 // Initialize or migrate equipment unlocks without creating
 // fresh notifications for conditions already satisfied in a save.
@@ -347,7 +310,7 @@ function registerFieldNavigationPages() {
     for (const field of FIELD_DEFINITIONS) {
         registerPage("gathering", field.id, {
             activate: () => {
-                if (!game.operations?.unlockedFields?.[field.id]) {
+                if (!unlockManager.isUnlocked(field.id)) {
                     console.warn(
                         `[Navigation] Failed: gathering/${field.id}`,
                         { reason: "field-locked" }
@@ -355,8 +318,8 @@ function registerFieldNavigationPages() {
                     return false;
                 }
 
-                game.operations.activeFieldId = field.id;
-
+                game.appState.navigation.activeFieldId = field.id;
+                
                 unreadManager.markRead(
                     "gathering",
                     `field-${field.id}`
@@ -706,7 +669,7 @@ function getExperimentProgress() {
     };
 }
 
-function getGatheringField(fieldId = game.operations.activeFieldId) {
+function getGatheringField(fieldId = game.appState.navigation.activeFieldId) {
     const field =
         FIELD_DEFINITIONS.find(item => item.id === fieldId) ??
         FIELD_DEFINITIONS[0];
@@ -765,12 +728,10 @@ function getGatheringField(fieldId = game.operations.activeFieldId) {
 function updateFieldCards() {
     if (!ui.fieldCards) return;
 
-    const unlockedFields = game.operations?.unlockedFields ?? {};
-
     const cards = FIELD_DEFINITIONS.map(field => {
-        const unlocked = Boolean(unlockedFields[field.id]);
-        const active = game.operations?.activeFieldId === field.id;
-
+        const unlocked = unlockManager.isUnlocked(field.id);
+        const active = game.appState.navigation.activeFieldId === field.id;
+            
         const selectButton = el(
             "button",
             {
@@ -783,7 +744,7 @@ function updateFieldCards() {
                 onClick: () => {
                     if (!unlocked) return;
 
-                    game.operations.activeFieldId = field.id;
+                    game.appState.navigation.activeFieldId = field.id;
                     save();
                     updateFieldCards();
                 }
@@ -838,7 +799,7 @@ function updateFieldCards() {
                           Button(
                               "GO",
                               () => {
-                                  game.operations.activeFieldId = field.id;
+                                  game.appState.navigation.activeFieldId = field.id;
 
                                   // Acknowledge this field's content notification.
                                   unreadManager.markRead(
@@ -1325,7 +1286,7 @@ function render() {
         formatNumber
     });
 
-    gatheringField = getGatheringField(game.operations.activeFieldId);
+    gatheringField = getGatheringField(game.appState.navigation.activeFieldId);
 
     const layout = el("div", { className: "game-layout" }, [
         topbar,
@@ -1530,18 +1491,10 @@ new DebugButton({
     run: () => runNextNavigationTest()
 });
 
-new DebugButton({
-    id: "DebugButton1",
-    label: "unlockManager.unlock(stone)",
-    run: () => {
-        console.log(unlockManager.isUnlocked("stone"));
-        unlockManager.unlock("stone")
-        console.log('unlock: stone');
-        console.log(
-            unlockManager.isUnlocked("stone")
-        );
-    }
-});
+
+
+
+
 
 
 /*
