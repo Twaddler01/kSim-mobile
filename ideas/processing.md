@@ -1,3 +1,72 @@
+# CARDS
+
+PROPOSED API:
+
+Card(title, children, subtitle, options);
+
+Card.Section(title, children);
+Card.Text(text, options);
+Card.Status(label, options);
+Card.Requirements(items);
+Card.Output(items);
+Card.Progress(options);
+Card.Actions(buttons);
+
+
+Excellent. And I agree with your broader goal: we should transition the existing cards toward one consistent system, rather than maintain two different card-building approaches indefinitely.
+
+I would make one adjustment to our plan: use a common card structure for every card, but allow specialized layouts within that structure.
+
+For example:
+
+* Discovery cards can have progress and investigation costs.
+
+* Upgrade cards can have levels, costs, and installation actions.
+
+* Process cards can have inputs, outputs, timers, and process actions.
+
+* Equipment cards can have statistics, bonuses, and equip actions.
+
+They should all share the same foundation, styling conventions, status handling, and action rendering.
+
+### First implementation: `Card.js`
+
+I'd introduce a small set of reusable building blocks:
+
+| Method              | Responsibility                      |
+| ------------------- | ----------------------------------- |
+| Card.Section()      | Group related content               |
+| Card.Text()         | Consistent descriptive text         |
+| Card.Status()       | Status indicator                    |
+| Card.Requirements() | Resource and inventory requirements |
+| Card.Output()       | Output items                        |
+| Card.Progress()     | Progress display                    |
+| Card.Actions()      | Consistent action layout            |
+
+We should also distinguish between the card definition and its rendered state. The definition remains static; the owning system provides the dynamic values.
+
+### One more thing before editing
+
+I want to inspect your existing `ProgressBar.js` and the CSS for buttons and progress bars. That way, our new helpers can reuse existing functionality instead of duplicating it.
+
+```bash
+echo "===== PROGRESS BAR ====="
+cat src/ui/ProgressBar.js
+
+echo "===== BUTTON CSS ====="
+grep -n -A65 -B5 -E '\.primary-button|\.secondary-button' styles/styles.css
+
+echo "===== PROGRESS CSS ====="
+grep -n -A55 -B5 -E 'progress-bar|progress-fill|progress-track' styles/styles.css
+```
+
+After that, we'll implement the base card helpers in `Card.js`, then build a real `ProcessCard` to test the architecture. Once validated, we can migrate Discovery and Upgrade cards onto the same system.
+
+#
+#
+#
+
+# MATERIAL PROCESSIKG
 
 ### 1\. The overall process
 

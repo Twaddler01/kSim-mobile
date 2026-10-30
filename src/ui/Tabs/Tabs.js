@@ -183,6 +183,51 @@ export class Tabs extends Component {
         return this;
     }
 
+    addTab(tab, { index = this.tabs.length, activate = false, notify = activate } = {}) {
+        if (!tab?.id) {
+            throw new Error("A tab definition requires an id.");
+        }
+
+        if (this.tabs.some(item => item.id === tab.id)) {
+            throw new Error(`Tab "${tab.id}" already exists.`);
+        }
+
+        const nextTabs = [...this.tabs];
+        const insertAt = Math.max(0, Math.min(nextTabs.length, index));
+
+        nextTabs.splice(insertAt, 0, tab);
+
+        this.setTabs(nextTabs);
+
+        if (activate) {
+            this.setActiveTab(tab.id, { notify });
+        }
+
+        return this;
+    }
+
+    removeTab(id, { notify = true } = {}) {
+        const index = this.tabs.findIndex(tab => tab.id === id);
+
+        if (index === -1) return this;
+
+        const wasActive = this.activeId === id;
+        const nextTabs = this.tabs.filter(tab => tab.id !== id);
+
+        // If removing the active tab, select the next available tab.
+        const nextActiveId = wasActive
+            ? (nextTabs[Math.min(index, nextTabs.length - 1)]?.id ?? null)
+            : this.activeId;
+
+        this.setTabs(nextTabs, { activeId: nextActiveId });
+
+        if (wasActive && notify && this.activeId) {
+            this.onChange?.(this.activeId, this.activeTab);
+        }
+
+        return this;
+    }
+    
     setActiveTab(id, { notify = false } = {}) {
         if (!this.tabs.some(tab => tab.id === id)) return this;
 

@@ -1639,3 +1639,149 @@ body:not(.debug-mode) {
 .field-upgrade-grid .card-body p {
     margin-bottom: 0;
 }
+
+/* ========================================
+   Reusable Card Components
+======================================== */
+
+.card-section {
+    min-width: 0;
+    margin-top: 14px;
+}
+
+.card-section:first-child {
+    margin-top: 0;
+}
+
+.card-section-title {
+    margin: 0 0 8px;
+    color: var(--muted);
+    font:
+        500 0.62rem "DM Mono",
+        monospace;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.card-text {
+    margin: 0;
+    font-size: 0.78rem;
+    line-height: 1.55;
+}
+
+.card-text--muted {
+    color: var(--muted);
+}
+
+.card-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 100%;
+    padding: 4px 7px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    color: var(--muted);
+    background: rgba(120, 160, 190, 0.06);
+    font:
+        500 0.58rem "DM Mono",
+        monospace;
+    white-space: nowrap;
+}
+
+.card-status--ready,
+.card-status--complete {
+    color: #73edc1;
+    border-color: rgba(115, 237, 193, 0.3);
+    background: rgba(115, 237, 193, 0.07);
+}
+
+.card-status--running {
+    color: var(--cyan);
+    border-color: rgba(98, 228, 244, 0.3);
+    background: rgba(98, 228, 244, 0.07);
+}
+
+.card-status--blocked,
+.card-status--warning {
+    color: var(--warning);
+    border-color: rgba(255, 207, 118, 0.3);
+    background: rgba(255, 207, 118, 0.06);
+}
+
+/* Requirements and outputs */
+
+.card-requirements,
+.card-outputs {
+    display: grid;
+    gap: 7px;
+}
+
+.card-requirement,
+.card-output {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 8px 9px;
+    border: 1px solid rgba(105, 190, 224, 0.1);
+    border-radius: 9px;
+    background: rgba(5, 16, 28, 0.3);
+    font-size: 0.72rem;
+}
+
+.card-requirement__icon,
+.card-output__icon {
+    flex: 0 0 auto;
+    width: 22px;
+    text-align: center;
+}
+
+.card-requirement__label,
+.card-output__label {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.card-requirement__amount,
+.card-output__amount {
+    flex: 0 0 auto;
+    color: var(--cyan);
+    font:
+        0.66rem "DM Mono",
+        monospace;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.card-requirement--missing .card-requirement__amount {
+    color: #ff8c8c;
+}
+
+.card-requirement--met .card-requirement__amount {
+    color: #73edc1;
+}
+
+/* Actions */
+
+.card-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.card-actions > * {
+    min-width: 0;
+}
+
+/* Progress bars inside cards */
+
+.card-body .progress-block {
+    margin-top: 8px;
+}
+
+.card-body .progress-label {
+    font-size: 0.65rem;
+}
