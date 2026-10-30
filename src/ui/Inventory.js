@@ -1,4 +1,5 @@
 import { el } from "./Element.js";
+import MaterialIcon from "../assets/icons/materials/MaterialIcon.js";
 
 export default class Inventory {
     constructor({ getGame, resources = [], materials = [], formatNumber }) {
@@ -17,6 +18,23 @@ export default class Inventory {
 
     get game() {
         return this.getGame();
+    }
+
+    createItemIcon(item, className, size = 24) {
+        // Primary resources continue using their emoji icons.
+        if (item.inventoryType === "resources") {
+            return el("span", {
+                className,
+                "aria-hidden": "true",
+                text: item.icon
+            });
+        }
+
+        // Materials use their SVG drawings.
+        return MaterialIcon(item.materialId ?? item.id, {
+            size,
+            className
+        });
     }
 
     getVisibleItems() {
@@ -110,14 +128,7 @@ export default class Inventory {
                         role: "listitem",
                         title: item.name
                     },
-                    [
-                        el("span", {
-                            className: "resource-chip-icon",
-                            "aria-hidden": "true",
-                            text: item.icon
-                        }),
-                        value
-                    ]
+                    [this.createItemIcon(item, "resource-chip-icon", 18), value]
                 );
             })
         );
@@ -146,11 +157,7 @@ export default class Inventory {
                               role: "listitem"
                           },
                           [
-                              el("span", {
-                                  className: "inventory-item-icon",
-                                  "aria-hidden": "true",
-                                  text: item.icon
-                              }),
+                              this.createItemIcon(item, "inventory-item-icon", 26),
                               el(
                                   "div",
                                   {

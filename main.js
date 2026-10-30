@@ -1450,7 +1450,7 @@ function render() {
 
     ui.inventory = new Inventory({
         getGame: () => game,
-        resources: resourceDefinitions,
+        resources: [], //resourceDefinitions,
         materials,
         formatNumber
     });

@@ -1,5 +1,5 @@
 /* ========================================
-Gathering Field
+GATHERING FIELD
 ======================================== */
 
 .gathering-panel {
@@ -142,6 +142,24 @@ Gathering Field
 .gathering-node--stone:active {
     background: rgba(192, 199, 206, 0.2);
 }
+
+/* ========================================
+INVENTORY
+======================================== */
+
+.resource-chip-icon.material-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.inventory-item-icon.material-icon {
+    width: 26px;
+    height: 26px;
+}
+
+/* ========================================
+FIELD
+======================================== */
 
 .field-selection-section {
     margin-bottom: 1rem;
