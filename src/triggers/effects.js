@@ -1,6 +1,8 @@
 export function applyEffects(game, effects = []) {
     const applied = [];
 
+    game.inventory ??= {};
+
     for (const effect of effects) {
         if (!effect || typeof effect !== "object") continue;
 
@@ -11,12 +13,12 @@ export function applyEffects(game, effects = []) {
         if (
             !resource ||
             !Number.isFinite(amount) ||
-            !Object.hasOwn(game.resources ?? {}, resource)
+            !Object.hasOwn(game.inventory, resource)
         ) {
             continue;
         }
 
-        game.resources[resource] += amount;
+        game.inventory[resource] += amount;
         applied.push({ ...effect });
     }
 

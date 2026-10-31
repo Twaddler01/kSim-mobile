@@ -1,82 +1,135 @@
-EventProcessor`: the central mechanism for one-time events. Remove the old trigger-processing paths and rebuild around a consistent lifecycle.
 
-# SHORT TERM
+### 1\. Three independent recipe collections
 
-### 1\. EventProcessor
-
-Its responsibility will be deliberately narrow:
-
-* Register event definitions.
-
-* Check whether an event has already occurred.
-
-* Evaluate its trigger condition.
-
-* Record the occurrence when the condition becomes true.
-
-* Return newly occurred events to the caller.
-
-It will not apply rewards, write logs, show announcements, generate notifications, or save the game. Those remain responsibilities of the systems that own those effects.
-
-An occurrence record could look like:
+I'd put them in a dedicated `src/data/synthesis.js`:
 
 ```js
-game.events = {
-    unknownEnergySource: {
-        occurredAt: Date.now()
-    }
-};
+export const refinementRecipes = [
+    // Raw materials → refined materials
+];
+
+export const fabricationRecipes = [
+    // Materials → components
+];
+
+export const assemblyRecipes = [
+    // Components and materials → equipment
+];
 ```
 
-We can leave room for future metadata, such as what caused an event, without requiring that complexity now.
+Each collection is independently expandable, and the category is implicit in the array. We don't need to repeat `category` on every recipe unless we later have a reason to.
 
-### 2\. Keep the condition evaluator separate
+All recipes share one schema:
 
-`evaluateTrigger()` remains a stateless utility. It answers one question:
+```js
+{
+    id: "purify-silica",
+    name: "Purify Silica",
+    description: "Refine raw silica into a useful material.",
 
-Is this condition satisfied right now?
+    inputs: {
+        silica: 5,
+        energy: 2
+    },
 
-`EventProcessor` uses that answer to determine whether a one-time event has occurred. This keeps condition evaluation reusable without making it responsible for progression.
+    outputs: {
+        refinedSilica: 2
+    },
 
-### 3\. Remove the old scattered event system
+    duration: 0.5
+}
+```
 
-I'd audit and replace these existing mechanisms:
+Notice that energy is just another input. The engine doesn't need separate resource-cost and material-cost logic.
 
-| Existing mechanism              | Plan                                                                                       |
-| ------------------------------- | ------------------------------------------------------------------------------------------ |
-| game.triggered[]                | Replace with game.events records                                                           |
-| Hidden discovery trigger loop   | Move to EventProcessor                                                                     |
-| Ordinary discovery trigger loop | Move to EventProcessor                                                                     |
-| game.discoveries[]              | Reassess and replace if it duplicates event occurrence records                             |
-| game.unlockedUpgrades[]         | Rebuild as part of the new unlock flow                                                     |
-| UnlockManager                   | Keep its permanent-unlock responsibility, but integrate it with the new event architecture |
-| evaluateTrigger()               | Keep, then standardize its supported condition types                                       |
+### 2\. Keep item definitions organized separately
 
-One important distinction: we'll preserve actual gameplay effects, rewards, and notification behavior where they're still needed. We're replacing the mechanism that decides when something happens, not throwing away the gameplay content itself.
+We already have two overlapping definition sources:
 
-### 4\. Keep temporary conditions out of event history
+* `data/materials.js`
 
-For example, having enough research to afford an upgrade is not an event. It should be checked whenever needed.
+* `data/manufacturing.js`
 
-Discovering a new material, reaching a milestone, or detecting an anomaly can be a one-time event and recorded permanently.
+I'd consolidate those into a canonical item registry, retaining the existing material metadata and adding the four resources.
 
-### Suggested implementation order
+Conceptually:
 
-* Audit every existing trigger definition and every place that evaluates one.
+```js
+export const resourceDefinitions = [
+    // Energy, particles, research, exotic matter
+];
 
-* Define the new event record structure and EventProcessor API.
+export const materials = [
+    // Raw, processed, advanced, components, assemblies...
+];
 
-* Replace ordinary and hidden discovery processing.
+export const itemDefinitions = [
+    ...resourceDefinitions,
+    ...materials
+];
+```
 
-* Rebuild upgrade availability and permanent unlock integration.
+This is useful because the three recipe arrays can refer to any item ID, regardless of its category.
 
-* Remove obsolete arrays, functions, and startup checks.
+### 3\. One actual inventory
 
-* Verify that notifications, logs, announcements, and rewards still fire exactly once.
+The game state then becomes:
 
-Let's start with the audit, not the implementation. I want to identify every old trigger-related path before we remove anything, so we don't accidentally leave a hidden dependency behind.
+```js
+inventory: {
+    energy: 0,
+    particles: 0,
+    research: 0,
+    exoticMatter: 0,
 
-Please send the current `src/triggers/conditions.js`, `src/functions.js`, and the relevant portions of `main.js` and `src/data.js`. We can work through the full dependency map and then build the new system cleanly.
+    stone: 0,
+    quartz: 0,
+    copper: 0,
+
+    quartzPowder: 0,
+    copperIngot: 0
+}
+```
+
+The definitions describe what those IDs represent; the inventory stores their quantities.
+
+This also simplifies `Inventory.js`: it no longer needs to know whether an item came from `resources` or `materials`.
+
+### 4\. The engine and panel
+
+The engine will receive the recipe arrays and use the same processing functions for all three:
+
+* Check inputs and availability.
+
+* Deduct inputs when starting.
+
+* Record the process start and completion timestamps.
+
+* Grant outputs when complete.
+
+* Preserve active processes in the save.
+
+The panel will render three sections, each populated from its corresponding array. No separate crafting implementation for each section.
+
+### Implementation order
+
+I'd do this in stages so we can test each change:
+
+* Unify item definitions and inventory storage. Update resource production, spending, discovery effects, gathering, upgrades, and the inventory display.
+
+* Create the three recipe arrays. Move the existing recipes into the appropriate categories and add the initial refinement recipes.
+
+* Rebuild `SynthesisEngine`. Replace instant crafting with timestamp-based processing.
+
+* Rebuild `SynthesisPanel`. Render the three sections using the reusable `Card` helpers.
+
+One important detail: `SaveManager` currently merges `resources` and `inventory` separately. We'll update that during stage 1. Since you're comfortable resetting the old save, we don't need to preserve the old split structure.
+
+I'd start with stage 1 and leave the synthesis UI alone until the inventory foundation is working. That gives us a reliable base for all three categories.
+
+
+
+
 
 #
 #

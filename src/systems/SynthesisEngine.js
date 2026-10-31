@@ -51,12 +51,12 @@ export function recipeUnlocked(game, recipe) {
 export function getCostStatus(game, recipe) {
     const missing = [];
     for (const [id, amount] of Object.entries(recipe.costs?.resources ?? {})) {
-        if ((game.resources?.[id] ?? 0) < amount) {
+        if ((game.inventory?.[id] ?? 0) < amount) {
             missing.push({
                 id,
                 name: RESOURCE_NAMES[id] ?? id,
                 needed: amount,
-                have: game.resources?.[id] ?? 0,
+                have: game.inventory?.[id] ?? 0,
                 type: "resource"
             });
         }
@@ -116,7 +116,7 @@ export function craftRecipe(game, recipeId) {
 
     // Check everything before changing state, then pay atomically.
     for (const [id, amount] of Object.entries(recipe.costs?.resources ?? {})) {
-        game.resources[id] -= amount;
+        game.inventory[id] -= amount;
     }
     for (const [id, amount] of Object.entries(recipe.costs?.items ?? {})) {
         game.inventory[id] -= amount;

@@ -13,7 +13,13 @@ const {
     Button,
     ProgressBar
 } = main;
-    
+
+new DebugButton({
+    id: "showdata",
+    label: "data test",
+    run: () => console.log(kSim.data)
+});
+
 new DebugButton({
     id: "cardtestdebug",
     label: "add: CARD TEST",
@@ -37,15 +43,6 @@ new DebugButton({
         ui.tabs.removeTab("card-test");
     }
 });
-
-
-
-
-
-
-
-
-
 
 new DebugButton({
     id: "testAnnouncement",

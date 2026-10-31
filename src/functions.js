@@ -128,14 +128,14 @@ export function addLog(
 
 export function canAfford(game, cost) {
     return Object.entries(cost).every(
-        ([resource, amount]) => (game.resources[resource] ?? 0) >= amount
+        ([resource, amount]) => (game.inventory[resource] ?? 0) >= amount
     );
 }
 
 export function payCost(game, cost) {
     if (!canAfford(game, cost)) return false;
     for (const [resource, amount] of Object.entries(cost)) {
-        game.resources[resource] -= amount;
+        game.inventory[resource] -= amount;
     }
     return true;
 }
@@ -240,16 +240,16 @@ export function stir(
     for (let i = 0; i < experiments; i++) {
         game.clicks += 1;
 
-        game.resources.energy += energyPerExperiment;
+        game.inventory.energy += energyPerExperiment;
         result.energy += energyPerExperiment;
 
         if (Math.random() < particleChance) {
-            game.resources.particles += 1;
+            game.inventory.particles += 1;
             result.particles += 1;
         }
 
         if (Math.random() < researchChance) {
-            game.resources.research += 1;
+            game.inventory.research += 1;
             result.research += 1;
         }
 
@@ -261,7 +261,7 @@ export function stir(
             game.discoveries.includes("quantumAnomaly") &&
             Math.random() < 0.03
         ) {
-            game.resources.exoticMatter += 1;
+            game.inventory.exoticMatter += 1;
             result.exoticMatter += 1;
         }
     }
@@ -335,7 +335,7 @@ export function costLabel(cost, resourceDefinitions = []) {
 }
 
 export function consumeParticles(game) {
-    const particles = Math.floor(game.resources.particles ?? 0);
+    const particles = Math.floor(game.inventory.particles ?? 0);
 
     if (particles <= 0) {
         return { particles: 0, energy: 0 };
@@ -343,8 +343,8 @@ export function consumeParticles(game) {
 
     const energy = particles * 5;
 
-    game.resources.particles -= particles;
-    game.resources.energy += energy;
+    game.inventory.particles -= particles;
+    game.inventory.energy += energy;
 
     const conversionMessage = `RESOURCE CONVERSION: Consumed ${particles} particles for +${energy} Quantum Energy.`;
     // Resource conversion: activity, so no badge.

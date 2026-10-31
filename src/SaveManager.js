@@ -27,15 +27,16 @@ export default class SaveManager {
             const parsed = JSON.parse(saved);
             const fresh = this.freshGame();
 
-            const savedData = parsed;
-            
+            const { resources: legacyResources = {}, ...savedData } = parsed;
+
             return {
                 ...fresh,
                 ...savedData,
 
-                resources: {
-                    ...fresh.resources,
-                    ...(parsed.resources ?? {})
+                inventory: {
+                    ...fresh.inventory,
+                    ...legacyResources,
+                    ...(parsed.inventory ?? {})
                 },
 
                 upgrades: {

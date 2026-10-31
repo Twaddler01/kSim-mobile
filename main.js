@@ -1288,9 +1288,9 @@ function updateExperimentUI() {
 
     ui.experimentCount.textContent = `${formatNumber(game.clicks)} experiments completed`;
 
-    ui.runTenButton.disabled = (game.resources.particles ?? 0) < 10;
+    ui.runTenButton.disabled = (game.inventory.particles ?? 0) < 10;
 
-    ui.convertButton.disabled = (game.resources.particles ?? 0) <= 0;
+    ui.convertButton.disabled = (game.inventory.particles ?? 0) <= 0;
 
     const progressLabel = ui.experimentProgress.querySelector(
         ".progress-label span:first-child"
@@ -1483,12 +1483,12 @@ function render() {
     const runTenButton = Button(
         "RUN ×10",
         event => {
-            if ((game.resources.particles ?? 0) < 10) {
+            if ((game.inventory.particles ?? 0) < 10) {
                 showToast("Requires 10 Particles.");
                 return;
             }
 
-            game.resources.particles -= 10;
+            game.inventory.particles -= 10;
 
             addLog(
                 game,
@@ -1498,7 +1498,7 @@ function render() {
         },
         {
             variant: "primary-button",
-            disabled: (game.resources.particles ?? 0) < 10
+            disabled: (game.inventory.particles ?? 0) < 10
         }
     );
 
@@ -1523,7 +1523,7 @@ function render() {
         },
         {
             variant: "primary-button",
-            disabled: (game.resources.particles ?? 0) <= 0
+            disabled: (game.inventory.particles ?? 0) <= 0
         }
     );
 

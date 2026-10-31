@@ -15,7 +15,12 @@ export const initialGameData = {
     version: 2,
     stage: 0,
     clicks: 0,
-    resources: { energy: 0, particles: 0, research: 0, exoticMatter: 0 },
+    inventory: {
+        energy: 0,
+        particles: 0,
+        research: 0,
+        exoticMatter: 0
+    },
     upgrades: {
         energyYield: 0,
         particleStability: 0,
@@ -67,7 +72,6 @@ export const initialGameData = {
             activeFieldId: null
         }
     },
-    inventory: {},
     operations: {
         quantumFieldUnlocked: false
     },

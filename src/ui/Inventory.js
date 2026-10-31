@@ -46,10 +46,9 @@ export default class Inventory {
             )
             .map(item => ({
                 ...item,
-                inventoryType: "resources"
+                inventoryType: "inventory"
             }));
 
-        // Show discovered materials and any processed items already produced.
         const discoveredMaterials =
             this.game.operations?.discoveredMaterials ?? {};
 
@@ -157,7 +156,11 @@ export default class Inventory {
                               role: "listitem"
                           },
                           [
-                              this.createItemIcon(item, "inventory-item-icon", 26),
+                              this.createItemIcon(
+                                  item,
+                                  "inventory-item-icon",
+                                  26
+                              ),
                               el(
                                   "div",
                                   {

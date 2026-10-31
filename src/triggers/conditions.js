@@ -36,11 +36,11 @@ export function evaluateTrigger(game, trigger) {
         case "experimentCount":
             return (game.clicks ?? 0) >= (trigger.min ?? 0);
 
-        case "resourceAmount":
-            if (!trigger.resource) return false;
+        case "imventoryAmount":
+            if (!trigger.inventory) return false;
 
             return (
-                (game.resources?.[trigger.resource] ?? 0) >=
+                (game.inventory?.[trigger.inventory] ?? 0) >=
                 (trigger.amount ?? 0)
             );
 

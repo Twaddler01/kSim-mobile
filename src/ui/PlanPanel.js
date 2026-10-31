@@ -327,14 +327,14 @@ export default class PlanPanel {
             return false;
         }
 
-        const research = game.resources.research ?? 0;
+        const research = game.inventory.research ?? 0;
 
         if (research < cell.cost) {
             return false;
         }
 
         // Pay and reveal.
-        game.resources.research -= cell.cost;
+        game.inventory.research -= cell.cost;
         state.revealed.push(cell.id);
 
         // Every tile provides its own evidence.
