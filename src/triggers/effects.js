@@ -18,7 +18,7 @@ export function applyEffects(game, effects = []) {
             continue;
         }
 
-        game.inventory[resource] += amount;
+        addInventoryItem(game, resource, amount);
         applied.push({ ...effect });
     }
 

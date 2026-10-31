@@ -104,3 +104,37 @@ export function addInventoryItem(game, itemId, amount = 1) {
         amount: game.inventory[itemId]
     };
 }
+
+// WIP integrate where -=
+export function removeInventoryItem(game, itemId, amount = 1) {
+    if (!game?.inventory) {
+        return { success: false, remaining: 0 };
+    }
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+        return { success: false, remaining: 0 };
+    }
+
+    if (!(itemId in game.inventory)) {
+        console.warn(`Unknown inventory item: ${itemId}`);
+        return { success: false, remaining: 0 };
+    }
+
+    const currentAmount = game.inventory[itemId];
+
+    // Prevent spending more than the player owns.
+    if (currentAmount < amount) {
+        return {
+            success: false,
+            remaining: currentAmount,
+            insufficient: true
+        };
+    }
+
+    game.inventory[itemId] -= amount;
+
+    return {
+        success: true,
+        remaining: game.inventory[itemId]
+    };
+}

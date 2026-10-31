@@ -1,5 +1,7 @@
 import { upgradeDefinitions } from "./data.js";
 import { applyEffects, describeEffects } from "./triggers/effects.js";
+import { addInventoryItem } from "./data/inventory.js";
+
 export const LOG_RETENTION = {
     important: 100,
     activity: 50
@@ -240,16 +242,16 @@ export function stir(
     for (let i = 0; i < experiments; i++) {
         game.clicks += 1;
 
-        game.inventory.energy += energyPerExperiment;
+        addInventoryItem(game, "energy", energyPerExperiment);
         result.energy += energyPerExperiment;
 
         if (Math.random() < particleChance) {
-            game.inventory.particles += 1;
+            addInventoryItem(game, "particles", 1);
             result.particles += 1;
         }
 
         if (Math.random() < researchChance) {
-            game.inventory.research += 1;
+            addInventoryItem(game, "research", 1);
             result.research += 1;
         }
 
@@ -261,7 +263,7 @@ export function stir(
             game.discoveries.includes("quantumAnomaly") &&
             Math.random() < 0.03
         ) {
-            game.inventory.exoticMatter += 1;
+            addInventoryItem(game, "exoticMatter", 1);
             result.exoticMatter += 1;
         }
     }
@@ -344,7 +346,7 @@ export function consumeParticles(game) {
     const energy = particles * 5;
 
     game.inventory.particles -= particles;
-    game.inventory.energy += energy;
+    addInventoryItem(game, "energy", energy);
 
     const conversionMessage = `RESOURCE CONVERSION: Consumed ${particles} particles for +${energy} Quantum Energy.`;
     // Resource conversion: activity, so no badge.
