@@ -526,6 +526,231 @@ function renderFieldWorkContent(content) {
     return el("div", { className: "field-work-content" }, [content]);
 }
 
+function renderSynthesisTab() {
+    // Demo-only state. Recreated whenever the tab is rendered.
+    let processStarted = false;
+    let processProgress = 0;
+
+    const container = el("div", {
+        className: "card-test-playground"
+    });
+
+    // ========================================
+    // Example 1: Basic refinement
+    // ========================================
+
+    const refinementCard = Card(
+        "Purify Silica",
+        [
+            Card.Text("Refine raw silica into a more useful material."),
+
+            Card.Requirements([
+                {
+                    icon: "🪨",
+                    label: "Raw Silica",
+                    available: 24,
+                    required: 5
+                }
+            ]),
+
+            Card.Output([
+                {
+                    icon: "💎",
+                    label: "Refined Silica",
+                    amount: 2
+                }
+            ]),
+
+            Card.Text("Duration: 0.5 seconds"),
+
+            Card.Actions([
+                {
+                    label: "Refine",
+                    onClick: () => alert("Demo: Refinement started!")
+                }
+            ])
+        ],
+        "Basic material processing",
+        { icon: "⚗️" }
+    );
+
+    // ========================================
+    // Example 2: Fabrication
+    // ========================================
+
+    const fabricationCard = Card(
+        "Copper Wiring",
+        [
+            Card.Text("Fabricate conductive wiring for future equipment."),
+
+            Card.Status("Ready", { variant: "ready" }),
+
+            Card.Requirements([
+                {
+                    icon: "🟠",
+                    label: "Copper",
+                    available: 18,
+                    required: 8
+                },
+                {
+                    icon: "💎",
+                    label: "Refined Silica",
+                    available: 3,
+                    required: 2
+                },
+                {
+                    icon: "⚡",
+                    label: "Energy",
+                    available: 45,
+                    required: 20
+                }
+            ]),
+
+            Card.Output([
+                {
+                    icon: "🔌",
+                    label: "Copper Wiring",
+                    amount: 3
+                },
+                {
+                    icon: "♻️",
+                    label: "Metal Scrap",
+                    amount: 1
+                }
+            ]),
+
+            Card.Text("Duration: 12 seconds"),
+
+            Card.Actions([
+                {
+                    label: "Fabricate ×1",
+                    onClick: () => alert("Demo: Fabrication started!")
+                },
+                {
+                    label: "Fabricate ×10",
+                    variant: "secondary-button",
+                    disabled: true
+                }
+            ])
+        ],
+        "Component manufacturing",
+        { icon: "🔧" }
+    );
+
+    // ========================================
+    // Example 3: Active assembly
+    // ========================================
+
+    const progressBar = Card.Progress({
+        label: "Assembly progress",
+        value: 0,
+        max: 30,
+        format: (value, max) => `${Math.floor(value)} / ${max}s`
+    });
+
+    const status = Card.Status("Idle", { variant: "default" });
+
+    const progressText = Card.Text("Waiting for assembly to begin.");
+
+    const startButton = Button("Start Assembly", () => {
+        if (processStarted) return;
+
+        processStarted = true;
+        processProgress = 0;
+
+        status.textContent = "Running";
+        status.className = "card-status card-status--running";
+
+        progressText.textContent = "Assembly in progress...";
+
+        startButton.disabled = true;
+
+        const interval = setInterval(() => {
+            processProgress = Math.min(30, processProgress + 1);
+            progressBar.setValue(processProgress, 30);
+
+            if (processProgress >= 30) {
+                clearInterval(interval);
+
+                status.textContent = "Complete";
+                status.className = "card-status card-status--complete";
+
+                progressText.textContent = "Assembly completed!";
+                startButton.disabled = false;
+                startButton.textContent = "Assembled";
+                startButton.disabled = true;
+            }
+        }, 1000);
+    });
+
+    const assemblyCard = Card(
+        "Experimental Energy Core",
+        [
+            Card.Text("Combine several components into a functional machine."),
+
+            status,
+
+            Card.Requirements([
+                {
+                    icon: "🔌",
+                    label: "Copper Wiring",
+                    available: 6,
+                    required: 4
+                },
+                {
+                    icon: "💎",
+                    label: "Refined Silica",
+                    available: 2,
+                    required: 2
+                },
+                {
+                    icon: "⚡",
+                    label: "Energy",
+                    available: 120,
+                    required: 100
+                },
+                {
+                    icon: "🧪",
+                    label: "Exotic Matter",
+                    available: 0,
+                    required: 1
+                }
+            ]),
+
+            Card.Output([
+                {
+                    icon: "🔋",
+                    label: "Experimental Energy Core",
+                    amount: 1
+                }
+            ]),
+
+            Card.Section("Process", [
+                progressBar,
+                progressText
+            ]),
+
+            Card.Actions([
+                startButton,
+                {
+                    label: "Cancel",
+                    disabled: true
+                }
+            ])
+        ],
+        "Complex equipment assembly",
+        { icon: "⚙️" }
+    );
+
+    container.append(
+        refinementCard,
+        fabricationCard,
+        assemblyCard
+    );
+
+    return container;
+}
+
 function renderEquipmentTab() {
     return renderDatabasePanel(
         "Lab Equipment",
@@ -561,6 +786,11 @@ function renderTabContent() {
             id: "gathering",
             label: "FIELD WORK",
             render: renderGatheringTab
+        },
+        {
+            id: "synthesis",
+            label: "SYNTHESIS",
+            render: renderSynthesisTab
         },
         {
             id: "equipment",
