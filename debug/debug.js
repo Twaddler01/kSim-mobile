@@ -14,6 +14,36 @@ const {
     ProgressBar
 } = main;
 
+/*
+// Check current inventory
+kSim.data.inventory
+
+// Check available recipes
+kSim.data.manufacturing
+
+// Give yourself test materials
+Object.assign(kSim.data.inventory, {
+    energy: 100,
+    quartz: 20,
+    silica: 20,
+    copper: 20,
+    silicon: 20,
+    resonanceCrystal: 5
+});
+
+// Refresh the UI
+kSim.render();
+
+
+
+// Once synthesisPanel is exposed for debugging:
+synthesisPanel.update();
+*/
+    
+
+
+
+    
 new DebugButton({
     id: "showdata",
     label: "data test",

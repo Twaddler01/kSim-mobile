@@ -1,114 +1,341 @@
+// src/ui/SynthesisPanel.js
+
 import { el } from "./Element.js";
 import { Button } from "./Button.js";
-import { materialDefinitions, recipeDefinitions } from "../data/manufacturing.js";
-import {
-    ensureManufacturingState,
-    recipeUnlocked,
-    getCostStatus,
-    craftRecipe,
-    formatRecipeCost
-} from "../systems/SynthesisEngine.js";
+import { Card } from "./Card.js";
 
-const GROUPS = ["Materials", "Components", "Advanced Materials", "Assemblies", "Major Equipment"];
+import { materials } from "../data/materials.js";
+import { refinementRecipes } from "../data/refinement.js";
+import { fabricationRecipes } from "../data/fabrication.js";
+import { assemblyRecipes } from "../data/assembly.js";
 
-export class SynthesisPanel {
-    constructor({ game, onChange = () => {}, onToast = () => {} }) {
-        this.game = game;
-        this.onChange = onChange;
-        this.onToast = onToast;
-        ensureManufacturingState(this.game);
+import { getRecipeStatus, craftRecipe } from "../systems/SynthesisEngine.js";
+
+const RECIPE_GROUPS = [
+    {
+        id: "refinement",
+        title: "Refinement",
+        description: "Process raw materials into useful substances.",
+        icon: "⚗️",
+        recipes: refinementRecipes
+    },
+    {
+        id: "fabrication",
+        title: "Fabrication",
+        description: "Manufacture components from processed materials.",
+        icon: "🔧",
+        recipes: fabricationRecipes
+    },
+    {
+        id: "assembly",
+        title: "Assembly",
+        description: "Combine specialized components into equipment.",
+        icon: "⚙️",
+        recipes: assemblyRecipes
+    }
+];
+
+const RESOURCE_DEFINITIONS = {
+    energy: {
+        id: "energy",
+        name: "Energy",
+        icon: "⚡"
+    },
+    particles: {
+        id: "particles",
+        name: "Particles",
+        icon: "⚛️"
+    },
+    research: {
+        id: "research",
+        name: "Research",
+        icon: "🔬"
+    },
+    exoticMatter: {
+        id: "exoticMatter",
+        name: "Exotic Matter",
+        icon: "🌀"
+    }
+};
+
+export default class SynthesisPanel {
+    constructor({ getGame, save, refreshUI, showToast }) {
+        this.getGame = getGame;
+        this.save = save;
+        this.refreshUI = refreshUI;
+        this.showToast = showToast;
+
+        this.element = null;
+        this.cards = new Map();
     }
 
-    getElement() {
-        return this.render();
+    get game() {
+        return this.getGame();
+    }
+
+    getItem(itemId) {
+        return (
+            materials.find(item => item.id === itemId) ??
+            RESOURCE_DEFINITIONS[itemId] ?? {
+                id: itemId,
+                name: itemId,
+                icon: "◈"
+            }
+        );
+    }
+
+    getItemLabel(itemId) {
+        return this.getItem(itemId).name;
+    }
+
+    getItemIcon(itemId) {
+        return this.getItem(itemId).icon ?? "◈";
+    }
+
+    createRecipeCard(recipe, group) {
+        const status = Card.Status("Checking...", {
+            variant: "default"
+        });
+
+        const requirements = el("div", {
+            className: "synthesis-requirements"
+        });
+
+        const outputs = el("div", {
+            className: "synthesis-outputs"
+        });
+
+        const craftButton = Button("CRAFT", () => this.craft(recipe), {
+            variant: "primary-button"
+        });
+
+        const card = Card(
+            recipe.name,
+            [
+                Card.Text(recipe.description),
+
+                status,
+
+                Card.Section("Requirements", requirements),
+
+                Card.Section("Output", outputs),
+
+                recipe.durationSeconds
+                    ? Card.Text(
+                          `Processing time: ${recipe.durationSeconds} seconds`
+                      )
+                    : null,
+
+                Card.Actions([craftButton])
+            ],
+            group.title,
+            {
+                icon: group.icon,
+                itemId: recipe.id,
+                tabId: "synthesis"
+            }
+        );
+
+        this.cards.set(recipe.id, {
+            recipe,
+            card,
+            status,
+            requirements,
+            outputs,
+            craftButton
+        });
+
+        this.updateRecipeCard(recipe);
+
+        return card;
+    }
+
+    updateRecipeCard(recipe) {
+        const card = this.cards.get(recipe.id);
+        if (!card) return;
+
+        const game = this.game;
+        const result = getRecipeStatus(game, recipe);
+
+        const completed = game.manufacturing?.completedRecipes ?? [];
+
+        const alreadyCompleted = recipe.unique && completed.includes(recipe.id);
+
+        const canCraft = result.canCraft && !alreadyCompleted;
+
+        // Status
+        const statusLabel = alreadyCompleted
+            ? "COMPLETED"
+            : canCraft
+              ? "READY"
+              : "INSUFFICIENT MATERIALS";
+
+        const statusVariant = alreadyCompleted
+            ? "complete"
+            : canCraft
+              ? "ready"
+              : "default";
+
+        card.status.textContent = statusLabel;
+        card.status.className = `card-status card-status--${statusVariant}`;
+
+        // Requirements
+        const requirementRows = result.requirements.map(item => {
+            const sufficient = item.sufficient;
+
+            return el(
+                "div",
+                {
+                    className: [
+                        "card-requirement",
+                        sufficient
+                            ? "card-requirement--met"
+                            : "card-requirement--missing"
+                    ].join(" ")
+                },
+                [
+                    el("span", {
+                        className: "card-requirement__icon",
+                        text: this.getItemIcon(item.id),
+                        "aria-hidden": "true"
+                    }),
+
+                    el("span", {
+                        className: "card-requirement__label",
+                        text: this.getItemLabel(item.id)
+                    }),
+
+                    el("span", {
+                        className: "card-requirement__amount",
+                        text: `${item.available} / ${item.required}`
+                    })
+                ]
+            );
+        });
+
+        card.requirements.replaceChildren(...requirementRows);
+
+        // Outputs
+        const outputRows = Object.entries(recipe.outputs).map(
+            ([itemId, amount]) =>
+                el(
+                    "div",
+                    {
+                        className: "card-output"
+                    },
+                    [
+                        el("span", {
+                            className: "card-output__icon",
+                            text: this.getItemIcon(itemId),
+                            "aria-hidden": "true"
+                        }),
+
+                        el("span", {
+                            className: "card-output__label",
+                            text: this.getItemLabel(itemId)
+                        }),
+
+                        el("strong", {
+                            className: "card-output__amount",
+                            text: `×${amount}`
+                        })
+                    ]
+                )
+        );
+
+        card.outputs.replaceChildren(...outputRows);
+
+        // Craft button
+        card.craftButton.disabled = !canCraft;
+        card.craftButton.textContent = alreadyCompleted ? "COMPLETED" : "CRAFT";
+    }
+
+    craft(recipe) {
+        const result = craftRecipe(this.game, recipe);
+
+        if (!result.ok) {
+            this.showToast?.(result.reason);
+            this.update();
+            return false;
+        }
+
+        this.save?.();
+
+        this.showToast?.(`${recipe.name} completed.`);
+
+        // Update the shared inventory and any other visible UI.
+        this.refreshUI?.({ database: true });
+
+        return true;
     }
 
     render() {
-        ensureManufacturingState(this.game);
-        const root = el("div", { className: "synthesis-panel" }, [
-            el("div", { className: "synthesis-intro sim-card" }, [
-                el("div", { className: "eyebrow", text: "MATERIALS LAB // FABRICATION SYSTEM" }),
-                el("h3", { text: "Synthesis Engine" }),
-                el("p", { className: "muted", text: "Recover raw samples during experiments, process them into components, and assemble equipment from dependent parts." })
-            ]),
-            this.renderInventory(),
-            ...GROUPS.map(group => this.renderGroup(group))
-        ]);
+        if (!this.element) {
+            this.element = el("div", {
+                className: "synthesis-panel"
+            });
 
-        return root;
-    }
+            for (const group of RECIPE_GROUPS) {
+                const section = el("section", {
+                    className: `synthesis-group synthesis-group--${group.id}`
+                });
 
-    renderInventory() {
-        const items = materialDefinitions.filter(item => (this.game.inventory?.[item.id] ?? 0) > 0);
-        return el("section", { className: "sim-card synthesis-inventory" }, [
-            el("div", { className: "section-heading" }, [
-                el("div", {}, [
-                    el("div", { className: "eyebrow", text: "STOCKROOM" }),
-                    el("h3", { text: "Material Inventory" })
-                ]),
-                el("span", { className: "count-pill", text: `${items.length} item types` })
-            ]),
-            items.length
-                ? el("div", { className: "material-grid" }, items.map(item =>
-                    el("article", { className: "material-card" }, [
-                        el("div", { className: "material-icon", text: item.icon }),
-                        el("div", { className: "material-name", text: item.name }),
-                        el("div", { className: "material-amount", text: `× ${this.game.inventory[item.id]}` })
-                    ])
-                ))
-                : el("p", { className: "muted", text: "No material samples recovered yet. Run experiments to collect raw materials." })
-        ]);
-    }
+                const heading = el(
+                    "div",
+                    {
+                        className: "section-heading"
+                    },
+                    [
+                        el("div", {}, [
+                            el("div", {
+                                className: "eyebrow",
+                                text: group.title.toUpperCase()
+                            }),
+                            el("p", {
+                                className: "muted",
+                                text: group.description
+                            })
+                        ])
+                    ]
+                );
 
-    renderGroup(group) {
-        const recipes = recipeDefinitions.filter(recipe => recipe.category === group);
-        if (!recipes.length) return el("div", { hidden: true });
+                const grid = el("div", {
+                    className: "synthesis-card-grid"
+                });
 
-        return el("section", { className: "sim-card synthesis-group" }, [
-            el("div", { className: "eyebrow", text: "RECIPE DATABASE" }),
-            el("h3", { text: group }),
-            el("div", { className: "item-list" }, recipes.map(recipe => this.renderRecipe(recipe)))
-        ]);
-    }
+                for (const recipe of group.recipes) {
+                    grid.append(this.createRecipeCard(recipe, group));
+                }
 
-    renderRecipe(recipe) {
-        const output = materialDefinitions.find(item => item.id === recipe.output.id);
-        const unlocked = recipeUnlocked(this.game, recipe);
-        const status = getCostStatus(this.game, recipe);
-        const owned = this.game.inventory?.[recipe.output.id] ?? 0;
-        const completedUnique = recipe.unique && owned > 0;
-        const disabled = !unlocked || !status.affordable || completedUnique;
-
-        let statusText = "READY TO SYNTHESIZE";
-        if (!unlocked) statusText = "REQUIRES TEMPORAL RESONANCE";
-        else if (completedUnique) statusText = "ASSEMBLY COMPLETE";
-        else if (!status.affordable) {
-            statusText = `MISSING: ${status.missing.map(item => `${item.needed - item.have} ${item.name}`).join(", ")}`;
+                section.append(heading, grid);
+                this.element.append(section);
+            }
         }
 
-        return el("article", { className: `list-item synthesis-recipe ${unlocked ? "" : "is-locked"}` }, [
-            el("div", { className: "item-details" }, [
-                el("div", { className: "item-heading" }, [
-                    el("span", { className: "item-icon", text: output?.icon ?? "⚙️" }),
-                    el("strong", { text: recipe.name }),
-                    el("span", { className: `status ${!disabled ? "status-found" : ""}`, text: completedUnique ? "BUILT" : unlocked ? "RECIPE" : "LOCKED" })
-                ]),
-                el("p", { className: "item-description", text: recipe.description }),
-                el("p", { className: "cost-line", text: `Required: ${formatRecipeCost(recipe)}` }),
-                el("p", { className: "synthesis-status", text: statusText }),
-                Button(
-                    completedUnique ? "ASSEMBLED" : "SYNTHESIZE",
-                    () => {
-                        const result = craftRecipe(this.game, recipe.id);
-                        if (result.ok) {
-                            this.onChange(result);
-                        } else {
-                            this.onToast(result.reason);
-                        }
-                    },
-                    { variant: "secondary-button", disabled }
-                )
-            ])
-        ]);
+        this.update();
+
+        return this.element;
+    }
+
+    getElement() {
+        if (!this.element) {
+            this.render();
+        }
+
+        this.update();
+
+        return this.element;
+    }
+
+    update() {
+        if (!this.element) return this;
+
+        for (const group of RECIPE_GROUPS) {
+            for (const recipe of group.recipes) {
+                this.updateRecipeCard(recipe);
+            }
+        }
+
+        return this;
     }
 }

@@ -108,16 +108,6 @@ export default class SaveManager {
                         ...(fresh.appState?.navigation ?? {}),
                         ...(parsed.appState?.navigation ?? {})
                     }
-                },
-
-                manufacturing: {
-                    ...(fresh.manufacturing ?? {}),
-                    ...(parsed.manufacturing ?? {}),
-                    completedRecipes: Array.isArray(
-                        parsed.manufacturing?.completedRecipes
-                    )
-                        ? parsed.manufacturing.completedRecipes
-                        : [...(fresh.manufacturing?.completedRecipes ?? [])]
                 }
             };
         } catch (error) {

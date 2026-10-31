@@ -1785,3 +1785,80 @@ body:not(.debug-mode) {
 .card-body .progress-label {
     font-size: 0.65rem;
 }
+
+/* ========================================
+   Synthesis
+======================================== */
+
+.synthesis-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    width: 100%;
+    min-width: 0;
+}
+
+.synthesis-group {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.synthesis-card-grid {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, 280px), 1fr)
+    );
+    gap: 14px;
+}
+
+.synthesis-requirements,
+.synthesis-outputs {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* ========================================
+   Debug Panel
+======================================== */
+
+.debug-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+    min-width: 0;
+}
+
+.debug-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.debug-section-title {
+    margin: 0;
+}
+
+.debug-item-grid {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, 260px), 1fr)
+    );
+    gap: 12px;
+}
+
+.debug-item-current {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.debug-item-value {
+    font-variant-numeric: tabular-nums;
+}

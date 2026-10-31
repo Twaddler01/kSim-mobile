@@ -1,17 +1,18 @@
 import { el } from "./Element.js";
 import MaterialIcon from "../assets/icons/materials/MaterialIcon.js";
+import { inventoryItems, initializeInventory } from "../data/inventory.js";
 
 export default class Inventory {
-    constructor({ getGame, resources = [], materials = [], formatNumber }) {
+    constructor({ getGame, formatNumber }) {
         this.getGame = getGame;
-        this.resources = resources;
-        this.materials = materials;
         this.formatNumber = formatNumber ?? (value => String(value));
 
         this.expanded = false;
         this.values = new Map();
         this.detailValues = new Map();
         this.itemIds = [];
+
+        initializeInventory(this.game);
 
         this.element = this.render();
     }
@@ -21,53 +22,28 @@ export default class Inventory {
     }
 
     createItemIcon(item, className, size = 24) {
-        // Primary resources continue using their emoji icons.
-        if (item.inventoryType === "resources") {
+        if (item.inventoryType === "resource") {
             return el("span", {
                 className,
                 "aria-hidden": "true",
-                text: item.icon
+                text: item.icon || "◈"
             });
         }
 
-        // Materials use their SVG drawings.
-        return MaterialIcon(item.materialId ?? item.id, {
+        return MaterialIcon(item.id, {
             size,
             className
         });
     }
 
     getVisibleItems() {
-        const resources = this.resources
-            .filter(
-                item =>
-                    !item.unlockDiscovery ||
-                    this.game.discoveries.includes(item.unlockDiscovery)
-            )
-            .map(item => ({
-                ...item,
-                inventoryType: "inventory"
-            }));
+        const discovered = this.game.inventoryDiscovered ?? {};
 
-        const discoveredMaterials =
-            this.game.operations?.discoveredMaterials ?? {};
-
-        const materials = this.materials
-            .filter(
-                item =>
-                    Boolean(discoveredMaterials[item.id]) ||
-                    (this.game.inventory?.[item.id] ?? 0) > 0
-            )
-            .map(item => ({
-                ...item,
-                inventoryType: "inventory"
-            }));
-
-        return [...resources, ...materials];
+        return inventoryItems.filter(item => discovered[item.id]);
     }
 
     getAmount(item) {
-        return this.game[item.inventoryType]?.[item.id] ?? 0;
+        return this.game.inventory?.[item.id] ?? 0;
     }
 
     getItemKey(item) {

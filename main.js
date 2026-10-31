@@ -1,5 +1,6 @@
 // main.js
 import { initializeDebug } from "./debug/debug.js";
+import DebugPanel from "./debug/DebugPanel.js";
 
 import {
     initialGameData,
@@ -30,6 +31,11 @@ import CollapsiblePanel from "./src/ui/CollapsiblePanel.js";
 
 import Inventory from "./src/ui/Inventory.js";
 import { materials } from "./src/data/materials.js";
+import {
+    initializeInventory,
+    syncInventoryDiscovery,
+    addInventoryItem
+} from "./src/data/inventory.js";
 
 import ResourcePopups from "./src/ui/ResourcePopups.js";
 import SaveManager from "./src/SaveManager.js";
@@ -45,12 +51,11 @@ import Badge from "./src/ui/Badge.js";
 
 // TABS
 import DiscoveryPanel from "./src/ui/DiscoveryPanel.js";
+import SynthesisPanel from "./src/ui/SynthesisPanel.js";
 import UpgradePanel from "./src/ui/UpgradePanel.js";
 import LogPanel from "./src/ui/LogPanel.js";
 import PlanPanel from "./src/ui/PlanPanel.js";
 import GatheringField from "./src/ui/GatheringField.js";
-
-import { ensureManufacturingState } from "./src/systems/SynthesisEngine.js";
 
 import { recoverMaterial } from "./src/systems/MaterialRecovery.js";
 
@@ -67,6 +72,7 @@ const saveManager = new SaveManager({
 const app = document.getElementById("app");
 
 let game = saveManager.load();
+initializeInventory(game);
 
 const unlockManager = new UnlockManager(game);
 
@@ -267,13 +273,18 @@ function discoverMaterial(material, source = "recovery") {
     return true;
 }
 
-ensureManufacturingState(game);
-
 // Persistent Operations state.
 game.operations ??= {};
 
 // Quantum Field is temporarily inactive.
 game.operations.quantumFieldUnlocked = false;
+
+const synthesisPanel = new SynthesisPanel({
+    getGame: () => game,
+    save,
+    refreshUI: options => refreshUI(options),
+    showToast: message => showToast(message)
+});
 
 const discoveryPanel = new DiscoveryPanel({
     getGame: () => game,
@@ -527,228 +538,7 @@ function renderFieldWorkContent(content) {
 }
 
 function renderSynthesisTab() {
-    // Demo-only state. Recreated whenever the tab is rendered.
-    let processStarted = false;
-    let processProgress = 0;
-
-    const container = el("div", {
-        className: "card-test-playground"
-    });
-
-    // ========================================
-    // Example 1: Basic refinement
-    // ========================================
-
-    const refinementCard = Card(
-        "Purify Silica",
-        [
-            Card.Text("Refine raw silica into a more useful material."),
-
-            Card.Requirements([
-                {
-                    icon: "🪨",
-                    label: "Raw Silica",
-                    available: 24,
-                    required: 5
-                }
-            ]),
-
-            Card.Output([
-                {
-                    icon: "💎",
-                    label: "Refined Silica",
-                    amount: 2
-                }
-            ]),
-
-            Card.Text("Duration: 0.5 seconds"),
-
-            Card.Actions([
-                {
-                    label: "Refine",
-                    onClick: () => alert("Demo: Refinement started!")
-                }
-            ])
-        ],
-        "Basic material processing",
-        { icon: "⚗️" }
-    );
-
-    // ========================================
-    // Example 2: Fabrication
-    // ========================================
-
-    const fabricationCard = Card(
-        "Copper Wiring",
-        [
-            Card.Text("Fabricate conductive wiring for future equipment."),
-
-            Card.Status("Ready", { variant: "ready" }),
-
-            Card.Requirements([
-                {
-                    icon: "🟠",
-                    label: "Copper",
-                    available: 18,
-                    required: 8
-                },
-                {
-                    icon: "💎",
-                    label: "Refined Silica",
-                    available: 3,
-                    required: 2
-                },
-                {
-                    icon: "⚡",
-                    label: "Energy",
-                    available: 45,
-                    required: 20
-                }
-            ]),
-
-            Card.Output([
-                {
-                    icon: "🔌",
-                    label: "Copper Wiring",
-                    amount: 3
-                },
-                {
-                    icon: "♻️",
-                    label: "Metal Scrap",
-                    amount: 1
-                }
-            ]),
-
-            Card.Text("Duration: 12 seconds"),
-
-            Card.Actions([
-                {
-                    label: "Fabricate ×1",
-                    onClick: () => alert("Demo: Fabrication started!")
-                },
-                {
-                    label: "Fabricate ×10",
-                    variant: "secondary-button",
-                    disabled: true
-                }
-            ])
-        ],
-        "Component manufacturing",
-        { icon: "🔧" }
-    );
-
-    // ========================================
-    // Example 3: Active assembly
-    // ========================================
-
-    const progressBar = Card.Progress({
-        label: "Assembly progress",
-        value: 0,
-        max: 30,
-        format: (value, max) => `${Math.floor(value)} / ${max}s`
-    });
-
-    const status = Card.Status("Idle", { variant: "default" });
-
-    const progressText = Card.Text("Waiting for assembly to begin.");
-
-    const startButton = Button("Start Assembly", () => {
-        if (processStarted) return;
-
-        processStarted = true;
-        processProgress = 0;
-
-        status.textContent = "Running";
-        status.className = "card-status card-status--running";
-
-        progressText.textContent = "Assembly in progress...";
-
-        startButton.disabled = true;
-
-        const interval = setInterval(() => {
-            processProgress = Math.min(30, processProgress + 1);
-            progressBar.setValue(processProgress, 30);
-
-            if (processProgress >= 30) {
-                clearInterval(interval);
-
-                status.textContent = "Complete";
-                status.className = "card-status card-status--complete";
-
-                progressText.textContent = "Assembly completed!";
-                startButton.disabled = false;
-                startButton.textContent = "Assembled";
-                startButton.disabled = true;
-            }
-        }, 1000);
-    });
-
-    const assemblyCard = Card(
-        "Experimental Energy Core",
-        [
-            Card.Text("Combine several components into a functional machine."),
-
-            status,
-
-            Card.Requirements([
-                {
-                    icon: "🔌",
-                    label: "Copper Wiring",
-                    available: 6,
-                    required: 4
-                },
-                {
-                    icon: "💎",
-                    label: "Refined Silica",
-                    available: 2,
-                    required: 2
-                },
-                {
-                    icon: "⚡",
-                    label: "Energy",
-                    available: 120,
-                    required: 100
-                },
-                {
-                    icon: "🧪",
-                    label: "Exotic Matter",
-                    available: 0,
-                    required: 1
-                }
-            ]),
-
-            Card.Output([
-                {
-                    icon: "🔋",
-                    label: "Experimental Energy Core",
-                    amount: 1
-                }
-            ]),
-
-            Card.Section("Process", [
-                progressBar,
-                progressText
-            ]),
-
-            Card.Actions([
-                startButton,
-                {
-                    label: "Cancel",
-                    disabled: true
-                }
-            ])
-        ],
-        "Complex equipment assembly",
-        { icon: "⚙️" }
-    );
-
-    container.append(
-        refinementCard,
-        fabricationCard,
-        assemblyCard
-    );
-
-    return container;
+    return synthesisPanel.getElement();
 }
 
 function renderEquipmentTab() {
@@ -771,12 +561,28 @@ function renderLogTab() {
     );
 }
 
+const debugPanel = new DebugPanel({
+    getGame: () => game,
+    save,
+    refreshUI: options => refreshUI(options),
+    showToast: message => showToast(message)
+});
+
+function renderDebugTab() {
+    return debugPanel.getElement();
+}
+
 // ========================================
 // TAB REGISTRATION
 // ========================================
 
 function renderTabContent() {
     const tabDefinitions = [
+        {
+            id: "debug",
+            label: "DEBUG",
+            render: renderDebugTab
+        },
         {
             id: "lab",
             label: "LAB",
@@ -1259,12 +1065,19 @@ function updateOperationsUI() {
 
 function updateActiveTabUI() {
     switch (activeTab) {
+        case "debug":
+            debugPanel.update();
+            break;
         case "lab":
             updateLabTab();
             break;
 
         case "gathering":
             updateGatheringTab();
+            break;
+
+        case "synthesis":
+            synthesisPanel.update();
             break;
 
         case "equipment":
@@ -1337,6 +1150,7 @@ function updateLogTab() {
 }
 
 function updateSharedUI() {
+    syncInventoryDiscovery();
     updateInventory();
 }
 
@@ -1681,8 +1495,6 @@ function render() {
 
     ui.inventory = new Inventory({
         getGame: () => game,
-        resources: [], //resourceDefinitions,
-        materials,
         formatNumber
     });
 

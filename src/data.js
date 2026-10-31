@@ -74,42 +74,36 @@ export const initialGameData = {
     },
     operations: {
         quantumFieldUnlocked: false
-    },
-    manufacturing: {
-        unlocked: false,
-        completedRecipes: [],
-        machineBuilt: false
     }
 };
 
 export const resourceDefinitions = [
     {
         id: "energy",
-        name: "Quantum Energy",
+        name: "Energy",
         icon: "⚡",
-        description: "Power for experiments."
+        description: "Available energy for experiments and processing.",
+        initiallyDiscovered: true
     },
     {
         id: "particles",
         name: "Particles",
         icon: "⚛️",
-        description: "The first measurable products of the field."
+        description: "Particles recovered or generated during experiments."
     },
     {
         id: "research",
         name: "Research",
         icon: "🔬",
-        description: "Evidence gathered from repeatable observations."
+        description: "Research accumulated through discoveries."
     },
     {
         id: "exoticMatter",
         name: "Exotic Matter",
         icon: "🌀",
-        description: "An unstable substance that should not exist.",
-        unlockDiscovery: "quantumAnomaly"
+        description: "An unusual form of matter with unexplained properties."
     }
 ];
-
 export const discoveries = [
     {
         id: "fieldCalibration",
