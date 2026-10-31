@@ -34,7 +34,8 @@ import { materials } from "./src/data/materials.js";
 import {
     initializeInventory,
     syncInventoryDiscovery,
-    addInventoryItem
+    addInventoryItem,
+    removeInventoryItem
 } from "./src/data/inventory.js";
 
 import ResourcePopups from "./src/ui/ResourcePopups.js";
@@ -1302,7 +1303,7 @@ function render() {
                 return;
             }
 
-            game.inventory.particles -= 10;
+            removeInventoryItem(game, "particles", 10);
 
             addLog(
                 game,

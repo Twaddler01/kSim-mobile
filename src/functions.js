@@ -1,6 +1,6 @@
 import { upgradeDefinitions } from "./data.js";
 import { applyEffects, describeEffects } from "./triggers/effects.js";
-import { addInventoryItem } from "./data/inventory.js";
+import { addInventoryItem, removeInventoryItem } from "./data/inventory.js";
 
 export const LOG_RETENTION = {
     important: 100,
@@ -137,7 +137,7 @@ export function canAfford(game, cost) {
 export function payCost(game, cost) {
     if (!canAfford(game, cost)) return false;
     for (const [resource, amount] of Object.entries(cost)) {
-        game.inventory[resource] -= amount;
+        removeInventoryItem(game, resource, amount);
     }
     return true;
 }
@@ -345,7 +345,7 @@ export function consumeParticles(game) {
 
     const energy = particles * 5;
 
-    game.inventory.particles -= particles;
+    removeInventoryItem(game, "particles", particles);
     addInventoryItem(game, "energy", energy);
 
     const conversionMessage = `RESOURCE CONVERSION: Consumed ${particles} particles for +${energy} Quantum Energy.`;

@@ -1,5 +1,5 @@
 // src/systems/SynthesisEngine.js
-import { addInventoryItem } from "../data/inventory.js";
+import { addInventoryItem, removeInventoryItem } from "../data/inventory.js";
 
 /**
  * Read the amount of an item in the shared inventory.
@@ -94,7 +94,7 @@ export function craftRecipe(game, recipe) {
 
     // Consume inputs.
     for (const [itemId, amount] of Object.entries(recipe.inputs)) {
-        game.inventory[itemId] -= amount;
+        removeInventoryItem(game, itemId, amount);
     }
 
     // Grant outputs.

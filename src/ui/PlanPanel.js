@@ -1,5 +1,6 @@
 import { el, append } from "./Element.js";
 import { planDefinitions } from "../data/plans.js";
+import { removeInventoryItem } from "../data/inventory.js";
 
 export default class PlanPanel {
     constructor({
@@ -334,8 +335,7 @@ export default class PlanPanel {
         }
 
         // Pay and reveal.
-        game.inventory.research -= cell.cost;
-        state.revealed.push(cell.id);
+        removeInventoryItem(game, "research", cell.cost);
 
         // Every tile provides its own evidence.
         this.onEvidence(plan, cell);
