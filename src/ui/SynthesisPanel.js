@@ -3,13 +3,13 @@
 import { el } from "./Element.js";
 import { Button } from "./Button.js";
 import { Card } from "./Card.js";
-
+import Badge from "./Badge.js";
 import { materials } from "../data/materials.js";
 import { refinementRecipes } from "../data/refinement.js";
 import { fabricationRecipes } from "../data/fabrication.js";
 import { assemblyRecipes } from "../data/assembly.js";
-
 import { getRecipeStatus, craftRecipe } from "../systems/SynthesisEngine.js";
+import { resourceDefinitions } from "../data.js";
 
 const RECIPE_GROUPS = [
     {
@@ -35,29 +35,6 @@ const RECIPE_GROUPS = [
     }
 ];
 
-const RESOURCE_DEFINITIONS = {
-    energy: {
-        id: "energy",
-        name: "Energy",
-        icon: "⚡"
-    },
-    particles: {
-        id: "particles",
-        name: "Particles",
-        icon: "⚛️"
-    },
-    research: {
-        id: "research",
-        name: "Research",
-        icon: "🔬"
-    },
-    exoticMatter: {
-        id: "exoticMatter",
-        name: "Exotic Matter",
-        icon: "🌀"
-    }
-};
-
 export default class SynthesisPanel {
     constructor({ getGame, save, refreshUI, showToast }) {
         this.getGame = getGame;
@@ -76,7 +53,7 @@ export default class SynthesisPanel {
     getItem(itemId) {
         return (
             materials.find(item => item.id === itemId) ??
-            RESOURCE_DEFINITIONS[itemId] ?? {
+            resourceDefinitions[itemId] ?? {
                 id: itemId,
                 name: itemId,
                 icon: "◈"
@@ -97,6 +74,11 @@ export default class SynthesisPanel {
             variant: "default"
         });
 
+        const lockBadge = Badge({
+            text: "🔒 LOCKED",
+            variant: "default"
+        });
+
         const requirements = el("div", {
             className: "synthesis-requirements"
         });
@@ -113,6 +95,8 @@ export default class SynthesisPanel {
             recipe.name,
             [
                 Card.Text(recipe.description),
+
+                lockBadge,
 
                 status,
 
@@ -140,6 +124,7 @@ export default class SynthesisPanel {
             recipe,
             card,
             status,
+            lockBadge,
             requirements,
             outputs,
             craftButton
@@ -156,7 +141,14 @@ export default class SynthesisPanel {
 
         const game = this.game;
         const result = getRecipeStatus(game, recipe);
-
+        const ingredientsDiscovered = result.ingredientsDiscovered;
+        
+        const locked = !ingredientsDiscovered;
+        
+        card.card.classList.toggle("is-locked", locked);
+        
+        card.lockBadge.hidden = !locked;
+                
         const completed = game.manufacturing?.completedRecipes ?? [];
 
         const alreadyCompleted = recipe.unique && completed.includes(recipe.id);
@@ -166,16 +158,18 @@ export default class SynthesisPanel {
         // Status
         const statusLabel = alreadyCompleted
             ? "COMPLETED"
-            : canCraft
-              ? "READY"
-              : "INSUFFICIENT MATERIALS";
+            : locked
+              ? "LOCKED"
+              : canCraft
+                ? "READY"
+                : "INSUFFICIENT MATERIALS";
 
         const statusVariant = alreadyCompleted
             ? "complete"
             : canCraft
               ? "ready"
               : "default";
-
+        
         card.status.textContent = statusLabel;
         card.status.className = `card-status card-status--${statusVariant}`;
 
@@ -246,7 +240,7 @@ export default class SynthesisPanel {
         card.outputs.replaceChildren(...outputRows);
 
         // Craft button
-        card.craftButton.disabled = !canCraft;
+        card.craftButton.disabled = locked || !canCraft;
         card.craftButton.textContent = alreadyCompleted ? "COMPLETED" : "CRAFT";
     }
 

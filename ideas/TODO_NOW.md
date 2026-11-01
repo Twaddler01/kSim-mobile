@@ -1,46 +1,47 @@
 
-### 1\. Three independent recipe collections
+### Implementation order
 
-I'd put them in a dedicated `src/data/synthesis.js`:
+* Progression definitions — register synthesis-related unlocks through the existing `UnlockManager` and `EventProcessor`.
 
-```js
-export const refinementRecipes = [
-    // Raw materials → refined materials
-];
+* Shared availability logic — create a reusable helper that checks whether a recipe or item meets its progression requirements.
 
-export const fabricationRecipes = [
-    // Materials → components
-];
+* Discovery integration — make recipe availability depend on whether all its ingredients have been discovered.
 
-export const assemblyRecipes = [
-    // Components and materials → equipment
-];
+* Synthesis engine — update `getRecipeStatus()` and `craftRecipe()` to enforce discovery, progression, quantity, and completion requirements.
+
+* UI integration — add the LOCKED badge, faded card styling, status labels, and disabled craft buttons.
+
+* Testing — verify that unlocking a station makes its recipes available, discovering ingredients removes discovery locks, and crafting cannot bypass any restriction.
+
+The important architectural rule is that the engine remains authoritative. Even if someone calls `craftRecipe()` directly from the developer console, it must enforce the same requirements.
+
+### First step: inspect the event system
+
+Before changing anything, I'd like to see how your existing event triggers are defined and evaluated. We should extend that system rather than invent a second mechanism.
+
+Run:
+
+```bash
+fc src/systems/EventProcessor.js src/data/fabrication.js src/data/assembly.js src/data/refinement.js src/data/inventory.js
 ```
 
-Each collection is independently expandable, and the category is implicit in the array. We don't need to repeat `category` on every recipe unless we later have a reason to.
+If `EventProcessor.js` is in a different location, use its actual path.
 
-All recipes share one schema:
+We'll use those files to implement the first backend piece:
 
-```js
-{
-    id: "purify-silica",
-    name: "Purify Silica",
-    description: "Refine raw silica into a useful material.",
+* Register a Fabricator progression unlock.
 
-    inputs: {
-        silica: 5,
-        energy: 2
-    },
+* Give it an event trigger using your existing trigger format.
 
-    outputs: {
-        refinedSilica: 2
-    },
+* Make fabrication recipes reference that unlock.
 
-    duration: 0.5
-}
-```
+* Verify the unlock persists and recipe status responds correctly.
 
-Notice that energy is just another input. The engine doesn't need separate resource-cost and material-cost logic.
+I suggest we start with one unlock and one recipe, test the complete flow, and then expand it to the other recipes and item categories.
+
+That keeps the UI untouched until the underlying behavior is reliable. This separation of game rules from presentation also makes the logic easier to test and maintain. Clean Game Architecture +1
+
+
 
 ### 2\. Keep item definitions organized separately
 

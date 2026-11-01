@@ -1,5 +1,6 @@
 import { addLog } from "../functions.js";
 import { materials } from "../data/materials.js";
+import { addInventoryItem } from "../data/inventory.js";
 
 /**
  * Adds a fixed amount of a defined raw material to inventory.
@@ -23,8 +24,14 @@ export function gatherMaterial(game, materialId, amount = 1) {
         };
     }
 
-    game.inventory ??= {};
-    game.inventory[material.id] = (game.inventory[material.id] ?? 0) + quantity;
+    const result = addInventoryItem(game, material.id, quantity);
+
+    if (!result.success) {
+        return {
+            ok: false,
+            reason: "Unable to add material to inventory."
+        };
+    }
 
     addLog(game, `MATERIAL RECOVERY: +${quantity} ${material.name}.`, {
         category: "activity"
@@ -34,6 +41,7 @@ export function gatherMaterial(game, materialId, amount = 1) {
         ok: true,
         item: material,
         amount: quantity,
-        total: game.inventory[material.id]
+        total: result.amount,
+        newlyDiscovered: result.newlyDiscovered
     };
 }

@@ -42,6 +42,7 @@ import ResourcePopups from "./src/ui/ResourcePopups.js";
 import SaveManager from "./src/SaveManager.js";
 import UnlockManager from "./src/UnlockManager.js";
 import EventProcessor from "./src/EventProcessor.js";
+import { progressionUnlocks } from "./src/data/progression.js";
 
 import {
     navigateTo as coordinateNavigation,
@@ -133,6 +134,20 @@ for (const discovery of discoveries) {
             content: discovery
         });
     }
+}
+
+// Permanent progression unlock definitions.
+for (const unlock of progressionUnlocks) {
+    unlockManager.registerUnlock({
+        id: unlock.id,
+        initialUnlocked: unlock.initialUnlocked
+    });
+
+    eventProcessor.registerEvent({
+        id: `progression:${unlock.id}`,
+        trigger: unlock.trigger,
+        content: unlock
+    });
 }
 
 let activeTab = "lab";
@@ -660,6 +675,25 @@ function processProgression({ notify = true } = {}) {
             const { id, definition } = event;
             const content = definition.content;
 
+            // Progression system becomes permanently available.
+            if (id.startsWith("progression:")) {
+                const unlockId = id.slice("progression:".length);
+            
+                if (!unlockManager.unlock(unlockId)) continue;
+            
+                logEvent(game, `NEW SYSTEM AVAILABLE: ${content.name}.`, {
+                    category: "activity",
+                    tab: "log"
+                });
+            
+                if (notify) {
+                    showToast(`${content.name} unlocked!`);
+                }
+            
+                changed = true;
+                continue;
+            }
+            
             // Ordinary scientific discovery.
             if (id.startsWith("discovery:")) {
                 const completed = completeDiscovery(
@@ -1151,7 +1185,7 @@ function updateLogTab() {
 }
 
 function updateSharedUI() {
-    syncInventoryDiscovery();
+    syncInventoryDiscovery(game);
     updateInventory();
 }
 

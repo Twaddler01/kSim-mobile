@@ -1,5 +1,5 @@
 // src/systems/SynthesisEngine.js
-import { addInventoryItem, removeInventoryItem } from "../data/inventory.js";
+import { getInventoryItem, addInventoryItem, removeInventoryItem } from "../data/inventory.js";
 
 /**
  * Read the amount of an item in the shared inventory.
@@ -36,13 +36,24 @@ export function getRecipeStatus(game, recipe) {
                 id: itemId,
                 available,
                 required,
-                sufficient: available >= required
+                sufficient: available >= required,
+                discovered:
+                    game?.inventoryDiscovered?.[itemId] === true
             };
         }
     );
 
+    const ingredientsDiscovered = requirements.every(
+        item => item.discovered
+    );
+
+    const canCraft = requirements.every(
+        item => item.sufficient
+    );
+
     return {
-        canCraft: requirements.every(item => item.sufficient),
+        ingredientsDiscovered,
+        canCraft,
         requirements
     };
 }
@@ -116,4 +127,16 @@ export function craftRecipe(game, recipe) {
         inputs: { ...recipe.inputs },
         outputs: { ...recipe.outputs }
     };
+}
+
+export function areRecipeIngredientsDiscovered(game, recipe) {
+    return Object.keys(recipe.inputs ?? {}).every(itemId => {
+        const item = getInventoryItem(itemId);
+
+        // Unknown catalog entries should never silently unlock a recipe.
+        return (
+            item !== null &&
+            game?.inventoryDiscovered?.[itemId] === true
+        );
+    });
 }
