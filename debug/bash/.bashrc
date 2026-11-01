@@ -1,3 +1,4 @@
+
 #echo "Starting UDroid..."
 #bash /data/data/com.termux/files/usr/bin/udroid login jammy:xfce4
 #echo "Starting VNC server..."
@@ -103,12 +104,32 @@ uk() {
     echo "================================"
 }
 
-dirjs() {
-    local recursive=false
-    local -a paths=()
-    local path
+# dirjs          # Current directory
+# dirjs -r       # Recursive
+# dirjs src      # Specific directory
+# dirjs -r src   # Recursive specific directory
+# dirjs -r src/ui src/data
 
-    # Parse arguments
+dirjs() {
+    # ========================================
+    # CONFIGURATION
+    # ========================================
+
+    local -a allowed_extensions=("js" "css" "html")
+    local -a excluded_dirs=("mobile_dev_console" "node_modules")
+
+    # ========================================
+    # SETTINGS
+    # ========================================
+
+    local recursive=false
+    local path dir
+    local -a paths=()
+
+    # ========================================
+    # PARSE ARGUMENTS
+    # ========================================
+
     for arg in "$@"; do
         if [[ "$arg" == "-r" ]]; then
             recursive=true
@@ -122,7 +143,31 @@ dirjs() {
         paths=(".")
     fi
 
-    # List matching files
+    # ========================================
+    # BUILD FIND FILTERS
+    # ========================================
+
+    local -a extension_filters=()
+    local -a exclusion_filters=()
+
+    for ext in "${allowed_extensions[@]}"; do
+        extension_filters+=(-o -iname "*.$ext")
+    done
+
+    # Remove leading -o
+    extension_filters=("${extension_filters[@]:1}")
+
+    for dir in "${excluded_dirs[@]}"; do
+        exclusion_filters+=(-o -name "$dir")
+    done
+
+    # Remove leading -o
+    exclusion_filters=("${exclusion_filters[@]:1}")
+
+    # ========================================
+    # LIST FILES
+    # ========================================
+
     for path in "${paths[@]}"; do
 
         if [[ ! -d "$path" ]]; then
@@ -134,11 +179,13 @@ dirjs() {
         echo "===== $path ====="
 
         if [[ "$recursive" == true ]]; then
-            find "$path" -type f \
-                \( -iname "*.js" -o -iname "*.css" -o -iname "*.html" \)
+            find "$path" \
+                \( -type d \( "${exclusion_filters[@]}" \) -prune \) -o \
+                \( -type f \( "${extension_filters[@]}" \) -print \)
+
         else
             find "$path" -maxdepth 1 -type f \
-                \( -iname "*.js" -o -iname "*.css" -o -iname "*.html" \)
+                \( "${extension_filters[@]}" \) -print
         fi
     done
 }
