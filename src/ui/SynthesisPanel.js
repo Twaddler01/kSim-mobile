@@ -36,11 +36,12 @@ const RECIPE_GROUPS = [
 ];
 
 export default class SynthesisPanel {
-    constructor({ getGame, save, refreshUI, showToast }) {
+    constructor({ getGame, save, refreshUI, showToast, processProgression }) {
         this.getGame = getGame;
         this.save = save;
         this.refreshUI = refreshUI;
         this.showToast = showToast;
+        this.processProgression = processProgression;
 
         this.element = null;
         this.cards = new Map();
@@ -253,12 +254,13 @@ export default class SynthesisPanel {
             return false;
         }
 
+        this.processProgression?.();
+
         this.save?.();
 
-        this.showToast?.(`${recipe.name} completed.`);
-
-        // Update the shared inventory and any other visible UI.
         this.refreshUI?.({ database: true });
+
+        this.showToast?.(`${recipe.name} completed.`);
 
         return true;
     }

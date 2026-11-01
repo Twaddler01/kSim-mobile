@@ -299,7 +299,8 @@ const synthesisPanel = new SynthesisPanel({
     getGame: () => game,
     save,
     refreshUI: options => refreshUI(options),
-    showToast: message => showToast(message)
+    showToast: message => showToast(message),
+    processProgression
 });
 
 const discoveryPanel = new DiscoveryPanel({
@@ -577,13 +578,6 @@ function renderLogTab() {
     );
 }
 
-const debugPanel = new DebugPanel({
-    getGame: () => game,
-    save,
-    refreshUI: options => refreshUI(options),
-    showToast: message => showToast(message)
-});
-
 function renderDebugTab() {
     return debugPanel.getElement();
 }
@@ -678,29 +672,28 @@ function processProgression({ notify = true } = {}) {
             // Progression system becomes permanently available.
             if (id.startsWith("progression:")) {
                 const unlockId = id.slice("progression:".length);
-            
+
                 if (!unlockManager.unlock(unlockId)) continue;
-            
+
                 logEvent(game, `NEW SYSTEM AVAILABLE: ${content.name}.`, {
                     category: "activity",
                     tab: "log"
                 });
-            
+
                 if (notify) {
                     showToast(`${content.name} unlocked!`);
                 }
-            
+
                 changed = true;
                 continue;
             }
-            
+
             // Ordinary scientific discovery.
             if (id.startsWith("discovery:")) {
-                const completed = completeDiscovery(
-                    game,
-                    content,
-                    notifyUnread
-                );
+                const completed = completeDiscovery(game, content, {
+                    onUnread: notifyUnread,
+                    onProgress: processProgression
+                });
 
                 if (completed) {
                     changed = true;
@@ -1580,6 +1573,48 @@ announcementsEnabled = true;
 render();
 
 // ADD DEBUG
+
+const debugPanel = new DebugPanel({
+    getGame: () => game,
+    save,
+    refreshUI: options => refreshUI(options),
+    showToast: message => showToast(message),
+    processProgression,
+
+    actions: [
+        {
+            label: "Process Progression",
+            run: () => {
+                processProgression();
+                refreshUI({ database: true });
+                showToast("Progression processed.");
+            }
+        },
+        {
+            label: "Test Log Entry",
+            run: () => {
+                logEvent(game, "DEBUG: Test log entry.", {
+                    category: "activity",
+                    tab: "log"
+                });
+
+                refreshUI({ database: true });
+            }
+        },
+        {
+            label: "Test Announcement",
+            run: () => {
+                showAnnouncement({
+                    title: "DEBUG ANNOUNCEMENT",
+                    message: "Testing the announcement system."
+                });
+            }
+        }
+    ]
+});
+
+
+
 initializeDebug({
     ui,
     el,

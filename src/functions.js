@@ -159,7 +159,10 @@ export function upgradeCost(definition, level) {
 export function completeDiscovery(
     game,
     discovery,
-    onUnread = () => {}
+    {
+        onUnread = () => {},
+        onProgress = () => {}
+    } = {}
 ) {
     if (!game || !discovery?.id) return false;
 
@@ -173,8 +176,11 @@ export function completeDiscovery(
 
     const appliedEffects = applyEffects(
         game,
-        discovery.effects
+        discovery.effects,
+        { onProgress }
     );
+
+    onProgress();
 
     const rewardText = describeEffects(appliedEffects);
 

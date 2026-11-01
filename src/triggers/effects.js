@@ -1,4 +1,8 @@
-export function applyEffects(game, effects = []) {
+export function applyEffects(
+    game,
+    effects = [],
+    { onProgress = () => {} } = {}
+) {
     const applied = [];
 
     game.inventory ??= {};
@@ -20,6 +24,10 @@ export function applyEffects(game, effects = []) {
 
         addInventoryItem(game, resource, amount);
         applied.push({ ...effect });
+    }
+
+    if (applied.length > 0) {
+        onProgress();
     }
 
     return applied;

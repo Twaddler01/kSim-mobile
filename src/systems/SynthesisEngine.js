@@ -56,19 +56,14 @@ export function getRecipeStatus(game, recipe) {
                 available,
                 required,
                 sufficient: available >= required,
-                discovered:
-                    game?.inventoryDiscovered?.[itemId] === true
+                discovered: game?.inventoryDiscovered?.[itemId] === true
             };
         }
     );
 
-    const ingredientsDiscovered = requirements.every(
-        item => item.discovered
-    );
+    const ingredientsDiscovered = requirements.every(item => item.discovered);
 
-    const hasIngredients = requirements.every(
-        item => item.sufficient
-    );
+    const hasIngredients = requirements.every(item => item.sufficient);
 
     return {
         unlocked,
@@ -85,7 +80,7 @@ export function getRecipeStatus(game, recipe) {
 /**
  * Consume all inputs and grant all outputs.
  */
-export function craftRecipe(game, recipe) {
+export function craftRecipe(game, recipe, { onProgress = () => {} } = {}) {
     if (!game?.inventory || !recipe?.inputs || !recipe?.outputs) {
         return {
             ok: false,
@@ -111,9 +106,7 @@ export function craftRecipe(game, recipe) {
 
     if (
         outputs.length === 0 ||
-        outputs.some(([, amount]) =>
-            !Number.isFinite(amount) || amount <= 0
-        )
+        outputs.some(([, amount]) => !Number.isFinite(amount) || amount <= 0)
     ) {
         return {
             ok: false,
@@ -142,6 +135,9 @@ export function craftRecipe(game, recipe) {
         addInventoryItem(game, id, amount);
     }
 
+    // Evaluate progression after all outputs are granted.
+    onProgress();
+
     // Record completed recipes.
     game.manufacturing ??= {};
     game.manufacturing.completedRecipes ??= [];
@@ -162,9 +158,6 @@ export function areRecipeIngredientsDiscovered(game, recipe) {
     return Object.keys(recipe.inputs ?? {}).every(itemId => {
         const item = getInventoryItem(itemId);
 
-        return (
-            item !== null &&
-            game?.inventoryDiscovered?.[itemId] === true
-        );
+        return item !== null && game?.inventoryDiscovered?.[itemId] === true;
     });
 }

@@ -10,11 +10,20 @@ import { addInventoryItem } from "../src/data/inventory.js";
 const GRANT_AMOUNTS = [1, 10, 100, 1000];
 
 export default class DebugPanel {
-    constructor({ getGame, save, refreshUI, showToast }) {
+    constructor({
+        getGame,
+        save,
+        refreshUI,
+        showToast,
+        processProgression,
+        actions = []
+    }) {
         this.getGame = getGame;
         this.save = save;
         this.refreshUI = refreshUI;
         this.showToast = showToast;
+        this.processProgression = processProgression;
+        this.actions = actions;
 
         this.element = null;
         this.valueDisplays = new Map();
@@ -24,18 +33,29 @@ export default class DebugPanel {
         return this.getGame();
     }
 
+    createActionSection(title, actions, description = "") {
+        const content = [];
+
+        if (description) {
+            content.push(Card.Text(description));
+        }
+
+        content.push(
+            Card.Actions(
+                actions.map(action =>
+                    Button(action.label, action.run, {
+                        variant: action.variant ?? "secondary-button"
+                    })
+                )
+            )
+        );
+
+        return Card(title, content, "DEBUG ACTIONS", {
+            icon: "🧪"
+        });
+    }
+
     createItemCard(item) {
-
-console.log({
-    research: kSim.data.inventory?.research,
-    unlocks: kSim.data.unlocks,
-    fabricatorUnlocked: kSim.data.unlocks?.advancedFabrication
-})
-
-
-
-
-        
         const value = el("strong", {
             className: "debug-item-value",
             text: "0"
@@ -103,6 +123,12 @@ console.log({
             className: "debug-panel"
         });
 
+        const actionSection = this.createActionSection(
+            "Debug Actions",
+            this.actions,
+            "Manually trigger game systems and test application behavior."
+        );
+
         const resources = this.createItemSection(
             "Primary Resources",
             RESOURCES
@@ -147,8 +173,12 @@ console.log({
             { icon: "🛠️" }
         );
 
-        this.element.append(utilityCard, resources, materialSection);
-
+        this.element.append(
+            utilityCard,
+            actionSection,
+            resources,
+            materialSection
+        );
         this.update();
 
         return this.element;
@@ -194,10 +224,12 @@ console.log({
     }
 
     finishGrant(label) {
+        this.processProgression?.();
+
         this.save?.();
         this.update();
         this.refreshUI?.({ database: true });
-        this.showToast?.(`${label} granted.`);
+        //this.showToast?.(`${label} granted.`);
     }
 
     update() {
