@@ -174,8 +174,8 @@ export default class DebugPanel {
         );
 
         this.element.append(
-            utilityCard,
             actionSection,
+            utilityCard,
             resources,
             materialSection
         );
@@ -229,7 +229,7 @@ export default class DebugPanel {
         this.save?.();
         this.update();
         this.refreshUI?.({ database: true });
-        //this.showToast?.(`${label} granted.`);
+        this.showToast?.(`${label} granted.`);
     }
 
     update() {

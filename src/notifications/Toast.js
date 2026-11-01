@@ -3,47 +3,70 @@ import { el } from "../ui/Element.js";
 export default class Toast {
     constructor({
         mountPoint = document.body,
-        duration = 1800
+        duration = 1800,
+        maxVisible = 5
     } = {}) {
         this.mountPoint = mountPoint;
         this.duration = duration;
-        this.timer = null;
+        this.maxVisible = maxVisible;
 
-        this.element = el("div", {
-            className: "toast-message",
-            role: "status",
+        this.toasts = new Set();
+
+        this.container = el("div", {
+            className: "toast-container",
             "aria-live": "polite",
-            hidden: true
+            "aria-relevant": "additions"
         });
 
-        this.mountPoint.append(this.element);
+        this.mountPoint.append(this.container);
     }
 
     show(message, { duration = this.duration } = {}) {
-        if (message == null || message === "") {
-            this.dismiss();
-            return;
+        if (message == null || message === "") return;
+
+        // Remove the oldest toast when the visible limit is reached.
+        if (this.toasts.size >= this.maxVisible) {
+            const oldest = this.toasts.values().next().value;
+            this.dismiss(oldest);
         }
 
-        clearTimeout(this.timer);
+        const toast = el("div", {
+            className: "toast-message",
+            role: "status",
+            text: String(message)
+        });
 
-        this.element.textContent = String(message);
-        this.element.hidden = false;
+        const entry = {
+            element: toast,
+            timer: null
+        };
 
-        this.timer = setTimeout(() => {
-            this.dismiss();
+        this.toasts.add(entry);
+        this.container.append(toast);
+
+        entry.timer = setTimeout(() => {
+            this.dismiss(entry);
         }, duration);
+
+        return entry;
     }
 
-    dismiss() {
-        clearTimeout(this.timer);
-        this.timer = null;
-        this.element.hidden = true;
-        this.element.textContent = "";
+    dismiss(entry) {
+        if (!entry || !this.toasts.has(entry)) return;
+
+        clearTimeout(entry.timer);
+        entry.element.remove();
+        this.toasts.delete(entry);
+    }
+
+    dismissAll() {
+        for (const entry of [...this.toasts]) {
+            this.dismiss(entry);
+        }
     }
 
     destroy() {
-        this.dismiss();
-        this.element.remove();
+        this.dismissAll();
+        this.container.remove();
     }
 }
