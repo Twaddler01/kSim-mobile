@@ -254,11 +254,11 @@ EOF
     # ========================================
 
     if [[ "$copy_clip" == true ]]; then
-        if command -v termux-clipboard-set &>/dev/null &&
-            termux-clipboard-set < "$temp_file"; then
+        if termux-clipboard-set < "$temp_file"; then
             echo "Copied to Android clipboard." >&2
         else
-            echo "ERROR: Clipboard copy failed." >&2
+            echo "ERROR: Clipboard operation failed." >&2
+            echo "Check that the Termux:API Android app is installed." >&2
             failed=1
         fi
     fi
