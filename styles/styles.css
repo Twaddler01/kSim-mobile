@@ -38,6 +38,9 @@ body {
 button {
     font: inherit;
 }
+.is-hidden {
+    display: none !important;
+}
 .topbar {
     display: flex;
     align-items: center;
@@ -1811,10 +1814,7 @@ body:not(.debug-mode) {
 
 .synthesis-card-grid {
     display: grid;
-    grid-template-columns: repeat(
-        auto-fit,
-        minmax(min(100%, 280px), 1fr)
-    );
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
     gap: 14px;
 }
 
@@ -1858,10 +1858,7 @@ body:not(.debug-mode) {
 
 .debug-item-grid {
     display: grid;
-    grid-template-columns: repeat(
-        auto-fit,
-        minmax(min(100%, 260px), 1fr)
-    );
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
     gap: 12px;
 }
 

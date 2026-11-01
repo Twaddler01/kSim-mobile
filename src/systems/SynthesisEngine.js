@@ -1,5 +1,9 @@
 // src/systems/SynthesisEngine.js
-import { getInventoryItem, addInventoryItem, removeInventoryItem } from "../data/inventory.js";
+import {
+    getInventoryItem,
+    addInventoryItem,
+    removeInventoryItem
+} from "../data/inventory.js";
 
 /**
  * Read the amount of an item in the shared inventory.
@@ -9,10 +13,23 @@ export function getInventoryAmount(game, itemId) {
 }
 
 /**
+ * Check whether a recipe's progression requirement is unlocked.
+ */
+export function isRecipeUnlocked(game, recipe) {
+    if (!recipe?.unlockId) return true;
+
+    return game?.unlocks?.[recipe.unlockId] === true;
+}
+
+/**
  * Check whether the inventory contains every recipe input.
  */
 export function canCraftRecipe(game, recipe) {
     if (!game?.inventory || !recipe?.inputs) {
+        return false;
+    }
+
+    if (!isRecipeUnlocked(game, recipe)) {
         return false;
     }
 
@@ -28,6 +45,8 @@ export function canCraftRecipe(game, recipe) {
  * Return a detailed affordability result for the UI.
  */
 export function getRecipeStatus(game, recipe) {
+    const unlocked = isRecipeUnlocked(game, recipe);
+
     const requirements = Object.entries(recipe.inputs ?? {}).map(
         ([itemId, required]) => {
             const available = getInventoryAmount(game, itemId);
@@ -47,28 +66,37 @@ export function getRecipeStatus(game, recipe) {
         item => item.discovered
     );
 
-    const canCraft = requirements.every(
+    const hasIngredients = requirements.every(
         item => item.sufficient
     );
 
     return {
+        unlocked,
+        lockReason: unlocked
+            ? null
+            : `Requires progression unlock: ${recipe.unlockId}`,
         ingredientsDiscovered,
-        canCraft,
+        hasIngredients,
+        canCraft: unlocked && hasIngredients,
         requirements
     };
 }
 
 /**
  * Consume all inputs and grant all outputs.
- *
- * Inputs are checked before anything is changed,
- * preventing partially completed recipes.
  */
 export function craftRecipe(game, recipe) {
     if (!game?.inventory || !recipe?.inputs || !recipe?.outputs) {
         return {
             ok: false,
             reason: "Invalid recipe or inventory."
+        };
+    }
+
+    if (!isRecipeUnlocked(game, recipe)) {
+        return {
+            ok: false,
+            reason: `Recipe locked. Requires: ${recipe.unlockId}.`
         };
     }
 
@@ -79,12 +107,13 @@ export function craftRecipe(game, recipe) {
         };
     }
 
-    // Validate outputs before consuming anything.
     const outputs = Object.entries(recipe.outputs);
 
     if (
         outputs.length === 0 ||
-        outputs.some(([, amount]) => !Number.isFinite(amount) || amount <= 0)
+        outputs.some(([, amount]) =>
+            !Number.isFinite(amount) || amount <= 0
+        )
     ) {
         return {
             ok: false,
@@ -113,7 +142,7 @@ export function craftRecipe(game, recipe) {
         addInventoryItem(game, id, amount);
     }
 
-    // Record completed recipes for future progression systems.
+    // Record completed recipes.
     game.manufacturing ??= {};
     game.manufacturing.completedRecipes ??= [];
 
@@ -133,7 +162,6 @@ export function areRecipeIngredientsDiscovered(game, recipe) {
     return Object.keys(recipe.inputs ?? {}).every(itemId => {
         const item = getInventoryItem(itemId);
 
-        // Unknown catalog entries should never silently unlock a recipe.
         return (
             item !== null &&
             game?.inventoryDiscovered?.[itemId] === true

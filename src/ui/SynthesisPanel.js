@@ -96,8 +96,6 @@ export default class SynthesisPanel {
             [
                 Card.Text(recipe.description),
 
-                lockBadge,
-
                 status,
 
                 Card.Section("Requirements", requirements),
@@ -116,7 +114,8 @@ export default class SynthesisPanel {
             {
                 icon: group.icon,
                 itemId: recipe.id,
-                tabId: "synthesis"
+                tabId: "synthesis",
+                badge: lockBadge
             }
         );
 
@@ -141,14 +140,13 @@ export default class SynthesisPanel {
 
         const game = this.game;
         const result = getRecipeStatus(game, recipe);
+        const locked = !result.unlocked;
         const ingredientsDiscovered = result.ingredientsDiscovered;
-        
-        const locked = !ingredientsDiscovered;
-        
+
         card.card.classList.toggle("is-locked", locked);
-        
-        card.lockBadge.hidden = !locked;
-                
+
+        card.lockBadge.classList.toggle("is-hidden", !locked);
+
         const completed = game.manufacturing?.completedRecipes ?? [];
 
         const alreadyCompleted = recipe.unique && completed.includes(recipe.id);
@@ -160,16 +158,18 @@ export default class SynthesisPanel {
             ? "COMPLETED"
             : locked
               ? "LOCKED"
-              : canCraft
-                ? "READY"
-                : "INSUFFICIENT MATERIALS";
+              : !ingredientsDiscovered
+                ? "UNDISCOVERED INGREDIENTS"
+                : canCraft
+                  ? "READY"
+                  : "INSUFFICIENT MATERIALS";
 
         const statusVariant = alreadyCompleted
             ? "complete"
             : canCraft
               ? "ready"
               : "default";
-        
+
         card.status.textContent = statusLabel;
         card.status.className = `card-status card-status--${statusVariant}`;
 

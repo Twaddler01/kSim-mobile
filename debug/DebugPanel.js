@@ -25,6 +25,17 @@ export default class DebugPanel {
     }
 
     createItemCard(item) {
+
+console.log({
+    research: kSim.data.inventory?.research,
+    unlocks: kSim.data.unlocks,
+    fabricatorUnlocked: kSim.data.unlocks?.advancedFabrication
+})
+
+
+
+
+        
         const value = el("strong", {
             className: "debug-item-value",
             text: "0"

@@ -1,3 +1,20 @@
+
+### The distinction going forward
+
+| Condition                                     | Visual badge  | Status text              |
+| --------------------------------------------- | ------------- | ------------------------ |
+| Progression not unlocked                      | 🔒 LOCKED     | LOCKED                   |
+| Ingredients undiscovered                      | No lock badge | UNDISCOVERED INGREDIENTS |
+| Ingredients discovered, insufficient quantity | No lock badge | INSUFFICIENT MATERIALS   |
+| All requirements met                          | No lock badge | READY                    |
+| Unique recipe completed                       | No lock badge | COMPLETED                |
+
+This keeps progression locks, ingredient discovery, and affordability independent. That's important as you add more fabrication tiers and assembly recipes.
+
+
+
+
+
 I like that direction. It gives us a clean separation between what exists, what the player has discovered, and what the player is allowed to do.
 
 I would avoid making inventory discovery responsible for recipe progression. Instead, recipes should derive their visibility and availability from two independent things:
