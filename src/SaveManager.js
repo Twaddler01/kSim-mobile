@@ -26,8 +26,7 @@ export default class SaveManager {
 
             const parsed = JSON.parse(saved);
             const fresh = this.freshGame();
-
-            const { resources: legacyResources = {}, ...savedData } = parsed;
+            const savedData = parsed;
 
             return {
                 ...fresh,
@@ -35,7 +34,6 @@ export default class SaveManager {
 
                 inventory: {
                     ...fresh.inventory,
-                    ...legacyResources,
                     ...(parsed.inventory ?? {})
                 },
 
