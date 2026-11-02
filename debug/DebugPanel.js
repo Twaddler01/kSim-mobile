@@ -32,7 +32,7 @@ export default class DebugPanel {
     get game() {
         return this.getGame();
     }
-
+    
     createActionSection(title, actions, description = "") {
         const content = [];
 

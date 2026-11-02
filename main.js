@@ -4,6 +4,21 @@
 // IMPORTS
 // ===================================
 
+// Debug
+import { initializeDebug } from "./debug/debug.js";
+import DebugPanel from "./debug/DebugPanel.js";
+import {
+    journalCatalog,
+    getJournalEntry,
+    getJournalEntriesByCategory
+} from "./src/data/journal/catalog.js";
+import {
+    getRecipesUsing,
+    getRecipesProducing,
+    getRecipeInputs,
+    getRecipeOutputs
+} from "./src/data/journal/relationships.js";
+
 // Panels
 import DiscoveryPanel from "./src/ui/panels/DiscoveryPanel.js";
 import SynthesisPanel from "./src/ui/panels/SynthesisPanel.js";
@@ -25,9 +40,6 @@ import CollapsiblePanel from "./src/ui/components/CollapsiblePanel.js";
 import { Tabs } from "./src/ui/navigation/Tabs/Tabs.js";
 
 ////
-
-import { initializeDebug } from "./debug/debug.js";
-import DebugPanel from "./debug/DebugPanel.js";
 
 import { initialGameData } from "./src/data/initialGameData.js";
 import { resourceDefinitions } from "./src/data/resources.js";
@@ -1588,8 +1600,11 @@ const debugPanel = new DebugPanel({
     refreshUI: options => refreshUI(options),
     showToast: message => showToast(message),
     processProgression,
-
     actions: [
+        {
+            label: "debugCatalog",
+            run: () => debugCatalog()
+        },
         {
             label: "Process Progression",
             run: () => {
@@ -1621,8 +1636,6 @@ const debugPanel = new DebugPanel({
     ]
 });
 
-
-
 initializeDebug({
     ui,
     el,
@@ -1630,3 +1643,18 @@ initializeDebug({
     Button,
     ProgressBar
 });
+
+function debugCatalog() {
+    console.log("Quartz material:", getJournalEntry("quartz", "material"));
+
+    console.log("Recipes using Quartz:", getRecipesUsing("quartz"));
+
+    console.log(
+        "Recipes producing Quartz Powder:",
+        getRecipesProducing("quartzPowder")
+    );
+
+    console.log("Quartz recipe inputs:", getRecipeInputs("crushQuartz"));
+
+    console.log("Quartz recipe outputs:", getRecipeOutputs("crushQuartz"));
+}
