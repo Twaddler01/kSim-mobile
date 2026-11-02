@@ -1,7 +1,7 @@
 import { el } from "./Element.js";
 import { Button } from "./Button.js";
 import { ProgressBar } from "./ProgressBar.js";
-import { itemDomId } from "./itemNavigation.js";
+import { itemDomId } from "../navigation/itemNavigation.js";
 
 /**
  * Reusable content card.

@@ -1,4 +1,4 @@
-import { el } from "../Element.js";
+import { el } from "../../components/Element.js";
 
 /** Create one accessible tab button. */
 export function createTab(tab, { active = false, onSelect, panelId } = {}) {

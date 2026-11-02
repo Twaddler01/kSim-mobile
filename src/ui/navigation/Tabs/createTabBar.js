@@ -1,4 +1,4 @@
-import { el } from "../Element.js";
+import { el } from "../../components/Element.js";
 import { createTab } from "./createTab.js";
 
 /** Create a horizontally scrollable tab strip. */

@@ -1,8 +1,8 @@
-import { el } from "../Element.js";
-import { Component } from "../Component.js";
+import { el } from "../../components/Element.js";
+import { Component } from "../../components/Component.js";
 import { createTabBar, updateTabBar } from "./createTabBar.js";
 import { createTabPanel } from "./createTabPanel.js";
-import Badge from "../Badge.js";
+import Badge from "../../components/Badge.js";
 
 /**
  * Reusable accessible tabs component.

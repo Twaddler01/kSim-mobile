@@ -1,6 +1,6 @@
-import { el } from "./Element.js";
-import { createSvgElement } from "../assets/icons/materials/svgHelpers.js";
-import { materialDrawings } from "../assets/icons/materials/materialDrawings.js";
+import { el } from "../components/Element.js";
+import { createSvgElement } from "../../assets/icons/materials/svgHelpers.js";
+import { materialDrawings } from "../../assets/icons/materials/materialDrawings.js";
 
 export default class ResourcePopups {
     constructor({ formatNumber, maxVisible = 5 } = {}) {

@@ -1,8 +1,8 @@
 // debug/DebugPanel.js
 
-import { el } from "../src/ui/Element.js";
-import { Button } from "../src/ui/Button.js";
-import { Card } from "../src/ui/Card.js";
+import { el } from "../src/ui/components/Element.js";
+import { Button } from "../src/ui/components/Button.js";
+import { Card } from "../src/ui/components/Card.js";
 import { materials } from "../src/data/materials.js";
 import { resourceDefinitions as RESOURCES } from "../src/data.js";
 import { addInventoryItem } from "../src/data/inventory.js";

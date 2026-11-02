@@ -1,6 +1,6 @@
-import { el } from "./Element.js";
-import { Button } from "./Button.js";
-import { itemDomId } from "./itemNavigation.js";
+import { el } from "../components/Element.js";
+import { Button } from "../components/Button.js";
+import { itemDomId } from "../navigation/itemNavigation.js";
 
 export default class UpgradePanel {
     constructor({

@@ -1,4 +1,4 @@
-import { el } from "./Element.js";
+import { el } from "../components/Element.js";
 
 export default class LogPanel {
     constructor({

@@ -1,4 +1,4 @@
-import { el } from "../Element.js";
+import { el } from "../../components/Element.js";
 
 /** Create the stable container that displays the selected tab's content. */
 export function createTabPanel(tab = null, content = null, { panelId } = {}) {

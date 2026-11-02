@@ -1,6 +1,6 @@
-import { el } from "./Element.js";
-import { MaterialIcon } from "../assets/icons/materials/MaterialIcon.js";
-import { materials } from "../data/materials.js";
+import { el } from "../components/Element.js";
+import { MaterialIcon } from "../../assets/icons/materials/MaterialIcon.js";
+import { materials } from "../../data/materials.js";
 
 const COLUMNS = 12;
 const ROWS = 8;

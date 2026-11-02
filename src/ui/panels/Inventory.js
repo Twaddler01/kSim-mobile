@@ -1,6 +1,6 @@
-import { el } from "./Element.js";
-import MaterialIcon from "../assets/icons/materials/MaterialIcon.js";
-import { inventoryItems, initializeInventory } from "../data/inventory.js";
+import { el } from "../components/Element.js";
+import MaterialIcon from "../../assets/icons/materials/MaterialIcon.js";
+import { inventoryItems, initializeInventory } from "../../data/inventory.js";
 
 export default class Inventory {
     constructor({ getGame, formatNumber }) {

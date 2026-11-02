@@ -1,6 +1,6 @@
-import { el, append } from "./Element.js";
-import { planDefinitions } from "../data/plans.js";
-import { removeInventoryItem } from "../data/inventory.js";
+import { el, append } from "../components/Element.js";
+import { planDefinitions } from "../../data/plans.js";
+import { removeInventoryItem } from "../../data/inventory.js";
 
 export default class PlanPanel {
     constructor({

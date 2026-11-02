@@ -1,4 +1,31 @@
 // main.js
+
+// ===================================
+// IMPORTS
+// ===================================
+
+// Panels
+import DiscoveryPanel from "./src/ui/panels/DiscoveryPanel.js";
+import SynthesisPanel from "./src/ui/panels/SynthesisPanel.js";
+import UpgradePanel from "./src/ui/panels/UpgradePanel.js";
+import LogPanel from "./src/ui/panels/LogPanel.js";
+import PlanPanel from "./src/ui/panels/PlanPanel.js";
+import GatheringField from "./src/ui/panels/GatheringField.js";
+import Inventory from "./src/ui/panels/Inventory.js";
+
+// Components
+import { el } from "./src/ui/components/Element.js";
+import { Button } from "./src/ui/components/Button.js";
+import { Card } from "./src/ui/components/Card.js";
+import { ProgressBar } from "./src/ui/components/ProgressBar.js";
+import Badge from "./src/ui/components/Badge.js";
+import CollapsiblePanel from "./src/ui/components/CollapsiblePanel.js";
+
+// Nvigation
+import { Tabs } from "./src/ui/navigation/Tabs/Tabs.js";
+
+////
+
 import { initializeDebug } from "./debug/debug.js";
 import DebugPanel from "./debug/DebugPanel.js";
 
@@ -9,11 +36,6 @@ import {
     upgradeDefinitions,
     FIELD_DEFINITIONS
 } from "./src/data.js";
-import { el } from "./src/ui/Element.js";
-import { Button } from "./src/ui/Button.js";
-import { Card } from "./src/ui/Card.js";
-import { ProgressBar } from "./src/ui/ProgressBar.js";
-import { Tabs } from "./src/ui/Tabs/Tabs.js";
 import {
     addLog,
     stir,
@@ -27,9 +49,6 @@ import {
     completeDiscovery
 } from "./src/functions.js";
 
-import CollapsiblePanel from "./src/ui/CollapsiblePanel.js";
-
-import Inventory from "./src/ui/Inventory.js";
 import { materials } from "./src/data/materials.js";
 import {
     initializeInventory,
@@ -38,7 +57,7 @@ import {
     removeInventoryItem
 } from "./src/data/inventory.js";
 
-import ResourcePopups from "./src/ui/ResourcePopups.js";
+import ResourcePopups from "./src/ui/effects/ResourcePopups.js";
 import SaveManager from "./src/SaveManager.js";
 import UnlockManager from "./src/UnlockManager.js";
 import EventProcessor from "./src/EventProcessor.js";
@@ -48,16 +67,7 @@ import {
     navigateTo as coordinateNavigation,
     navigateToItem as navigateTabToItem,
     registerPage
-} from "./src/ui/itemNavigation.js";
-import Badge from "./src/ui/Badge.js";
-
-// TABS
-import DiscoveryPanel from "./src/ui/DiscoveryPanel.js";
-import SynthesisPanel from "./src/ui/SynthesisPanel.js";
-import UpgradePanel from "./src/ui/UpgradePanel.js";
-import LogPanel from "./src/ui/LogPanel.js";
-import PlanPanel from "./src/ui/PlanPanel.js";
-import GatheringField from "./src/ui/GatheringField.js";
+} from "./src/ui/navigation/itemNavigation.js";
 
 import { recoverMaterial } from "./src/systems/MaterialRecovery.js";
 

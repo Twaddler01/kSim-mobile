@@ -1,13 +1,13 @@
-import { el } from "./Element.js";
-import { Button } from "./Button.js";
-import { Card } from "./Card.js";
-import Badge from "./Badge.js";
-import { materials } from "../data/materials.js";
-import { refinementRecipes } from "../data/refinement.js";
-import { fabricationRecipes } from "../data/fabrication.js";
-import { assemblyRecipes } from "../data/assembly.js";
-import { getRecipeStatus, craftRecipe } from "../systems/SynthesisEngine.js";
-import { resourceDefinitions } from "../data.js";
+import { el } from "../components/Element.js";
+import { Button } from "../components/Button.js";
+import { Card } from "../components/Card.js";
+import Badge from "../components/Badge.js";
+import { materials } from "../../data/materials.js";
+import { refinementRecipes } from "../../data/refinement.js";
+import { fabricationRecipes } from "../../data/fabrication.js";
+import { assemblyRecipes } from "../../data/assembly.js";
+import { getRecipeStatus, craftRecipe } from "../../systems/SynthesisEngine.js";
+import { resourceDefinitions } from "../../data.js";
 
 const RECIPE_GROUPS = [
     {

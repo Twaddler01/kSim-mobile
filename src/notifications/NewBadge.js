@@ -1,4 +1,4 @@
-import Badge from "../ui/Badge.js";
+import Badge from "../ui/components/Badge.js";
 
 /**
  * Decorates an existing element with a NEW indicator.

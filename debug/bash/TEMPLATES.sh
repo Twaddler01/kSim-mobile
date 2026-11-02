@@ -116,3 +116,9 @@ fc SynthesisEngine.js src/triggers/effects.js -clip
 
 
 fc -clip data.js functions.js EventProcessor.js SaveManager.js
+
+
+# TEMP RUNS
+
+
+

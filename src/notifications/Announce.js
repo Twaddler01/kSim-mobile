@@ -1,4 +1,4 @@
-import { el } from "../ui/Element.js";
+import { el } from "../ui/components/Element.js";
 
 export default class Announce {
     constructor({ mountPoint = document.body } = {}) {
