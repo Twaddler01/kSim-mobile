@@ -1,4 +1,4 @@
-import { evaluateTrigger } from "./triggers/conditions.js";
+import { evaluateTrigger } from "../triggers/conditions.js";
 
 /**
  * Records one-time events when their conditions become true.

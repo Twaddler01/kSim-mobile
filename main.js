@@ -56,9 +56,9 @@ import {
 } from "./src/data/inventory.js";
 
 import ResourcePopups from "./src/ui/effects/ResourcePopups.js";
-import SaveManager from "./src/SaveManager.js";
-import UnlockManager from "./src/UnlockManager.js";
-import EventProcessor from "./src/EventProcessor.js";
+import SaveManager from "./src/managers/SaveManager.js";
+import UnlockManager from "./src/managers/UnlockManager.js";
+import EventProcessor from "./src/managers/EventProcessor.js";
 import { progressionUnlocks } from "./src/data/progression.js";
 
 import {
@@ -69,7 +69,7 @@ import {
 
 import { recoverMaterial } from "./src/systems/MaterialRecovery.js";
 
-import UnreadManager from "./src/UnreadManager.js";
+import UnreadManager from "./src/managers/UnreadManager.js";
 import Announce from "./src/notifications/Announce.js";
 import NewBadge from "./src/notifications/NewBadge.js";
 import Toast from "./src/notifications/Toast.js";
