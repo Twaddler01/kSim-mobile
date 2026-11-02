@@ -76,6 +76,12 @@ export default class SynthesisPanel {
         return this.getItem(itemId).icon ?? "◈";
     }
 
+    getRecipeOutputName(recipe) {
+        const outputId = Object.keys(recipe.outputs ?? {})[0];
+
+        return outputId ? this.getItemLabel(outputId) : recipe.name;
+    }
+
     createCollapseContent(content, expanded) {
         const inner = el(
             "div",
@@ -174,6 +180,10 @@ export default class SynthesisPanel {
             title: "Locked recipe"
         });
 
+        const quantityBadge = el("span", {
+            className: "synthesis-available-quantity"
+        });
+
         const requirements = el("div", {
             className: "synthesis-requirements"
         });
@@ -239,8 +249,10 @@ export default class SynthesisPanel {
 
                 el("span", {
                     className: "card-title synthesis-recipe-title",
-                    text: recipe.name
+                    text: this.getRecipeOutputName(recipe)
                 }),
+
+                quantityBadge,
 
                 lockBadge,
 
@@ -265,6 +277,7 @@ export default class SynthesisPanel {
             toggle: recipeToggle,
             status,
             lockBadge,
+            quantityBadge,
             requirements,
             outputs,
             craftButton
@@ -355,10 +368,20 @@ export default class SynthesisPanel {
 
         card.lockBadge.classList.toggle("is-hidden", !locked);
 
+        const availableOutput =
+            Object.values(
+                result.availableOutputs ?? {}
+            )[0] ?? 0;
+        
         const completed = game.manufacturing?.completedRecipes ?? [];
 
         const alreadyCompleted = recipe.unique && completed.includes(recipe.id);
 
+        card.quantityBadge.textContent =
+            !locked && !alreadyCompleted && availableOutput > 0
+                ? `(${availableOutput})`
+                : "";
+        
         const canCraft = result.canCraft && !alreadyCompleted;
 
         const statusLabel = alreadyCompleted

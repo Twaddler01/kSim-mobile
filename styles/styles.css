@@ -2081,6 +2081,14 @@ body:not(.debug-mode) {
     transition: background 180ms ease;
 }
 
+.synthesis-available-quantity {
+    color: #43b96b;
+    font-size: inherit;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
 /* ========================================
    Debug Panel
 ======================================== */

@@ -42,6 +42,38 @@ export function canCraftRecipe(game, recipe) {
 }
 
 /**
+ * Calculate how many complete crafts the current inventory supports.
+ */
+export function getAvailableCrafts(game, recipe) {
+    if (!game?.inventory || !recipe?.inputs) return 0;
+
+    if (!isRecipeUnlocked(game, recipe)) return 0;
+
+    const limits = Object.entries(recipe.inputs).map(([itemId, required]) => {
+        if (!Number.isFinite(required) || required <= 0) {
+            return 0;
+        }
+
+        return Math.floor(getInventoryAmount(game, itemId) / required);
+    });
+
+    if (!limits.length) return 0;
+
+    const crafts = Math.min(...limits);
+
+    // Unique recipes can only be completed once.
+    if (recipe.unique) {
+        const completed = game.manufacturing?.completedRecipes ?? [];
+
+        if (completed.includes(recipe.id)) return 0;
+
+        return Math.min(crafts, 1);
+    }
+
+    return crafts;
+}
+
+/**
  * Return a detailed affordability result for the UI.
  */
 export function getRecipeStatus(game, recipe) {
@@ -65,15 +97,28 @@ export function getRecipeStatus(game, recipe) {
 
     const hasIngredients = requirements.every(item => item.sufficient);
 
+    const availableCrafts = getAvailableCrafts(game, recipe);
+
     return {
         unlocked,
         lockReason: unlocked
             ? null
             : `Requires progression unlock: ${recipe.unlockId}`,
+
         ingredientsDiscovered,
         hasIngredients,
         canCraft: unlocked && hasIngredients,
-        requirements
+
+        requirements,
+
+        availableCrafts,
+
+        availableOutputs: Object.fromEntries(
+            Object.entries(recipe.outputs ?? {}).map(([itemId, amount]) => [
+                itemId,
+                availableCrafts * amount
+            ])
+        )
     };
 }
 
