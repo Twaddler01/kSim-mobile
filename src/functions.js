@@ -1,4 +1,4 @@
-import { upgradeDefinitions } from "./data.js";
+import { upgradeDefinitions } from "./data/upgrades.js";
 import { applyEffects, describeEffects } from "./triggers/effects.js";
 import { addInventoryItem, removeInventoryItem } from "./data/inventory.js";
 

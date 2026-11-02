@@ -4,7 +4,7 @@ import { el } from "../src/ui/components/Element.js";
 import { Button } from "../src/ui/components/Button.js";
 import { Card } from "../src/ui/components/Card.js";
 import { materials } from "../src/data/materials.js";
-import { resourceDefinitions as RESOURCES } from "../src/data.js";
+import { resourceDefinitions as RESOURCES } from "../src/data/resources.js";
 import { addInventoryItem } from "../src/data/inventory.js";
 
 const GRANT_AMOUNTS = [1, 10, 100, 1000];

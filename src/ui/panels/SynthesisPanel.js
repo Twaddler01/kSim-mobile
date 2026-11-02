@@ -3,11 +3,11 @@ import { Button } from "../components/Button.js";
 import { Card } from "../components/Card.js";
 import Badge from "../components/Badge.js";
 import { materials } from "../../data/materials.js";
-import { refinementRecipes } from "../../data/refinement.js";
-import { fabricationRecipes } from "../../data/fabrication.js";
-import { assemblyRecipes } from "../../data/assembly.js";
+import { refinementRecipes } from "../../data/recipes/refinement.js";
+import { fabricationRecipes } from "../../data/recipes/fabrication.js";
+import { assemblyRecipes } from "../../data/recipes/assembly.js";
 import { getRecipeStatus, craftRecipe } from "../../systems/SynthesisEngine.js";
-import { resourceDefinitions } from "../../data.js";
+import { resourceDefinitions } from "../../data/resources.js";
 
 const RECIPE_GROUPS = [
     {

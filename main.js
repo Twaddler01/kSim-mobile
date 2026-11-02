@@ -29,13 +29,11 @@ import { Tabs } from "./src/ui/navigation/Tabs/Tabs.js";
 import { initializeDebug } from "./debug/debug.js";
 import DebugPanel from "./debug/DebugPanel.js";
 
-import {
-    initialGameData,
-    resourceDefinitions,
-    discoveries,
-    upgradeDefinitions,
-    FIELD_DEFINITIONS
-} from "./src/data.js";
+import { initialGameData } from "./src/data/initialGameData.js";
+import { resourceDefinitions } from "./src/data/resources.js";
+import { discoveries } from "./src/data/discoveries.js";
+import { upgradeDefinitions } from "./src/data/upgrades.js";
+import { FIELD_DEFINITIONS } from "./src/data/fields.js";
 import {
     addLog,
     stir,

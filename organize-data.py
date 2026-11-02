@@ -1,25 +1,27 @@
 
-from pathlib import Path
+#!/usr/bin/env python3
+
+"""
+kSim-mobile — Batch 2 data organization
+
+Default: dry-run only.
+Apply changes: python organize-data.py --apply
+"""
+
+from pathlib import Path, PurePosixPath
 import argparse
+import os
 import re
 import shutil
 import sys
 
+
 ROOT = Path(__file__).resolve().parent
 SRC = ROOT / "src"
+DATA_FILE = SRC / "data.js"
+BACKUP_FILE = SRC / "data.js.batch2.bak"
 
-# Existing files that need to move.
-MOVES = {
-    "src/data/inventory.js": "src/data/inventory.js",
-    "src/data/materials.js": "src/data/materials.js",
-    "src/data/plans.js": "src/data/plans.js",
-    "src/data/progression.js": "src/data/progression.js",
-    "src/data/refinement.js": "src/data/recipes/refinement.js",
-    "src/data/fabrication.js": "src/data/recipes/fabrication.js",
-    "src/data/assembly.js": "src/data/recipes/assembly.js",
-}
-
-# Each export from the old data.js has one destination.
+# Export name -> destination module
 EXPORTS = {
     "initialGameData": "initialGameData.js",
     "resourceDefinitions": "resources.js",
@@ -28,253 +30,381 @@ EXPORTS = {
     "FIELD_DEFINITIONS": "fields.js",
 }
 
-# Used to identify imports that need to be redirected
-# from the old data.js into the new definition modules.
-EXPORT_MODULES = {
-    "initialGameData": "initialGameData.js",
-    "resourceDefinitions": "resources.js",
-    "discoveries": "discoveries.js",
-    "upgradeDefinitions": "upgrades.js",
-    "FIELD_DEFINITIONS": "fields.js",
+# Only files that actually need to move.
+MOVES = {
+    "src/data/refinement.js": "src/data/recipes/refinement.js",
+    "src/data/fabrication.js": "src/data/recipes/fabrication.js",
+    "src/data/assembly.js": "src/data/recipes/assembly.js",
 }
 
+# Matches ordinary static named imports.
 IMPORT_RE = re.compile(
-    r'(?P<statement>import\s+(?P<clause>[\s\S]*?)\s+from\s+'
-    r'(?P<quote>["\'])(?P<path>[^"\']+)(?P=quote)\s*;?)',
-    re.MULTILINE
+    r"""(?P<indent>^[ \t]*)import\s*
+        \{(?P<names>[^{}]*?)\}\s*
+        from\s*
+        (?P<quote>["'])
+        (?P<source>[^"']+)
+        (?P=quote)
+        (?P<semicolon>;?)
+    """,
+    re.MULTILINE | re.VERBOSE,
 )
 
+
 def relative_import(importer, target):
-    path = Path(
-        __import__("os").path.relpath(
-            target,
-            importer.parent
+    """Return a JS import path from importer to target."""
+    importer_dir = PurePosixPath(importer).parent
+    relative = os.path.relpath(
+        str(target),
+        str(importer_dir)
+    ).replace("\\", "/")
+
+    if not relative.startswith("."):
+        relative = "./" + relative
+
+    return relative
+
+
+def normalize_project_path(path):
+    """Normalize a project-relative path using POSIX separators."""
+    normalized = os.path.normpath(str(path)).replace("\\", "/")
+    return normalized.removeprefix("./")
+
+
+def resolve_import(importer, source):
+    """Resolve an import source to a project-relative path."""
+    importer_dir = PurePosixPath(importer).parent
+    resolved = importer_dir / source
+    return normalize_project_path(resolved)
+
+
+def parse_import_names(names):
+    """Parse named imports while preserving aliases."""
+    result = []
+
+    for item in names.split(","):
+        item = item.strip()
+
+        if not item:
+            continue
+
+        result.append(item)
+
+    return result
+
+
+def get_original_name(specifier):
+    """Get the exported name, ignoring any local alias."""
+    parts = re.split(r"\s+as\s+", specifier.strip())
+
+    if len(parts) == 2:
+        return parts[0].strip()
+
+    return parts[0].strip()
+
+
+def split_data_import(importer, names):
+    """Split imports from data.js into their new destination modules."""
+    grouped = {}
+
+    for specifier in parse_import_names(names):
+        original_name = get_original_name(specifier)
+
+        if original_name not in EXPORTS:
+            raise ValueError(
+                f"Unknown export '{original_name}' imported by {importer}"
+            )
+
+        destination = EXPORTS[original_name]
+        grouped.setdefault(destination, []).append(specifier)
+
+    replacements = []
+
+    for destination, specifiers in grouped.items():
+        target = f"src/data/{destination}"
+        source = relative_import(importer, target)
+
+        replacements.append(
+            f'import {{ {", ".join(specifiers)} }} from "{source}";'
         )
-    ).as_posix()
 
-    if not path.startswith("."):
-        path = "./" + path
+    return "\n".join(replacements)
 
-    return path
 
-def split_data_file(content):
-    header = content[:content.index("export const initialGameData")]
-
-    sections = {}
-
-    for name, filename in EXPORTS.items():
-        marker = f"export const {name} ="
-
-        if marker not in content:
-            raise ValueError(f"Missing export: {name}")
-
-        start = content.index(marker)
-
-        next_positions = [
-            content.find(f"export const {other} =", start + len(marker))
-            for other in EXPORTS
-            if content.find(f"export const {other} =", start + len(marker)) != -1
-        ]
-
-        end = min(next_positions) if next_positions else len(content)
-
-        sections[filename] = content[start:end].strip() + "\n"
-
-    sections["initialGameData.js"] = (
-        header + sections["initialGameData.js"]
-    )
-
-    return sections
-
-def transform_imports(path, content, old_to_new):
-    old_path = Path(path)
+def transform_imports(importer, content):
+    """Update imports that reference data.js or moved recipe files."""
+    changed = False
 
     def replace(match):
-        clause = match.group("clause")
-        old_specifier = match.group("path")
+        nonlocal changed
 
-        if not old_specifier.startswith("."):
-            return match.group("statement")
+        source = match.group("source")
+        resolved = resolve_import(importer, source)
 
-        old_target = (old_path.parent / old_specifier).as_posix()
-        old_target = str(Path(old_target))
+        # Imports from the old central data.js.
+        if resolved == "src/data.js":
+            replacement = split_data_import(
+                importer,
+                match.group("names")
+            )
+            changed = True
+            return replacement
 
-        # Imports from the former combined data.js need splitting
-        # according to their imported names.
-        if old_target == "src/data.js":
-            names = re.findall(
-                r'\b([A-Za-z_$][\w$]*)\b',
-                clause
+        # Imports from recipe files that are moving.
+        for old_path, new_path in MOVES.items():
+            if resolved == normalize_project_path(old_path):
+                new_source = relative_import(importer, new_path)
+
+                changed = True
+                return (
+                    f'import {{ {match.group("names").strip()} }} '
+                    f'from "{new_source}";'
+                )
+
+        return match.group(0)
+
+    updated = IMPORT_RE.sub(replace, content)
+    return updated, changed
+
+
+def extract_data_exports(content):
+    """Extract each expected export block from src/data.js."""
+    pattern = re.compile(
+        r"^export\s+const\s+([A-Za-z_$][\w$]*)\s*=",
+        re.MULTILINE
+    )
+
+    matches = list(pattern.finditer(content))
+
+    if not matches:
+        raise ValueError("No 'export const' declarations found in src/data.js")
+
+    found = {
+        match.group(1)
+        for match in matches
+    }
+
+    missing = set(EXPORTS) - found
+    unexpected = found - set(EXPORTS)
+
+    if missing:
+        raise ValueError(
+            "Missing expected exports: " + ", ".join(sorted(missing))
+        )
+
+    if unexpected:
+        print(
+            "WARNING: Additional exports found: "
+            + ", ".join(sorted(unexpected))
+        )
+
+    header = content[:matches[0].start()].strip()
+
+    extracted = {}
+
+    for index, match in enumerate(matches):
+        name = match.group(1)
+        start = match.start()
+
+        if index + 1 < len(matches):
+            end = matches[index + 1].start()
+        else:
+            end = len(content)
+
+        block = content[start:end].strip()
+
+        if name in EXPORTS:
+            extracted[name] = block
+
+    return header, extracted
+
+
+def collect_javascript_files():
+    """Find project JS files, excluding generated/dependency folders."""
+    excluded = {
+        "node_modules",
+        ".git",
+    }
+
+    files = []
+
+    for path in ROOT.rglob("*.js"):
+        relative = path.relative_to(ROOT)
+
+        if any(part in excluded for part in relative.parts):
+            continue
+
+        if path == Path(__file__).resolve():
+            continue
+
+        files.append(path)
+
+    return sorted(files)
+
+
+def build_plan():
+    """Build all output content and import updates without writing files."""
+    if not DATA_FILE.exists():
+        raise FileNotFoundError(f"Missing source file: {DATA_FILE}")
+
+    if BACKUP_FILE.exists():
+        raise FileExistsError(
+            f"Backup already exists: {BACKUP_FILE}\n"
+            "Rename or remove it before applying another migration."
+        )
+
+    header, extracted = extract_data_exports(
+        DATA_FILE.read_text(encoding="utf-8")
+    )
+
+    writes = {}
+
+    for export_name, filename in EXPORTS.items():
+        destination = SRC / "data" / filename
+
+        if destination.exists():
+            raise FileExistsError(
+                f"Destination already exists: {destination}"
             )
 
-            # Preserve aliases as well as ordinary named imports.
-            imports = []
-            for name in dict.fromkeys(names):
-                if name in EXPORT_MODULES:
-                    module = EXPORT_MODULES[name]
-                    target = Path("src/data") / module
-                    specifier = relative_import(
-                        Path(path),
-                        target
-                    )
-                    imports.append(
-                        f'import {{ {name} }} from "{specifier}";'
-                    )
+        block = extracted[export_name]
 
-            if imports:
-                return "\n".join(imports)
+        if export_name == "initialGameData" and header:
+            output = header + "\n\n" + block + "\n"
+        else:
+            output = block + "\n"
 
-            return match.group("statement")
+        writes[destination] = output
 
-        new_target = old_to_new.get(old_target)
+    moves = []
 
-        if new_target is None:
-            return match.group("statement")
+    for old_relative, new_relative in MOVES.items():
+        old_path = ROOT / old_relative
+        new_path = ROOT / new_relative
 
-        specifier = relative_import(
-            Path(path),
-            Path(new_target)
+        if not old_path.exists():
+            raise FileNotFoundError(f"Missing recipe file: {old_path}")
+
+        if new_path.exists():
+            raise FileExistsError(
+                f"Recipe destination already exists: {new_path}"
+            )
+
+        moves.append((old_path, new_path))
+
+    # Build all import updates in memory.
+    import_updates = {}
+
+    for path in collect_javascript_files():
+        if path == DATA_FILE:
+            continue
+
+        relative = path.relative_to(ROOT).as_posix()
+        original = path.read_text(encoding="utf-8")
+
+        updated, changed = transform_imports(relative, original)
+
+        if changed:
+            import_updates[path] = updated
+
+    return writes, moves, import_updates
+
+
+def display_plan(writes, moves, import_updates):
+    print("\nDATA ORGANIZATION PLAN")
+    print("=" * 22)
+
+    print("\nCREATE:")
+    for path in writes:
+        print(f"  {path.relative_to(ROOT)}")
+
+    print("\nMOVE:")
+    for old_path, new_path in moves:
+        print(
+            f"  {old_path.relative_to(ROOT)}"
+            f" -> {new_path.relative_to(ROOT)}"
         )
 
-        return match.group("statement").replace(
-            old_specifier,
-            specifier
-        )
+    print("\nUPDATE IMPORTS:")
+    if import_updates:
+        for path in import_updates:
+            print(f"  {path.relative_to(ROOT)}")
+    else:
+        print("  No import changes needed.")
 
-    return IMPORT_RE.sub(replace, content)
+    print("\nBACKUP:")
+    print(f"  {BACKUP_FILE.relative_to(ROOT)}")
+
+    print("\nREMOVE:")
+    print(f"  {DATA_FILE.relative_to(ROOT)}")
+
+
+def apply_plan(writes, moves, import_updates):
+    """Apply the prepared plan."""
+    recipe_directory = SRC / "data" / "recipes"
+    recipe_directory.mkdir(parents=True, exist_ok=True)
+
+    # Preserve the original central data file first.
+    shutil.copy2(DATA_FILE, BACKUP_FILE)
+
+    try:
+        # Write the split data modules.
+        for path, content in writes.items():
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(content, encoding="utf-8")
+
+        # Move recipe modules.
+        for old_path, new_path in moves:
+            new_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(old_path), str(new_path))
+
+        # Update imports.
+        for path, content in import_updates.items():
+            path.write_text(content, encoding="utf-8")
+
+        # Remove the original only after the other operations succeed.
+        DATA_FILE.unlink()
+
+    except Exception:
+        print(
+            "\nERROR: Migration stopped partway through.\n"
+            f"Original data.js backup is available at: {BACKUP_FILE}"
+        )
+        raise
+
+    print("\nMigration applied successfully.")
+    print(f"Backup retained at: {BACKUP_FILE.relative_to(ROOT)}")
+
 
 def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--apply", action="store_true")
-    parser.add_argument("--dry-run", action="store_true")
+    parser = argparse.ArgumentParser(
+        description="Organize kSim-mobile data modules."
+    )
+
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Apply the migration. Without this flag, only show a dry-run."
+    )
+
     args = parser.parse_args()
 
-    if args.apply and args.dry_run:
-        parser.error("Choose either --apply or --dry-run")
+    try:
+        writes, moves, import_updates = build_plan()
+        display_plan(writes, moves, import_updates)
 
-    apply = args.apply
+        if not args.apply:
+            print("\nDRY RUN ONLY — no files were changed.")
+            print("Review the plan, then run with --apply.")
+            return
 
-    old_data = SRC / "data.js"
+        print("\nApplying migration...")
+        apply_plan(writes, moves, import_updates)
 
-    if not old_data.exists():
-        sys.exit("ERROR: src/data.js was not found.")
+    except Exception as error:
+        print(f"\nERROR: {error}", file=sys.stderr)
+        sys.exit(1)
 
-    if (SRC / "data" / "recipes").exists() and any(
-        (SRC / "data" / "recipes").iterdir()
-    ):
-        sys.exit("ERROR: recipes folder already contains files.")
-
-    content = old_data.read_text(encoding="utf-8")
-    sections = split_data_file(content)
-
-    # Map old file locations to their new locations.
-    path_map = {
-        "src/data.js": None,
-        **MOVES
-    }
-
-    for filename in EXPORTS.values():
-        path_map[f"src/data/{filename}"] = f"src/data/{filename}"
-
-    # The importer's old path is needed to resolve its existing
-    # relative imports before calculating its new relative paths.
-    importer_moves = {
-        "src/data.js": None,
-        **{
-            old: new
-            for old, new in MOVES.items()
-        }
-    }
-
-    operations = []
-
-    # Prepare new definition files.
-    for filename, text in sections.items():
-        target = SRC / "data" / filename
-        operations.append(("write", target, text))
-
-    # Prepare existing module moves.
-    for old, new in MOVES.items():
-        source = ROOT / old
-        target = ROOT / new
-
-        if not source.exists():
-            sys.exit(f"ERROR: Missing source file: {old}")
-
-        operations.append(("move", source, target))
-
-    # Update all JavaScript imports.
-    changes = []
-
-    for file in ROOT.rglob("*.js"):
-        relative = file.relative_to(ROOT).as_posix()
-
-        if "node_modules" in file.parts or ".git" in file.parts:
-            continue
-
-        new_relative = importer_moves.get(relative, relative)
-
-        if new_relative is None:
-            continue
-
-        text = file.read_text(encoding="utf-8")
-        updated = transform_imports(
-            new_relative,
-            text,
-            path_map
-        )
-
-        if updated != text:
-            changes.append((file, updated))
-
-    print("\nDATA ORGANIZATION PLAN")
-    print("======================")
-
-    for action, source, destination in operations:
-        if action == "write":
-            print(f"CREATE {destination.relative_to(ROOT)}")
-        else:
-            print(
-                f"MOVE   {source.relative_to(ROOT)}"
-                f" -> {destination.relative_to(ROOT)}"
-            )
-
-    for file, updated in changes:
-        print(f"IMPORT {file.relative_to(ROOT)}")
-
-    print(f"\n{len(operations)} file operations")
-    print(f"{len(changes)} import updates")
-
-    if not apply:
-        print("\nDry run only. No files changed.")
-        print("Run with --apply to perform the migration.")
-        return
-
-    # Make a backup before changing anything.
-    backup = ROOT / "data.js.batch2.bak"
-
-    if backup.exists():
-        sys.exit("ERROR: data.js.batch2.bak already exists.")
-
-    shutil.copy2(old_data, backup)
-
-    # Create the new folders and write definitions.
-    for action, source, destination in operations:
-        if action == "write":
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_text(source, encoding="utf-8")
-        else:
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(source), str(destination))
-
-    # Rewrite imports.
-    for file, updated in changes:
-        file.write_text(updated, encoding="utf-8")
-
-    old_data.unlink()
-
-    print("\nMigration complete.")
-    print(f"Backup: {backup.relative_to(ROOT)}")
 
 if __name__ == "__main__":
     main()

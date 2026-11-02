@@ -1,6 +1,6 @@
 // src/data/inventory.js
 
-import { resourceDefinitions } from "../data.js";
+import { resourceDefinitions } from "./resources.js";
 import { materials } from "./materials.js";
 
 export const inventoryItems = [
