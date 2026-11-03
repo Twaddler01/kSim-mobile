@@ -36,4 +36,9 @@ export function MaterialIcon(
     return svg;
 }
 
+export function hasMaterialIcon(materialId, variant = "core") {
+    const drawings = materialDrawings[materialId];
+    return Boolean(drawings?.[variant] ?? drawings?.core);
+}
+
 export default MaterialIcon;

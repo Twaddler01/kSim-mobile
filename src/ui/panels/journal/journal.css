@@ -265,3 +265,27 @@
 .journal-tree-related span {
     overflow-wrap: anywhere;
 }
+
+.journal-tree-entry-icon,
+.journal-tree-detail-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.journal-tree-entry-icon svg {
+    display: block;
+    width: 22px;
+    height: 22px;
+}
+
+.journal-tree-detail-icon svg {
+    display: block;
+    width: 36px;
+    height: 36px;
+}
+
+.journal-tree-detail-icon {
+    font-size: 1.8rem;
+}

@@ -8,6 +8,7 @@ import { fabricationRecipes } from "../../data/recipes/fabrication.js";
 import { assemblyRecipes } from "../../data/recipes/assembly.js";
 import { getRecipeStatus, craftRecipe } from "../../systems/SynthesisEngine.js";
 import { resourceDefinitions } from "../../data/resources.js";
+import { ItemIcon } from "../components/ItemIcon.js";
 
 const RECIPE_GROUPS = [
     {
@@ -70,10 +71,6 @@ export default class SynthesisPanel {
 
     getItemLabel(itemId) {
         return this.getItem(itemId).name;
-    }
-
-    getItemIcon(itemId) {
-        return this.getItem(itemId).icon ?? "◈";
     }
 
     getRecipeOutputName(recipe) {
@@ -170,6 +167,9 @@ export default class SynthesisPanel {
     }
 
     createRecipeCard(recipe, group) {
+        const outputId = Object.keys(recipe.outputs ?? {})[0];
+        const outputItem = outputId ? this.getItem(outputId) : null;
+
         const status = Card.Status("Checking...", {
             variant: "default"
         });
@@ -241,10 +241,10 @@ export default class SynthesisPanel {
                 onClick: () => this.toggleRecipe(recipe.id)
             },
             [
-                el("span", {
+                ItemIcon(outputItem, {
+                    size: 26,
                     className: "card-icon",
-                    text: group.icon,
-                    "aria-hidden": "true"
+                    fallback: group.icon
                 }),
 
                 el("span", {
@@ -417,10 +417,9 @@ export default class SynthesisPanel {
                     ].join(" ")
                 },
                 [
-                    el("span", {
-                        className: "card-requirement__icon",
-                        text: this.getItemIcon(item.id),
-                        "aria-hidden": "true"
+                    ItemIcon(this.getItem(item.id), {
+                        size: 20,
+                        className: "card-requirement__icon"
                     }),
 
                     el("span", {
@@ -441,10 +440,9 @@ export default class SynthesisPanel {
         const outputRows = Object.entries(recipe.outputs).map(
             ([itemId, amount]) =>
                 el("div", { className: "card-output" }, [
-                    el("span", {
-                        className: "card-output__icon",
-                        text: this.getItemIcon(itemId),
-                        "aria-hidden": "true"
+                    ItemIcon(this.getItem(itemId), {
+                        size: 20,
+                        className: "card-output__icon"
                     }),
 
                     el("span", {

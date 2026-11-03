@@ -10,6 +10,7 @@ import {
     getRecipeInputs,
     getRecipeOutputs
 } from "../../../data/journal/relationships.js";
+import { createJournalIcon } from "./JournalIcon.js";
 
 const TREE_SECTIONS = [
     {
@@ -254,10 +255,7 @@ export default class JournalTree {
                 onClick: () => this.selectEntry(entry)
             },
             [
-                el("span", {
-                    className: "journal-tree-entry-icon",
-                    text: entry.icon ?? "❔"
-                }),
+                createJournalIcon(entry),
                 el("span", {
                     className: "journal-tree-entry-label",
                     text: entry.name
@@ -297,10 +295,7 @@ export default class JournalTree {
                     className: "journal-tree-chevron",
                     text: isExpanded ? "▾" : "▸"
                 }),
-                el("span", {
-                    className: "journal-tree-entry-icon",
-                    text: entry.icon ?? "❔"
-                }),
+                createJournalIcon(entry),
                 el("span", {
                     className: "journal-tree-entry-label",
                     text: entry.name
@@ -471,9 +466,9 @@ export default class JournalTree {
                     className: "journal-tree-detail-heading"
                 },
                 [
-                    el("span", {
-                        className: "journal-tree-detail-icon",
-                        text: entry.icon ?? "❔"
+                    createJournalIcon(entry, {
+                        size: 36,
+                        className: "journal-tree-detail-icon"
                     }),
                     el("div", {}, [
                         el("div", {
@@ -506,12 +501,8 @@ export default class JournalTree {
             const materials = getFieldMaterials(entry.id)
                 .filter(item => item.material)
                 .map(item => item.material);
-        
-            this.renderRelatedSection(
-                container,
-                "RAW MATERIALS",
-                materials
-            );
+
+            this.renderRelatedSection(container, "RAW MATERIALS", materials);
         }
 
         if (entry.type === "material") {
@@ -601,7 +592,11 @@ export default class JournalTree {
             },
             [
                 el("span", {
-                    text: `${prefix}${entry.icon ?? "❔"} ${entry.name}`
+                    text: prefix
+                }),
+                createJournalIcon(entry),
+                el("span", {
+                    text: entry.name
                 })
             ]
         );

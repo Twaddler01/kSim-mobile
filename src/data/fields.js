@@ -25,7 +25,16 @@ export const FIELD_DEFINITIONS = [
         visualVariant: "stone",
         icon: "🪨",
         description: "Locate stone deposits and recover raw samples.",
-        unlockTrigger: null
+        unlockTrigger: null,
+        spawnTable: [
+            { materialId: "stone", weight: 100 }
+        ],
+        richnessTable: [
+            { amount: 1, weight: 80 },
+            { amount: 2, weight: 15 },
+            { amount: 3, weight: 4 },
+            { amount: 5, weight: 1 }
+        ]
     },
     {
         id: "quartz",
@@ -34,7 +43,16 @@ export const FIELD_DEFINITIONS = [
         visualVariant: "crystal",
         icon: "💎",
         description: "A crystalline mineral suitable for processing.",
-        unlockTrigger: null
+        unlockTrigger: null,
+        spawnTable: [
+            { materialId: "quartz", weight: 100 }
+        ],
+        richnessTable: [
+            { amount: 1, weight: 80 },
+            { amount: 2, weight: 15 },
+            { amount: 3, weight: 4 },
+            { amount: 5, weight: 1 }
+        ]
     },
     {
         id: "copper",
@@ -47,7 +65,16 @@ export const FIELD_DEFINITIONS = [
             type: "inventoryAmount",
             item: "stone",
             amount: 10
-        }
+        },
+        spawnTable: [
+            { materialId: "copper", weight: 100 }
+        ],
+        richnessTable: [
+            { amount: 1, weight: 80 },
+            { amount: 2, weight: 15 },
+            { amount: 3, weight: 4 },
+            { amount: 5, weight: 1 }
+        ]
     },
     {
         id: "silicon",
@@ -60,6 +87,15 @@ export const FIELD_DEFINITIONS = [
             type: "inventoryAmount",
             item: "copper",
             amount: 12
-        }
+        },
+        spawnTable: [
+            { materialId: "silicon", weight: 100 }
+        ],
+        richnessTable: [
+            { amount: 1, weight: 80 },
+            { amount: 2, weight: 15 },
+            { amount: 3, weight: 4 },
+            { amount: 5, weight: 1 }
+        ]
     }
 ];
