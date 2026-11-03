@@ -1,6 +1,5 @@
 import { el } from "../components/Element.js";
-import { createSvgElement } from "../../assets/icons/materials/svgHelpers.js";
-import { materialDrawings } from "../../assets/icons/materials/materialDrawings.js";
+import { ItemIcon } from "../components/ItemIcon.js";
 
 export default class ResourcePopups {
     constructor({ formatNumber, maxVisible = 5 } = {}) {
@@ -85,28 +84,11 @@ export default class ResourcePopups {
     }
 
     createIcon(gain) {
-        const drawing = gain.materialId
-            ? materialDrawings[gain.materialId]
-            : null;
-
-        if (!drawing?.core) {
-            return el("span", {
-                className: "resource-float-icon",
-                text: gain.icon ?? ""
-            });
-        }
-
-        const svg = createSvgElement("svg", {
-            class: "resource-float-icon resource-float-icon--svg",
-            viewBox: "0 0 48 48",
-            width: "20",
-            height: "20",
-            "aria-hidden": "true",
-            focusable: "false"
+        return ItemIcon(gain, {
+            size: 20,
+            className: "resource-float-icon",
+            materialId: gain.materialId
         });
-
-        drawing.core(svg);
-        return svg;
     }
 
     destroy() {

@@ -1,6 +1,6 @@
 import { el } from "../components/Element.js";
-import MaterialIcon from "../../assets/icons/materials/MaterialIcon.js";
 import { inventoryItems, initializeInventory } from "../../data/inventory.js";
+import { ItemIcon } from "../components/ItemIcon.js";
 
 export default class Inventory {
     constructor({ getGame, formatNumber }) {
@@ -22,17 +22,13 @@ export default class Inventory {
     }
 
     createItemIcon(item, className, size = 24) {
-        if (item.inventoryType === "resource") {
-            return el("span", {
-                className,
-                "aria-hidden": "true",
-                text: item.icon || "◈"
-            });
-        }
-
-        return MaterialIcon(item.id, {
+        return ItemIcon(item, {
             size,
-            className
+            className,
+            materialId:
+                item.inventoryType === "resource"
+                    ? null
+                    : item.id
         });
     }
 

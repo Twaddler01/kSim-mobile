@@ -1,10 +1,8 @@
 
 import { el, append } from "../../components/Element.js";
-
 import {
     getJournalEntriesByCategory
 } from "../../../data/journal/catalog.js";
-
 import {
     getRecipesUsing,
     getRecipesProducing,
@@ -13,6 +11,7 @@ import {
     getFieldMaterials,
     getMaterialField
 } from "../../../data/journal/relationships.js";
+import { ItemIcon } from "../../components/ItemIcon.js";
 
 const CATEGORIES = [
     { id: "locations", label: "Locations" },
@@ -218,9 +217,9 @@ export default class CategoryBrowser {
                 ].filter(Boolean).join(" "),
                 onClick: () => this.selectEntry(entry)
             }, [
-                el("span", {
-                    className: "journal-entry-icon",
-                    text: entry.icon
+                ItemIcon(entry, {
+                    size: 24,
+                    className: "journal-entry-icon"
                 }),
                 el("span", {
                     className: "journal-entry-name",
@@ -250,9 +249,9 @@ export default class CategoryBrowser {
             el("div", {
                 className: "journal-detail-heading"
             }, [
-                el("span", {
-                    className: "journal-detail-icon",
-                    text: entry.icon
+                ItemIcon(entry, {
+                    size: 24,
+                    className: "journal-entry-icon"
                 }),
                 el("div", {}, [
                     el("div", {
@@ -359,8 +358,9 @@ export default class CategoryBrowser {
                 className: "journal-related-entry",
                 onClick: () => this.openRelatedEntry(entry)
             }, [
-                el("span", {
-                    text: entry.icon ?? "❔"
+                ItemIcon(entry, {
+                    size: 22,
+                    className: "journal-related-entry-icon"
                 }),
                 el("span", {
                     text: entry.name ?? entry.id
@@ -392,8 +392,9 @@ export default class CategoryBrowser {
                 className: "journal-related-entry",
                 onClick: () => this.openRelatedEntry(item)
             }, [
-                el("span", {
-                    text: item.icon ?? "❔"
+                ItemIcon(item, {
+                    size: 22,
+                    className: "journal-related-entry-icon"
                 }),
                 el("span", {
                     text: item.name ?? item.id

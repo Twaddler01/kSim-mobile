@@ -2,6 +2,7 @@ import { el } from "./Element.js";
 import { Button } from "./Button.js";
 import { ProgressBar } from "./ProgressBar.js";
 import { itemDomId } from "../navigation/itemNavigation.js";
+import { ItemIcon } from "./ItemIcon.js";
 
 /**
  * Reusable content card.
@@ -161,10 +162,9 @@ Card.Requirements = function (items = []) {
                 ].join(" ")
             },
             [
-                el("span", {
-                    className: "card-requirement__icon",
-                    text: item.icon ?? "",
-                    "aria-hidden": "true"
+                ItemIcon(item, {
+                    size: 20,
+                    className: "card-requirement__icon"
                 }),
 
                 el("span", {
@@ -192,10 +192,9 @@ Card.Requirements = function (items = []) {
 Card.Output = function (items = []) {
     const rows = items.map(item =>
         el("div", { className: "card-output" }, [
-            el("span", {
-                className: "card-output__icon",
-                text: item.icon ?? "",
-                "aria-hidden": "true"
+            ItemIcon(item, {
+                size: 20,
+                className: "card-output__icon"
             }),
 
             el("span", {

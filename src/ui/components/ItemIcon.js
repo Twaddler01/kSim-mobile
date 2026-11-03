@@ -4,15 +4,14 @@ import {
     hasMaterialIcon
 } from "../../assets/icons/materials/MaterialIcon.js";
 
-/**
- * Creates an item icon using this priority:
- * 1. Dedicated SVG
- * 2. Data-defined icon (usually emoji)
- * 3. Generic fallback
- */
 export function ItemIcon(
     item,
-    { size = 24, className = "item-icon", fallback = "?" } = {}
+    {
+        size = 24,
+        className = "item-icon",
+        fallback = "?",
+        materialId = null
+    } = {}
 ) {
     const wrapper = el("span", {
         className,
@@ -24,17 +23,22 @@ export function ItemIcon(
         return wrapper;
     }
 
-    // Material SVG.
-    if (item.id && hasMaterialIcon(item.id)) {
+    const id =
+        materialId ??
+        item.materialId ??
+        (item.type === "material" || item.category ? item.id : null);
+
+    if (id && hasMaterialIcon(id)) {
         wrapper.append(
-            MaterialIcon(item.id, { size, className: "item-icon__svg" })
+            MaterialIcon(id, {
+                size,
+                className: "item-icon__svg"
+            })
         );
 
         return wrapper;
     }
 
-    // Existing data icon.
     wrapper.textContent = item.icon || fallback;
-
     return wrapper;
 }
