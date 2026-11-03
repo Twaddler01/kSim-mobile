@@ -6,18 +6,74 @@
 //   · Drag = pan camera (does not move player)
 //   · 10 deposits live in the world, each respawns after being mined
 
-const SPRITE_PX = 40;
+const SPRITE_PX = 60;
 const SPRITE_HALF = SPRITE_PX / 2;
 
 const WORLD_WIDTH = 1200;
 const WORLD_HEIGHT = 900;
 
 const DEPOSIT_COUNT = 10;
-const RESPAWN_DELAY = 3;      // seconds
-const TAP_THRESHOLD = 10;     // px of movement that promotes a tap to a pan
+const RESPAWN_DELAY = 3; // seconds
+const TAP_THRESHOLD = 10; // px of movement that promotes a tap to a pan
 
-const PLAYER_SPEED = 200;     // world units / second
+const PLAYER_SPEED = 200; // world units / second
 
+const PLAYER_SVG = `
+<svg class="sprite" viewBox="0 0 48 48" aria-hidden="true">
+  <!-- Backpack (behind body) -->
+  <path d="M15 28 Q15 40 24 41 Q33 40 33 28 L30 26 L18 26 Z"
+        fill="#3a4453" stroke="#2a3240" stroke-width="1" stroke-linejoin="round"/>
+
+  <!-- Chemistry vial on the strap -->
+  <rect x="21" y="31" width="3" height="6" rx="1"
+        fill="#88e0b0" stroke="#5a6474" stroke-width="0.6"/>
+  <rect x="22" y="30" width="1" height="1.2" fill="#5a4a3a"/>
+
+  <!-- Shoulders -->
+  <path d="M11 22 Q11 19 14 18 L14 30 Q11 31 11 26 Z"
+        fill="#dfe4ea" stroke="#5a6474" stroke-width="1" stroke-linejoin="round"/>
+  <path d="M37 22 Q37 19 34 18 L34 30 Q37 31 37 26 Z"
+        fill="#dfe4ea" stroke="#5a6474" stroke-width="1" stroke-linejoin="round"/>
+
+  <!-- Coat back -->
+  <path d="M14 20 Q20 21 24 21 Q28 21 34 20 Q35 30 24 34 Q13 30 14 20 Z"
+        fill="#f0f3f7" stroke="#5a6474" stroke-width="1" stroke-linejoin="round"/>
+  <!-- Left highlight facet -->
+  <path d="M16 22 Q20 22 22 24 L22 30 Q18 29 16 26 Z"
+        fill="#ffffff" opacity="0.75"/>
+  <!-- Right shadow facet -->
+  <path d="M32 22 Q28 22 26 24 L26 30 Q30 29 32 26 Z"
+        fill="#c5cdd6" opacity="0.65"/>
+
+  <!-- Pickaxe shaft -->
+  <line x1="9" y1="34" x2="39" y2="27"
+        stroke="#8a6a3c" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- Pickaxe head -->
+  <path d="M37 23 L44 29 L36 33 L35 27 Z"
+        fill="#aeb7c2" stroke="#5a6474" stroke-width="0.8" stroke-linejoin="round"/>
+
+  <!-- Gloves gripping the shaft -->
+  <circle cx="10" cy="33" r="2.6" fill="#3a4453" stroke="#2a3240" stroke-width="0.8"/>
+  <circle cx="38" cy="27" r="2.6" fill="#3a4453" stroke="#2a3240" stroke-width="0.8"/>
+
+  <!-- Helmet brim (front edge of dome) -->
+  <path d="M15 18 Q24 22 33 18 L32 20 Q24 24 16 20 Z" fill="#a88020"/>
+
+  <!-- Helmet dome -->
+  <ellipse cx="24" cy="15" rx="8.5" ry="7.5"
+           fill="#e0b030" stroke="#a88020" stroke-width="1"/>
+  <path d="M18 12 Q21 9 24 9 Q22 12 20 13 Z" fill="#f5d566"/>
+  <path d="M30 12 Q27 9 24 9 Q26 12 28 13 Z" fill="#c89820"/>
+
+  <!-- Headlamp housing -->
+  <circle cx="24" cy="10.5" r="3.2" fill="#5a4a2a"
+          stroke="#a88020" stroke-width="0.6"/>
+  <!-- Headlamp glow + core -->
+  <circle class="lamp-glow" cx="24" cy="10.5" r="2.2" fill="#fffbe0"/>
+  <circle cx="24" cy="10.5" r="1.1" fill="#ffffff"/>
+</svg>
+`;
+/*
 const PLAYER_SVG = `
 <svg class="sprite" viewBox="0 0 32 32" aria-hidden="true">
   <polygon points="16,3 26,10 26,22 16,29 6,22 6,10"
@@ -32,10 +88,11 @@ const PLAYER_SVG = `
   <circle cx="16" cy="16" r="1.6" fill="#ffffff"/>
 </svg>
 `;
-
+*/
 export default class ExplorationDemo {
-    constructor({ onCollect, showToast } = {}) {
+    constructor({ deposits = [], onCollect, onRespawn, showToast } = {}) {
         this.onCollect = onCollect;
+        this.onRespawn = onRespawn;
         this.showToast = showToast;
 
         this.element = null;
@@ -59,10 +116,11 @@ export default class ExplorationDemo {
             y: WORLD_HEIGHT / 2,
             tx: WORLD_WIDTH / 2,
             ty: WORLD_HEIGHT / 2,
-            r: 16,
-            speed: PLAYER_SPEED,
+            r: 22,
+            speed: PLAYER_SPEED
         };
 
+        this.pendingDeposits = deposits;
         this.deposits = [];
         this.collected = 0;
         this.time = 0;
@@ -70,12 +128,12 @@ export default class ExplorationDemo {
         // Active pointer state, or null when no pointer is down.
         this.pointer = null;
 
-        this._loop = (t) => this.tick(t);
+        this._loop = t => this.tick(t);
         this._onResize = () => this.resize();
-        this._onPointerDown = (e) => this.handlePointerDown(e);
-        this._onPointerMove = (e) => this.handlePointerMove(e);
-        this._onPointerUp = (e) => this.handlePointerUp(e);
-        this._onPointerCancel = (e) => this.handlePointerCancel(e);
+        this._onPointerDown = e => this.handlePointerDown(e);
+        this._onPointerMove = e => this.handlePointerMove(e);
+        this._onPointerUp = e => this.handlePointerUp(e);
+        this._onPointerCancel = e => this.handlePointerCancel(e);
     }
 
     // ---------------------------------------------------------------
@@ -93,7 +151,7 @@ export default class ExplorationDemo {
             borderRadius: "10px",
             background: "#0b0f14",
             cursor: "grab",
-            touchAction: "none",
+            touchAction: "none"
         });
         this.ctx = this.canvas.getContext("2d");
 
@@ -108,14 +166,23 @@ export default class ExplorationDemo {
 
         requestAnimationFrame(() => this.resize());
 
-        if (this.deposits.length === 0) {
+        if (this.deposits.length === 0 && this.pendingDeposits.length > 0) {
+            this.deposits = this.pendingDeposits.map(d => ({
+                ...d,
+                pulse: Math.random() * Math.PI * 2,
+                active: true,
+                respawnAt: 0
+            }));
+        } else if (this.deposits.length === 0) {
             this.spawnDeposits(DEPOSIT_COUNT);
         }
 
         return this.element;
     }
 
-    update() { this.activate(); }
+    update() {
+        this.activate();
+    }
 
     activate() {
         if (this.active || !this.canvas) return;
@@ -139,7 +206,10 @@ export default class ExplorationDemo {
         this.canvas?.removeEventListener("pointerdown", this._onPointerDown);
         this.canvas?.removeEventListener("pointermove", this._onPointerMove);
         this.canvas?.removeEventListener("pointerup", this._onPointerUp);
-        this.canvas?.removeEventListener("pointercancel", this._onPointerCancel);
+        this.canvas?.removeEventListener(
+            "pointercancel",
+            this._onPointerCancel
+        );
         window.removeEventListener("resize", this._onResize);
         this.pointer = null;
     }
@@ -215,11 +285,12 @@ export default class ExplorationDemo {
 
             if (!tooCloseToDeposit && !tooCloseToPlayer) {
                 return {
-                    x, y,
+                    x,
+                    y,
                     r: 16,
                     pulse: Math.random() * Math.PI * 2,
                     active: true,
-                    respawnAt: 0,
+                    respawnAt: 0
                 };
             }
         }
@@ -230,7 +301,7 @@ export default class ExplorationDemo {
             r: 16,
             pulse: 0,
             active: true,
-            respawnAt: 0,
+            respawnAt: 0
         };
     }
 
@@ -249,7 +320,7 @@ export default class ExplorationDemo {
             startY: event.clientY - rect.top,
             startCameraX: this.camera.x,
             startCameraY: this.camera.y,
-            hasPanned: false,
+            hasPanned: false
         };
         this.canvas.setPointerCapture?.(event.pointerId);
     }
@@ -330,24 +401,39 @@ export default class ExplorationDemo {
 
         this.playerEl.classList.toggle("is-moving", moving);
 
-        // Collect any deposit we touch.
         for (const d of this.deposits) {
             if (!d.active) continue;
             if (Math.hypot(p.x - d.x, p.y - d.y) < p.r + d.r) {
                 d.active = false;
                 d.respawnAt = this.time + RESPAWN_DELAY;
-                this.collected++;
-                this.onCollect?.(this.collected);
-                this.showToast?.(`Deposit recovered (${this.collected} total)`);
+
+                const rect = this.canvas.getBoundingClientRect();
+                const screenPos = {
+                    clientX: rect.left + (d.x - this.camera.x),
+                    clientY: rect.top + (d.y - this.camera.y)
+                };
+
+                this.onCollect?.(d, screenPos);
+                this.showToast?.(`${d.label ?? "Deposit"} recovered`);
             }
         }
 
-        // Respawn collected deposits.
+        // Respawn via the adapter so it can pick the right material.
         for (const d of this.deposits) {
-            if (d.active) continue;
-            if (this.time >= d.respawnAt) {
-                Object.assign(d, this.makeDeposit());
+            if (d.active || this.time < d.respawnAt) continue;
+
+            const fresh = this.onRespawn
+                ? this.onRespawn(d)
+                : this.makeDeposit(); // ← standalone fallback
+
+            if (fresh) {
+                Object.assign(d, fresh, {
+                    pulse: 0,
+                    active: true,
+                    respawnAt: 0
+                });
             }
+            // If onRespawn returns null, deposit stays gone (finite field).
         }
 
         // Animate pulses.
@@ -363,8 +449,7 @@ export default class ExplorationDemo {
         // Position the SVG overlay in screen space.
         const screenX = this.player.x - this.camera.x;
         const screenY = this.player.y - this.camera.y;
-        this.playerEl.style.transform =
-            `translate(${screenX - SPRITE_HALF}px, ${screenY - SPRITE_HALF}px)`;
+        this.playerEl.style.transform = `translate(${screenX - SPRITE_HALF}px, ${screenY - SPRITE_HALF}px)`;
 
         // Background.
         ctx.clearRect(0, 0, w, h);
@@ -418,12 +503,17 @@ export default class ExplorationDemo {
         ctx.stroke();
 
         // Player shadow (in world space, under the SVG sprite).
+        // Player shadow (under feet, not under the pickaxe tip)
         ctx.fillStyle = "rgba(0,0,0,0.35)";
         ctx.beginPath();
         ctx.ellipse(
             this.player.x,
-            this.player.y + SPRITE_HALF - 4,
-            12, 4, 0, 0, Math.PI * 2
+            this.player.y + SPRITE_HALF - 10, // was - 4
+            11,
+            3.5,
+            0,
+            0,
+            Math.PI * 2 // was 12, 4
         );
         ctx.fill();
 
@@ -432,23 +522,37 @@ export default class ExplorationDemo {
             if (!d.active) continue;
 
             const glow = 0.55 + Math.sin(d.pulse) * 0.25;
-            const halo = ctx.createRadialGradient(d.x, d.y, 0, d.x, d.y, d.r * 2.2);
-            halo.addColorStop(0, `rgba(120,255,180,${glow * 0.5})`);
-            halo.addColorStop(1, "rgba(120,255,180,0)");
-            ctx.fillStyle = halo;
-            ctx.beginPath();
-            ctx.arc(d.x, d.y, d.r * 2.2, 0, Math.PI * 2);
-            ctx.fill();
+            const halo = ctx.createRadialGradient(
+                d.x,
+                d.y,
+                0,
+                d.x,
+                d.y,
+                d.r * 2.2
+            );
 
-            ctx.fillStyle = `rgba(120,255,180,${0.75 + Math.sin(d.pulse) * 0.15})`;
-            ctx.beginPath();
-            ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
-            ctx.fill();
+            if (d.sprite && d.sprite.complete && d.sprite.naturalWidth) {
+                const s = d.r * 3 * (1 + ((d.richness ?? 1) - 1) * 0.125);
+                ctx.drawImage(d.sprite, d.x - s / 2, d.y - s / 2, s, s);
+            } else {
+                const r = d.r ?? 22;
+                halo.addColorStop(0, `rgba(120,255,180,${glow * 0.5})`);
+                halo.addColorStop(1, "rgba(120,255,180,0)");
+                ctx.fillStyle = halo;
+                ctx.beginPath();
+                ctx.arc(d.x, d.y, r * 2.2, 0, Math.PI * 2);
+                ctx.fill();
 
-            ctx.fillStyle = "rgba(230,255,240,0.95)";
-            ctx.beginPath();
-            ctx.arc(d.x, d.y, d.r * 0.45, 0, Math.PI * 2);
-            ctx.fill();
+                ctx.fillStyle = `rgba(120,255,180,${0.75 + Math.sin(d.pulse) * 0.15})`;
+                ctx.beginPath();
+                ctx.arc(d.x, d.y, r, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = "rgba(230,255,240,0.95)";
+                ctx.beginPath();
+                ctx.arc(d.x, d.y, r * 0.45, 0, Math.PI * 2);
+                ctx.fill();
+            }
         }
 
         ctx.restore();
@@ -459,7 +563,11 @@ export default class ExplorationDemo {
         ctx.fillStyle = "#e8f4ff";
         ctx.font = "600 14px system-ui, -apple-system, 'Segoe UI', sans-serif";
         ctx.textBaseline = "top";
-        ctx.fillText(`Deposits collected: ${this.collected}`, 12, 12);
+        ctx.fillText(
+            this.hudText ?? `Deposits collected: ${this.collected}`,
+            12,
+            12
+        );
 
         ctx.fillStyle = "rgba(180,210,240,0.65)";
         ctx.font = "400 12px system-ui, -apple-system, 'Segoe UI', sans-serif";
@@ -505,7 +613,13 @@ export default class ExplorationDemo {
         // Player.
         ctx.fillStyle = "#7cc8ff";
         ctx.beginPath();
-        ctx.arc(mmX + this.player.x * sx, mmY + this.player.y * sy, 2.5, 0, Math.PI * 2);
+        ctx.arc(
+            mmX + this.player.x * sx,
+            mmY + this.player.y * sy,
+            2.5,
+            0,
+            Math.PI * 2
+        );
         ctx.fill();
     }
 }

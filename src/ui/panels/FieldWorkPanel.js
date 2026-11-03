@@ -13,6 +13,7 @@ export default class FieldWorkPanel {
         unreadManager,
         fieldDefinitions,
         navigateTo,
+        createField,
         onGather, // (field, event, target) => boolean
         refreshTab // () => ui.tabs.update({ refreshContent: true })
     }) {
@@ -32,11 +33,20 @@ export default class FieldWorkPanel {
         this.element = null;
         this.fieldCards = null;
         this.fieldSelectionButton = null;
+
+        this.createField =
+            createField ??
+            (field =>
+                new FieldNodeView({
+                    field,
+                    onGather: (event, target) => onGather(field, event, target)
+                }));
+        this.onGatherCallback = onGather;
     }
 
     // --- navigation entry points ---------------------------------------
-
     showSelector() {
+        this.deactivateField();
         this.view = "selector";
         this.fieldSelectionButton = null;
         this.refreshTab();
@@ -74,6 +84,13 @@ export default class FieldWorkPanel {
                 : this.renderSelector()
         );
 
+        // If showing an active field, start/restart its loop.
+        // FieldNodeView.getElement() self-renders, but ExplorationField
+        // needs an explicit update() to activate the canvas RAF.
+        if (this.view === "field") {
+            this.getFieldView(this.activeFieldId())?.update?.();
+        }
+
         return this;
     }
 
@@ -82,14 +99,7 @@ export default class FieldWorkPanel {
     getFieldView(fieldId) {
         if (!this.fieldViews.has(fieldId)) {
             const field = this.fieldDefinitions.find(f => f.id === fieldId);
-            this.fieldViews.set(
-                fieldId,
-                new FieldNodeView({
-                    field,
-                    onGather: (event, target) =>
-                        this.onGather(field, event, target)
-                })
-            );
+            this.fieldViews.set(fieldId, this.createField(field));
         }
         return this.fieldViews.get(fieldId);
     }
@@ -324,5 +334,17 @@ export default class FieldWorkPanel {
                 ariaLabel: "New field content"
             })
         );
+    }
+
+    refreshFieldSprites() {
+        for (const view of this.fieldViews.values()) {
+            view.refreshSprites?.();
+        }
+    }
+
+    deactivateField() {
+        for (const view of this.fieldViews.values()) {
+            view.deactivate?.();
+        }
     }
 }

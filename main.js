@@ -3,6 +3,26 @@
 // WIP
 import ExplorationDemo from "./src/ui/panels/ExplorationDemo.js";
 
+import ExplorationField from "./src/ui/panels/ExplorationField.js";
+import { buildMineralSprites } from "./src/data/mineralSprites.js";
+
+// at the top of main.js, after the buildMineralSprites import
+buildMineralSprites()
+    .then(sprites => {
+        console.log("[sprites] loaded:", Object.keys(sprites ?? {}));
+        mineralSprites = sprites;
+        ui.fieldWorkPanel?.refreshFieldSprites?.();
+        refreshUI();
+    })
+    .catch(err => console.error("[sprites] failed:", err));
+
+let mineralSprites = {}; // populated asynchronously below
+buildMineralSprites().then(sprites => {
+    mineralSprites = sprites;
+    ui.fieldWorkPanel?.refreshFieldSprites?.();
+    refreshUI();
+});
+
 // ===================================
 // IMPORTS
 // ===================================
@@ -340,6 +360,25 @@ const journalPanel = new JournalPanel({
     getGame: () => game
 });
 
+function handleFieldGather(field, event, target) {
+    const result = recoverMaterial(game, target.id, target.richness ?? 1);
+    if (!result.ok) {
+        showToast(result.reason);
+        return false;
+    }
+    resourcePopups.show(
+        [{ amount: result.amount ?? 1, icon: result.item.icon, materialId: result.item.id }],
+        event
+    );
+    if (discoverMaterial(result.item, "gathering-field")) {
+        showToast(`New material discovered: ${result.item.name}`);
+    }
+    processProgression();
+    save();
+    refreshUI({ database: true });
+    return true;
+}
+
 const fieldWorkPanel = new FieldWorkPanel({
     getGame: () => game,
     save,
@@ -351,27 +390,12 @@ const fieldWorkPanel = new FieldWorkPanel({
     refreshTab: () => ui.tabs?.update({ refreshContent: true }),
     resourcePopups,
 
-    onGather: (field, event, target) => {
-        const result = recoverMaterial(game, target.id, target.richness ?? 1);
-        if (!result.ok) {
-            showToast(result.reason);
-            return false;
-        }
-
-        resourcePopups.show(
-            [{ amount: result.amount ?? 1, icon: result.item.icon, materialId: result.item.id }],
-            event
-        );
-
-        if (discoverMaterial(result.item, "gathering-field")) {
-            showToast(`New material discovered: ${result.item.name}`);
-        }
-
-        processProgression();
-        save();
-        refreshUI({ database: true });
-        return true;
-    },
+    createField: field => new ExplorationField({
+        field,
+        getSprites: () => mineralSprites,   // reactive — see fix 3
+        onGather: handleFieldGather,
+    }),
+    onGather: handleFieldGather,
 });
 
 ui.fieldWorkPanel = fieldWorkPanel;
@@ -763,6 +787,10 @@ function updateActiveTabUI() {
     // Stop the canvas loop when we're not on the explore tab.
     if (activeTab !== "explore") {
         explorationDemo.deactivate();
+    }
+
+    if (activeTab !== "fieldWork") {
+        fieldWorkPanel.deactivateField?.();
     }
 
     switch (activeTab) {
