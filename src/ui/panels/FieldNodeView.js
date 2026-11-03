@@ -6,7 +6,7 @@ const COLUMNS = 12;
 const ROWS = 8;
 const INITIAL_NODES = 7;
 
-export default class GatheringField {
+export default class FieldNodeView {
     constructor({
         field = {
             id: "copper",

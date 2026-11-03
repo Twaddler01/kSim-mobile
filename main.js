@@ -1,5 +1,8 @@
 // main.js
+
+// WIP
 import ExplorationDemo from "./src/ui/panels/ExplorationDemo.js";
+
 // ===================================
 // IMPORTS
 // ===================================
@@ -14,7 +17,10 @@ import UpgradePanel from "./src/ui/panels/UpgradePanel.js";
 import LogPanel from "./src/ui/panels/LogPanel.js";
 import JournalPanel from "./src/ui/panels/journal/JournalPanel.js";
 import PlanPanel from "./src/ui/panels/PlanPanel.js";
-import GatheringField from "./src/ui/panels/GatheringField.js";
+
+// mcv
+import FieldWorkPanel from "./src/ui/panels/FieldWorkPanel.js";
+
 import Inventory from "./src/ui/panels/Inventory.js";
 // TODO
 import ExperimentPanel from "./src/ui/panels/ExperimentPanel.js";
@@ -163,14 +169,8 @@ for (const unlock of progressionUnlocks) {
 
 let activeTab = "lab";
 let ui = {};
-const gatheringFields = new Map();
-const fieldNewBadges = new Map();
-
-let fieldWorkView = "selector";
-let gatheringField = null;
 
 const announce = new Announce();
-
 let announcementsEnabled = false;
 
 function showAnnouncement(announcement) {
@@ -208,8 +208,8 @@ const unreadManager = new UnreadManager({
     save,
     onChange: () => {
         ui.tabs?.update({ refreshContent: false });
-        updateFieldSelectionButtonBadge();
-        refreshFieldNewBadges();
+        ui.fieldWorkPanel?.updateFieldSelectionBadge?.();
+        ui.fieldWorkPanel?.refreshBadges?.();
     },
     isTabActive: tabId => activeTab === tabId
 });
@@ -220,7 +220,7 @@ function notifyUnread(tabId, itemId, options = {}) {
 
 // Starting conditions
 if (unlockManager.unlock("labValley")) {
-    notifyUnread("gathering", "field-labValley");
+    notifyUnread("fieldWork", "field-labValley");
 }
 
 function logEvent(game, message, options = {}) {
@@ -238,7 +238,7 @@ function handleFieldUnlock(fieldId, { notify = true } = {}) {
     if (!field) return false;
 
     if (notify) {
-        notifyUnread("gathering", `field-${fieldId}`);
+        notifyUnread("fieldWork", `field-${fieldId}`);
     }
 
     logEvent(game, `NEW FIELD AVAILABLE: ${field.name} unlocked.`, {
@@ -340,6 +340,53 @@ const journalPanel = new JournalPanel({
     getGame: () => game
 });
 
+const fieldWorkPanel = new FieldWorkPanel({
+    getGame: () => game,
+    save,
+    unlockManager,
+    unreadManager,
+    fieldDefinitions: FIELD_DEFINITIONS,
+    navigateTo: target => navigateTo(target),
+    showToast: message => showToast(message),
+    refreshTab: () => ui.tabs?.update({ refreshContent: true }),
+    resourcePopups,
+
+    onGather: (field, event, target) => {
+        const result = recoverMaterial(game, target.id, target.richness ?? 1);
+        if (!result.ok) {
+            showToast(result.reason);
+            return false;
+        }
+
+        resourcePopups.show(
+            [{ amount: result.amount ?? 1, icon: result.item.icon, materialId: result.item.id }],
+            event
+        );
+
+        if (discoverMaterial(result.item, "gathering-field")) {
+            showToast(`New material discovered: ${result.item.name}`);
+        }
+
+        processProgression();
+        save();
+        refreshUI({ database: true });
+        return true;
+    },
+});
+
+ui.fieldWorkPanel = fieldWorkPanel;
+
+// Navigation — still registered in main because it's global,
+// but delegating to the panel:
+registerPage("fieldWork", "selector", {
+    activate: () => fieldWorkPanel.showSelector(),
+});
+for (const field of FIELD_DEFINITIONS) {
+    registerPage("fieldWork", field.id, {
+        activate: () => fieldWorkPanel.showField(field.id),
+    });
+}
+
 /* TODO
 const experimentPanel = new ExperimentPanel({
     getGame: () => game,
@@ -365,45 +412,6 @@ function navigateTo(target = {}) {
 function navigateToItem(target) {
     return navigateTabToItem(ui.tabs, target);
 }
-
-function registerFieldNavigationPages() {
-    registerPage("gathering", "selector", {
-        activate: () => {
-            fieldWorkView = "selector";
-            ui.fieldSelectionButton = null;
-            ui.tabs?.update({ refreshContent: true });
-            return true;
-        }
-    });
-
-    for (const field of FIELD_DEFINITIONS) {
-        registerPage("gathering", field.id, {
-            activate: () => {
-                if (!unlockManager.isUnlocked(field.id)) {
-                    console.warn(`[Navigation] Failed: gathering/${field.id}`, {
-                        reason: "field-locked"
-                    });
-                    return false;
-                }
-
-                game.appState.navigation.activeFieldId = field.id;
-
-                unreadManager.markRead("gathering", `field-${field.id}`);
-
-                save();
-
-                gatheringField = getGatheringField(field.id);
-                fieldWorkView = "field";
-
-                ui.tabs?.update({ refreshContent: true });
-
-                return true;
-            }
-        });
-    }
-}
-
-registerFieldNavigationPages();
 
 function renderDatabasePanel(title, count, content) {
     return el("section", { className: "database-view" }, [
@@ -439,148 +447,8 @@ function renderLabTab() {
     return ui.labContent;
 }
 
-function renderGatheringTab() {
-    if (fieldWorkView === "field") {
-        return renderFieldWorkContent(renderActiveField());
-    }
-
-    updateFieldCards();
-
-    return renderFieldWorkContent(renderFieldSelector());
-}
-
-function renderFieldSelector() {
-    updateFieldCards();
-    return ui.fieldSelection;
-}
-
-function getFieldNewBadge(fieldId) {
-    if (!fieldNewBadges.has(fieldId)) {
-        fieldNewBadges.set(
-            fieldId,
-            new NewBadge({
-                unreadManager,
-                tabId: "gathering",
-                itemId: `field-${fieldId}`,
-                getElement: () =>
-                    [
-                        ...(ui.fieldCards?.querySelectorAll(
-                            "[data-field-title]"
-                        ) ?? [])
-                    ].find(element => element.dataset.fieldTitle === fieldId),
-                placement: "inline",
-                ariaLabel: "New field"
-            })
-        );
-    }
-
-    return fieldNewBadges.get(fieldId);
-}
-
-function refreshFieldNewBadges() {
-    for (const field of FIELD_DEFINITIONS) {
-        getFieldNewBadge(field.id).refresh();
-    }
-}
-
-function hasUnreadFieldContent() {
-    return FIELD_DEFINITIONS.some(field =>
-        unreadManager.isUnread("gathering", `field-${field.id}`)
-    );
-}
-
-function updateFieldSelectionButtonBadge() {
-    const button = ui.fieldSelectionButton;
-
-    if (!button) return;
-
-    // Remove the previous badge before recalculating.
-    button.querySelector(".field-selection-button__badge")?.remove();
-
-    if (!hasUnreadFieldContent()) return;
-
-    button.append(
-        Badge({
-            text: "NEW",
-            variant: "new",
-            className: "field-selection-button__badge",
-            ariaLabel: "New field content"
-        })
-    );
-}
-
-function renderActiveField() {
-    gatheringField = getGatheringField();
-
-    const selectionButton = Button(
-        "← FIELD SELECTIONS",
-        () => {
-            fieldWorkView = "selector";
-            ui.fieldSelectionButton = null;
-
-            ui.tabs?.update({ refreshContent: true });
-        },
-        { variant: "secondary-button" }
-    );
-
-    ui.fieldSelectionButton = selectionButton;
-
-    // Show NEW if any field-selection content is unread.
-    updateFieldSelectionButtonBadge();
-
-    return el(
-        "div",
-        {
-            className: "field-work-active-view"
-        },
-        [
-            el(
-                "div",
-                {
-                    className: "field-work-toolbar"
-                },
-                [selectionButton]
-            ),
-
-            gatheringField.getElement(),
-
-            el("div", { className: "field-upgrade-grid" }, [
-                Card(
-                    "Improved Tools",
-                    el("p", {
-                        className: "muted",
-                        text: "Better equipment could improve material recovery."
-                    }),
-                    "FIELD UPGRADE",
-                    {
-                        tabId: "gathering",
-                        itemId: "field-upgrade-tools",
-                        icon: "🛠️",
-                        variant: "upgrade"
-                    }
-                ),
-
-                Card(
-                    "Efficient Extraction",
-                    el("p", {
-                        className: "muted",
-                        text: "Refine field procedures to recover samples more efficiently."
-                    }),
-                    "FIELD UPGRADE",
-                    {
-                        tabId: "gathering",
-                        itemId: "field-upgrade-extraction",
-                        icon: "⚙️",
-                        variant: "upgrade"
-                    }
-                )
-            ])
-        ]
-    );
-}
-
-function renderFieldWorkContent(content) {
-    return el("div", { className: "field-work-content" }, [content]);
+function renderFieldWorkTab() {
+    return fieldWorkPanel.getElement();
 }
 
 function renderSynthesisTab() {
@@ -645,9 +513,9 @@ function renderTabContent() {
         //     render: () => experimentPanel.getElement()
         // },
         {
-            id: "gathering",
+            id: "fieldWork",
             label: "FIELD WORK",
-            render: renderGatheringTab
+            render: renderFieldWorkTab
         },
         {
             id: "synthesis",
@@ -683,7 +551,7 @@ function renderTabContent() {
         tabs: tabDefinitions.map(tab => ({
             ...tab,
             unread: [
-                "gathering",
+                "fieldWork",
                 "observations",
                 "equipment",
                 "log",
@@ -891,167 +759,6 @@ function completeInvestigation(item) {
 // Suppress transient notifications during initial startup.
 processProgression({ notify: false });
 
-function getGatheringField(fieldId = game.appState.navigation.activeFieldId) {
-    const field =
-        FIELD_DEFINITIONS.find(item => item.id === fieldId) ??
-        FIELD_DEFINITIONS[0];
-
-    if (!gatheringFields.has(field.id)) {
-        gatheringFields.set(
-            field.id,
-            new GatheringField({
-                field,
-                onGather: (event, target) => {
-                    const result = recoverMaterial(
-                        game,
-                        target.id,
-                        target.richness ?? 1
-                    );
-                    if (!result.ok) {
-                        showToast(result.reason);
-                        return false;
-                    }
-
-                    resourcePopups.show(
-                        [
-                            {
-                                amount: result.amount ?? 1,
-                                icon: result.item.icon,
-                                materialId: result.item.id
-                            }
-                        ],
-                        event
-                    );
-
-                    const newlyDiscovered = discoverMaterial(
-                        result.item,
-                        "gathering-field"
-                    );
-
-                    if (newlyDiscovered) {
-                        showToast(
-                            `New material discovered: ${result.item.name}`
-                        );
-                    }
-
-                    processProgression();
-                    save();
-                    refreshUI({ database: true });
-
-                    return true;
-                }
-            })
-        );
-    }
-
-    return gatheringFields.get(field.id);
-}
-
-function updateFieldCards() {
-    if (!ui.fieldCards) return;
-
-    const cards = FIELD_DEFINITIONS.map(field => {
-        const unlocked = unlockManager.isUnlocked(field.id);
-        const active = game.appState.navigation.activeFieldId === field.id;
-
-        const selectButton = el(
-            "button",
-            {
-                type: "button",
-                className: "field-selection-card__main",
-                disabled: !unlocked,
-                "aria-label": unlocked
-                    ? `Select ${field.name}`
-                    : `${field.name}, locked`,
-                onClick: () => {
-                    if (!unlocked) return;
-
-                    game.appState.navigation.activeFieldId = field.id;
-                    save();
-                    updateFieldCards();
-                }
-            },
-            [
-                el("span", {
-                    className: "field-selection-card__icon",
-                    text: field.icon ?? "◈"
-                }),
-                el(
-                    "span",
-                    {
-                        className: "field-selection-card__copy"
-                    },
-                    [
-                        el(
-                            "span",
-                            {
-                                className: "field-selection-card__title",
-                                dataset: { fieldTitle: field.id }
-                            },
-                            [el("strong", { text: field.name })]
-                        ),
-
-                        el("span", {
-                            className: "field-selection-card__description",
-                            text: unlocked
-                                ? field.description
-                                : `Requires ${field.unlockTrigger?.amount ?? 0} ${
-                                      field.unlockTrigger?.item ?? "resources"
-                                  } Samples`
-                        })
-                    ]
-                )
-            ]
-        );
-
-        const actions = el(
-            "span",
-            { className: "field-selection-card__actions" },
-            [
-                el("span", {
-                    className: "field-selection-card__status",
-                    text: !unlocked
-                        ? "LOCKED"
-                        : active
-                          ? "SELECTED"
-                          : "AVAILABLE"
-                }),
-                ...(unlocked && active
-                    ? [
-                          Button(
-                              "GO",
-                              () => {
-                                  navigateTo({
-                                      tab: "gathering",
-                                      pageId: field.id
-                                  });
-                              },
-                              { variant: "primary-button" }
-                          )
-                      ]
-                    : [])
-            ]
-        );
-
-        return el(
-            "div",
-            {
-                className: [
-                    "field-selection-card",
-                    unlocked ? "is-unlocked" : "is-locked",
-                    active ? "is-active" : ""
-                ]
-                    .filter(Boolean)
-                    .join(" ")
-            },
-            [selectButton, actions]
-        );
-    });
-
-    ui.fieldCards.replaceChildren(...cards);
-    refreshFieldNewBadges();
-}
-
 function updateActiveTabUI() {
     // Stop the canvas loop when we're not on the explore tab.
     if (activeTab !== "explore") {
@@ -1072,8 +779,8 @@ function updateActiveTabUI() {
         // case "experiments":
         //     experimentPanel.update();
         //     break;
-        case "gathering":
-            updateGatheringTab();
+        case "fieldWork":
+            updateFieldWorkTab();
             break;
 
         case "synthesis":
@@ -1104,13 +811,8 @@ function updateLabTab() {
     // once the experiments system unlocks.
 }
 
-function updateGatheringTab() {
-    if (fieldWorkView === "field") {
-        gatheringField = getGatheringField();
-        gatheringField.update();
-    } else {
-        updateFieldCards();
-    }
+function updateFieldWorkTab() {
+    fieldWorkPanel.update();
 }
 
 function updateEquipmentTab() {
@@ -1140,21 +842,22 @@ function updateSharedUI() {
     updateInventory();
 }
 
-function refreshUI({ database = false } = {}) {
-    if (!ui.layout) {
-        render();
-        return;
-    }
+  function refreshUI({ database = false } = {}) {
+      if (!ui.layout) {
+          render();
+          return;
+      }
 
-    updateSharedUI();
+      updateSharedUI();
 
-    if (database) {
-        /// Refresh navigation, unread indicators, and the active panel.
-        ui.tabs.update({ refreshContent: true });
-    }
+      if (database) {
+          // Refresh navigation and unread indicators only.
+          // The active panel is refreshed in place by updateActiveTabUI().
+          ui.tabs.update({ refreshContent: false });
+      }
 
-    updateActiveTabUI();
-}
+      updateActiveTabUI();
+  }
 
 function renderExploreTab() {
     return explorationDemo.getElement();
@@ -1265,29 +968,6 @@ function render() {
         })
     ]);
 
-    ui.fieldSelection = el(
-        "section",
-        {
-            className: "field-selection-section"
-        },
-        [
-            el("div", {
-                className: "eyebrow",
-                text: "GATHERING LOCATIONS"
-            }),
-            el("h2", { text: "Select a Field" }),
-            el("p", {
-                className: "muted",
-                text: "Choose a field, then enter it when you're ready."
-            }),
-            (ui.fieldCards = el("div", {
-                className: "field-selection-list"
-            }))
-        ]
-    );
-
-    updateFieldCards();
-
     const resetPanel = el(
         "section",
         {
@@ -1344,8 +1024,6 @@ function render() {
         getGame: () => game,
         formatNumber
     });
-
-    gatheringField = getGatheringField(game.appState.navigation.activeFieldId);
 
     const layout = el("div", { className: "game-layout" }, [
         topbar,

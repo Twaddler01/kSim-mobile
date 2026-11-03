@@ -126,3 +126,25 @@ grep -RIn 'panel' \
   --exclude-dir=mobile-dev-console \
   .
 
+
+
+
+
+
+grep -rn "GatheringField" . --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=mobile-dev-console --exclude-dir=ideas --exclude-dir=debug
+
+
+
+
+git mv src/ui/panels/GatheringField.js src/ui/panels/FieldWorkPanel.js
+
+grep -IlRZ \
+  --exclude-dir=.git \
+  --exclude-dir=node_modules \
+  --exclude-dir=mobile-dev-console \
+  --exclude-dir=ideas \
+  --exclude-dir=debug \
+  "GatheringField" . |
+xargs -0 -r sed -i 's/GatheringField/FieldWorkPanel/g'
+
+
