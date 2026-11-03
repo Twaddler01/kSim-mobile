@@ -1,5 +1,5 @@
 // main.js
-
+import ExplorationDemo from "./src/ui/panels/ExplorationDemo.js";
 // ===================================
 // IMPORTS
 // ===================================
@@ -631,6 +631,11 @@ function renderTabContent() {
             label: "LAB",
             render: renderLabTab
         },
+{
+    id: "explore",
+    label: "EXPLORE",
+    render: renderExploreTab
+},
         // TODO: Attach ExperimentPanel to its own tab once the
         // experiments system unlocks in progression.
         //
@@ -1048,7 +1053,15 @@ function updateFieldCards() {
 }
 
 function updateActiveTabUI() {
+    // Stop the canvas loop when we're not on the explore tab.
+    if (activeTab !== "explore") {
+        explorationDemo.deactivate();
+    }
+
     switch (activeTab) {
+        case "explore":
+            explorationDemo.update(); // activates if needed
+            break;
         case "debug":
             debugPanel.update();
             break;
@@ -1142,6 +1155,22 @@ function refreshUI({ database = false } = {}) {
 
     updateActiveTabUI();
 }
+
+function renderExploreTab() {
+    return explorationDemo.getElement();
+}
+
+const explorationDemo = new ExplorationDemo({
+    showToast: message => showToast(message),
+    onCollect: total => {
+        // Hook point for real integration — e.g.:
+        // logEvent(game, `Field sample recovered (${total} total).`, {
+        //     category: "activity",
+        //     tab: "log"
+        // });
+        // Or route it through recoverMaterial / addInventoryItem.
+    }
+});
 
 const upgradePanel = new UpgradePanel({
     getGame: () => game,
