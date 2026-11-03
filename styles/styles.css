@@ -1193,6 +1193,24 @@ body:not(.debug-mode) {
     border-radius: 2px;
 }
 
+.log-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.log-sort-select {
+    max-width: 160px;
+    padding: 8px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--card-background);
+    color: inherit;
+    font: inherit;
+}
+
 /* plan panel */
 
 .plan-panel,
@@ -1888,10 +1906,8 @@ body:not(.debug-mode) {
 
 /* Expanded categories and recipes */
 
-.synthesis-group.is-expanded
-    .synthesis-group-toggle .synthesis-chevron,
-.synthesis-card.is-expanded
-    .synthesis-recipe-toggle .synthesis-chevron {
+.synthesis-group.is-expanded .synthesis-group-toggle .synthesis-chevron,
+.synthesis-card.is-expanded .synthesis-recipe-toggle .synthesis-chevron {
     transform: rotate(90deg);
 }
 

@@ -61,7 +61,7 @@ export default class SynthesisPanel {
     getItem(itemId) {
         return (
             materials.find(item => item.id === itemId) ??
-            resourceDefinitions[itemId] ?? {
+            resourceDefinitions.find(item => item.id === itemId) ?? {
                 id: itemId,
                 name: itemId,
                 icon: "◈"

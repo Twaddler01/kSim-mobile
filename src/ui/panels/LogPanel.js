@@ -13,6 +13,7 @@ export default class LogPanel {
         this.onNavigate = onNavigate;
 
         this.activeCategory = "important";
+        this.sortOrder = "newest";
         this.element = null;
 
         this.entries = new Map();
@@ -45,6 +46,27 @@ export default class LogPanel {
             }));
     }
 
+    getSortedEntries() {
+        const entries = this.getEntries();
+
+        return [...entries].sort((a, b) => {
+            switch (this.sortOrder) {
+                case "oldest":
+                    return a.timestamp - b.timestamp;
+
+                case "category":
+                    return (
+                        (a.category === "important" ? 0 : 1) -
+                        (b.category === "important" ? 0 : 1)
+                    );
+
+                case "newest":
+                default:
+                    return b.timestamp - a.timestamp;
+            }
+        });
+    }
+
     render() {
         if (this.element) {
             this.update();
@@ -61,6 +83,19 @@ export default class LogPanel {
             "aria-label": "Log categories"
         });
 
+        const sortSelect = el("select", {
+            className: "log-sort-select",
+            "aria-label": "Sort log entries",
+            onChange: event => {
+                this.sortOrder = event.target.value;
+                this.update();
+            }
+        }, [
+            el("option", { value: "newest", text: "Newest first" }),
+            el("option", { value: "oldest", text: "Oldest first" }),
+            el("option", { value: "category", text: "Important first" })
+        ]);
+        
         for (const [category, label] of [
             ["important", "IMPORTANT"],
             ["activity", "ACTIVITY"]
@@ -100,8 +135,15 @@ export default class LogPanel {
             className: "log-empty"
         });
 
-        this.element.append(categoryTabs, this.list, this.emptyMessage);
-
+        const toolbar = el("div", {
+            className: "log-toolbar"
+        }, [
+            categoryTabs,
+            sortSelect
+        ]);
+        
+        this.element.append(toolbar, this.list, this.emptyMessage);
+        
         this.update();
         return this.element;
     }
@@ -180,7 +222,7 @@ export default class LogPanel {
     update() {
         if (!this.element) return this;
 
-        const entries = this.getEntries();
+        const entries = this.getSortedEntries();
         const activeIds = new Set(entries.map(entry => entry.id));
 
         let importantCount = 0;
@@ -206,6 +248,9 @@ export default class LogPanel {
             } else {
                 this.updateEntry(record, entry);
             }
+
+            // Appending an existing element moves it to the correct position.
+            this.list.append(record.element);
         }
 
         // Remove entries that no longer exist in the game log.

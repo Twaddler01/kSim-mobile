@@ -84,7 +84,7 @@ grep -rnE "NEW SYSTEM AVAILABLE: Fabricator" --include="*.js" .
 
 multiple...
 
-grep -rnE "ResourcePopups" --include="*.js" .
+grep -rnE "effects.js" --include="*.js" .
 grep -rnE "toast" --include="*.css" .
 
 craftRecipe() and applyEffects() a

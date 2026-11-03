@@ -15,22 +15,61 @@ export default class DebugPanel {
         save,
         refreshUI,
         showToast,
-        processProgression,
-        actions = []
+        showAnnouncement,
+        logEvent,
+        processProgression
     }) {
         this.getGame = getGame;
         this.save = save;
         this.refreshUI = refreshUI;
         this.showToast = showToast;
+        this.showAnnouncement = showAnnouncement;
+        this.logEvent = logEvent;
         this.processProgression = processProgression;
-        this.actions = actions;
-
+        this.actions = [];
+        
         this.element = null;
         this.valueDisplays = new Map();
+
+        this.addActions();
     }
 
     get game() {
         return this.getGame();
+    }
+
+    addActions() {
+        this.actions = [
+            {
+                label: "Process Progression",
+                run: () => {
+                    this.processProgression();
+                    this.refreshUI({ database: true });
+                    this.showToast("Progression processed.");
+                }
+            },
+            {
+                label: "Test Log Entry",
+                run: () => {
+                    this.logEvent(this.getGame(), "DEBUG: Test log entry A.", {
+                        category: "activity",
+                        tab: "log"
+                    });
+                    this.save?.();
+                    this.showToast("Added lab log entry.");
+                    this.refreshUI({ database: true });
+                }
+            },
+            {
+                label: "Test Announcement",
+                run: () => {
+                    this.showAnnouncement({
+                        title: "DEBUG ANNOUNCEMENT",
+                        message: "Testing the announcement system."
+                    });
+                }
+            }
+        ];
     }
     
     createActionSection(title, actions, description = "") {

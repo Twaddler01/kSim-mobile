@@ -5,7 +5,6 @@
 // ===================================
 
 // Debug
-import { initializeDebug } from "./debug/debug.js";
 import DebugPanel from "./debug/DebugPanel.js";
 import {
     journalCatalog,
@@ -742,9 +741,13 @@ function processProgression({ notify = true } = {}) {
                 continue;
             }
 
+            // TODO
             // Hidden observation becomes available.
             if (id.startsWith("observation:")) {
-                const observation = content;
+                console.warn('TODO: observations tab');
+                return;
+                
+                /*const observation = content;
                 const announcement = observation.announcement;
 
                 logEvent(
@@ -768,7 +771,7 @@ function processProgression({ notify = true } = {}) {
                 }
 
                 changed = true;
-                continue;
+                continue;*/
             }
 
             // Upgrade becomes permanently available.
@@ -1608,340 +1611,23 @@ window.kSim = {
     },
     experiment: runExperiments,
     clearStorage: () => saveManager.clear(),
-    reset: resetGame,
-    testAnnouncement: () =>
-        showAnnouncement({
-            title: "NOTIFICATION TEST",
-            message: "The new announcement system is working."
-        })
+    reset: resetGame
 };
 
-// FINAL STATE
-announcementsEnabled = true;
-render();
-
-// ADD DEBUG
+// --------------------------------------------------
+// DEBUG BUTTONS
+// --------------------------------------------------
 
 const debugPanel = new DebugPanel({
     getGame: () => game,
     save,
     refreshUI: options => refreshUI(options),
     showToast: message => showToast(message),
-    processProgression,
-    actions: [
-        {
-            label: "debugCatalog",
-            run: () => debugCatalog()
-        },
-        {
-            label: "Process Progression",
-            run: () => {
-                processProgression();
-                refreshUI({ database: true });
-                showToast("Progression processed.");
-            }
-        },
-        {
-            label: "Test Log Entry",
-            run: () => {
-                logEvent(game, "DEBUG: Test log entry.", {
-                    category: "activity",
-                    tab: "log"
-                });
-
-                refreshUI({ database: true });
-            }
-        },
-        {
-            label: "Test Announcement",
-            run: () => {
-                showAnnouncement({
-                    title: "DEBUG ANNOUNCEMENT",
-                    message: "Testing the announcement system."
-                });
-            }
-        }
-    ]
+    showAnnouncement: message => showAnnouncement(message),
+    logEvent,
+    processProgression
 });
 
-initializeDebug({
-    ui,
-    el,
-    Card,
-    Button,
-    ProgressBar
-});
-
-function debugCatalog() {
-    console.group("JOURNAL CATALOG TESTS");
-
-    let passed = 0;
-    let failed = 0;
-
-    function test(name, condition, details = "") {
-        if (condition) {
-            passed++;
-            console.log(`PASS: ${name}`, details);
-        } else {
-            failed++;
-            console.error(`FAIL: ${name}`, details);
-        }
-    }
-
-    // --------------------------------------------------
-    // CATALOG
-    // --------------------------------------------------
-
-    console.group("Catalog");
-
-    test(
-        "Catalog contains entries",
-        journalCatalog.length > 0,
-        `Total: ${journalCatalog.length}`
-    );
-
-    test(
-        "LAB location exists",
-        getJournalEntry("lab", "location") !== null
-    );
-
-    test(
-        "Quartz material exists",
-        getJournalEntry("quartz", "material") !== null
-    );
-
-    test(
-        "Quartz field exists",
-        getJournalEntry("quartz", "field") !== null
-    );
-
-    test(
-        "Energy resource exists",
-        getJournalEntry("energy", "resource") !== null
-    );
-
-    test(
-        "Missing entry returns null",
-        getJournalEntry("doesNotExist") === null
-    );
-
-    test(
-        "Type-aware lookup distinguishes Quartz",
-        getJournalEntry("quartz", "material")?.type === "material" &&
-        getJournalEntry("quartz", "field")?.type === "field"
-    );
-
-    console.groupEnd();
-
-    // --------------------------------------------------
-    // CATEGORIES AND TYPES
-    // --------------------------------------------------
-
-    console.group("Categories and Types");
-
-    test(
-        "Raw materials category contains Quartz",
-        getJournalEntriesByCategory("rawMaterials")
-            .some(entry => entry.id === "quartz")
-    );
-
-    test(
-        "Recipe type returns recipes only",
-        getJournalEntriesByType("recipe")
-            .every(entry => entry.type === "recipe")
-    );
-
-    test(
-        "Visible entries exclude hidden entries",
-        getVisibleJournalEntries()
-            .every(entry => !entry.metadata.hidden)
-    );
-
-    console.groupEnd();
-
-    // --------------------------------------------------
-    // METADATA
-    // --------------------------------------------------
-
-    console.group("Metadata");
-
-    const lab = getJournalEntry("lab", "location");
-
-    test(
-        "LAB has Journal category",
-        lab?.category === "locations"
-    );
-
-    test(
-        "LAB metadata has no duplicate category",
-        !Object.hasOwn(lab?.metadata ?? {}, "category")
-    );
-
-    test(
-        "LAB has hidden metadata",
-        lab?.metadata.hidden === false
-    );
-
-    test(
-        "LAB has tags",
-        Array.isArray(lab?.metadata.tags) &&
-        lab.metadata.tags.includes("hub")
-    );
-
-    console.groupEnd();
-
-    // --------------------------------------------------
-    // RECIPE RELATIONSHIPS
-    // --------------------------------------------------
-
-    console.group("Recipe Relationships");
-
-    const quartzRecipes = getRecipesUsing("quartz");
-    const powderRecipes = getRecipesProducing("quartzPowder");
-
-    test(
-        "Quartz is used by Crush Quartz",
-        quartzRecipes.some(recipe => recipe.id === "crushQuartz")
-    );
-
-    test(
-        "Quartz is used by Phase-Stable Crystal",
-        quartzRecipes.some(recipe =>
-            recipe.id === "fabricatePhaseStableCrystal"
-        )
-    );
-
-    test(
-        "Quartz Powder is produced by Crush Quartz",
-        powderRecipes.some(recipe => recipe.id === "crushQuartz")
-    );
-
-    test(
-        "Energy is indexed as a recipe input",
-        getRecipesUsing("energy").some(recipe =>
-            recipe.id === "crushQuartz"
-        )
-    );
-
-    test(
-        "Unknown recipe input returns empty array",
-        getRecipesUsing("doesNotExist").length === 0
-    );
-
-    console.groupEnd();
-
-    // --------------------------------------------------
-    // RECIPE ITEM LOOKUPS
-    // --------------------------------------------------
-
-    console.group("Recipe Items");
-
-    const inputs = getRecipeInputs("crushQuartz");
-    const outputs = getRecipeOutputs("crushQuartz");
-
-    const quartzInput = inputs.find(item => item.id === "quartz");
-    const energyInput = inputs.find(item => item.id === "energy");
-    const powderOutput = outputs.find(item => item.id === "quartzPowder");
-
-    test(
-        "Quartz input resolves as material",
-        quartzInput?.item?.type === "material"
-    );
-
-    test(
-        "Quartz input amount is 3",
-        quartzInput?.amount === 3
-    );
-
-    test(
-        "Energy input resolves as resource",
-        energyInput?.item?.type === "resource"
-    );
-
-    test(
-        "Energy input amount is 2",
-        energyInput?.amount === 2
-    );
-
-    test(
-        "Quartz Powder output resolves as material",
-        powderOutput?.item?.type === "material"
-    );
-
-    test(
-        "Quartz Powder output amount is 2",
-        powderOutput?.amount === 2
-    );
-
-    test(
-        "Unknown recipe returns empty inputs",
-        getRecipeInputs("doesNotExist").length === 0
-    );
-
-    test(
-        "Unknown recipe returns empty outputs",
-        getRecipeOutputs("doesNotExist").length === 0
-    );
-
-    console.groupEnd();
-
-    // --------------------------------------------------
-    // FIELD RELATIONSHIPS
-    // --------------------------------------------------
-
-    console.group("Field Relationships");
-
-    const labValleyMaterials = getFieldMaterials("labValley");
-    const quartzField = getMaterialField("quartz");
-
-    test(
-        "Lab Valley returns materials",
-        labValleyMaterials.length > 0
-    );
-
-    test(
-        "Lab Valley contains Quartz",
-        labValleyMaterials.some(item => item.id === "quartz")
-    );
-
-    test(
-        "Lab Valley material entries resolve",
-        labValleyMaterials.every(item =>
-            item.material?.type === "material"
-        )
-    );
-
-    test(
-        "Quartz resolves to Quartz field",
-        quartzField?.id === "quartz" &&
-        quartzField?.type === "field"
-    );
-
-    test(
-        "Unknown field returns empty materials",
-        getFieldMaterials("doesNotExist").length === 0
-    );
-
-    test(
-        "Unknown material returns null field",
-        getMaterialField("doesNotExist") === null
-    );
-
-    console.log("Lab Valley materials:", labValleyMaterials);
-    console.log("Quartz field:", quartzField);
-    console.log("Quartz field unlock:", getFieldUnlock("quartz"));
-
-    console.groupEnd();
-
-    // --------------------------------------------------
-    // SUMMARY
-    // --------------------------------------------------
-
-    console.log("----------------------------------");
-    console.log(`CATALOG TESTS: ${passed} passed, ${failed} failed`);
-    console.log("----------------------------------");
-
-    console.groupEnd();
-
-    return { passed, failed };
-}
+// FINAL STATE
+announcementsEnabled = true;
+render();

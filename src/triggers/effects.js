@@ -1,3 +1,5 @@
+import { addInventoryItem } from "../data/inventory.js";
+
 export function applyEffects(
     game,
     effects = [],
