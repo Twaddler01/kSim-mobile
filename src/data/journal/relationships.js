@@ -15,21 +15,21 @@ for (const recipe of recipes) {
     const { inputs, outputs } = recipe.source;
 
     // Index recipe inputs
-    for (const materialId of Object.keys(inputs ?? {})) {
-        if (!recipesUsing.has(materialId)) {
-            recipesUsing.set(materialId, []);
+    for (const itemId of Object.keys(inputs ?? {})) {
+        if (!recipesUsing.has(itemId)) {
+            recipesUsing.set(itemId, []);
         }
 
-        recipesUsing.get(materialId).push(recipe);
+        recipesUsing.get(itemId).push(recipe);
     }
 
     // Index recipe outputs
-    for (const materialId of Object.keys(outputs ?? {})) {
-        if (!recipesProducing.has(materialId)) {
-            recipesProducing.set(materialId, []);
+    for (const itemId of Object.keys(outputs ?? {})) {
+        if (!recipesProducing.has(itemId)) {
+            recipesProducing.set(itemId, []);
         }
 
-        recipesProducing.get(materialId).push(recipe);
+        recipesProducing.get(itemId).push(recipe);
     }
 }
 
@@ -37,12 +37,12 @@ for (const recipe of recipes) {
 // PUBLIC LOOKUPS
 // --------------------------------------------------
 
-export function getRecipesUsing(materialId) {
-    return recipesUsing.get(materialId) ?? [];
+export function getRecipesUsing(itemId) {
+    return recipesUsing.get(itemId) ?? [];
 }
 
-export function getRecipesProducing(materialId) {
-    return recipesProducing.get(materialId) ?? [];
+export function getRecipesProducing(itemId) {
+    return recipesProducing.get(itemId) ?? [];
 }
 
 // --------------------------------------------------
@@ -54,13 +54,15 @@ function getRecipeItems(recipeId, direction) {
 
     if (!recipe) return [];
 
-    return Object.entries(recipe.source[direction] ?? {})
-        .map(([id, amount]) => ({
-            item: getJournalEntry(id, "material")
-                ?? getJournalEntry(id, "resource"),
+    return Object.entries(recipe.source[direction] ?? {}).map(
+        ([id, amount]) => ({
+            item:
+                getJournalEntry(id, "material") ??
+                getJournalEntry(id, "resource"),
             id,
             amount
-        }));
+        })
+    );
 }
 
 export function getRecipeInputs(recipeId) {
@@ -79,12 +81,12 @@ export function getFieldMaterials(fieldId) {
     const field = getJournalEntry(fieldId, "field");
     if (!field) return [];
 
-    const spawnTable = field.source.spawnTable ?? {};
+    const spawnTable = field.source.spawnTable ?? [];
 
-    return Object.keys(spawnTable).map(materialId => ({
+    return spawnTable.map(({ materialId, weight }) => ({
         material: getJournalEntry(materialId, "material"),
         id: materialId,
-        weight: spawnTable[materialId]
+        weight
     }));
 }
 

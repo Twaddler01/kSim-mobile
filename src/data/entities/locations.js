@@ -8,7 +8,6 @@ export const locations = [
             "Your home and central research hub. The starting point for exploration, experimentation, and scientific discovery.",
 
         metadata: {
-            category: "locations",
             hidden: false,
             tags: ["home", "hub", "starting-point"]
         }

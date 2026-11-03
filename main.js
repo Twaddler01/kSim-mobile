@@ -10,20 +10,27 @@ import DebugPanel from "./debug/DebugPanel.js";
 import {
     journalCatalog,
     getJournalEntry,
-    getJournalEntriesByCategory
-} from "./src/data/journal/catalog.js";
+    getJournalEntriesByCategory,
+    getJournalEntriesByType,
+    getVisibleJournalEntries
+} from "../src/data/journal/catalog.js";
+
 import {
     getRecipesUsing,
     getRecipesProducing,
     getRecipeInputs,
-    getRecipeOutputs
-} from "./src/data/journal/relationships.js";
+    getRecipeOutputs,
+    getFieldMaterials,
+    getMaterialField,
+    getFieldUnlock
+} from "../src/data/journal/relationships.js";
 
 // Panels
 import DiscoveryPanel from "./src/ui/panels/DiscoveryPanel.js";
 import SynthesisPanel from "./src/ui/panels/SynthesisPanel.js";
 import UpgradePanel from "./src/ui/panels/UpgradePanel.js";
 import LogPanel from "./src/ui/panels/LogPanel.js";
+import JournalPanel from "./src/ui/panels/journal/JournalPanel.js";
 import PlanPanel from "./src/ui/panels/PlanPanel.js";
 import GatheringField from "./src/ui/panels/GatheringField.js";
 import Inventory from "./src/ui/panels/Inventory.js";
@@ -345,6 +352,10 @@ const logPanel = new LogPanel({
     onNavigate: target => navigateToItem(target)
 });
 
+const journalPanel = new JournalPanel({
+    getGame: () => game
+});
+
 function updateInventory() {
     ui.inventory?.update();
 }
@@ -598,6 +609,10 @@ function renderLogTab() {
     );
 }
 
+function renderJournalTab() {
+    return journalPanel.getElement();
+}
+
 function renderDebugTab() {
     return debugPanel.getElement();
 }
@@ -642,6 +657,11 @@ function renderTabContent() {
             id: "log",
             label: "LAB LOG",
             render: renderLogTab
+        },
+        {
+            id: "journal",
+            label: "JOURNAL",
+            render: renderJournalTab
         }
     ];
 
@@ -1139,6 +1159,10 @@ function updateActiveTabUI() {
         case "log":
             updateLogTab();
             break;
+
+        case "journal":
+            updateJournalTab();
+            break;
     }
 }
 
@@ -1195,6 +1219,10 @@ function updateLogTab() {
     logPanel.update();
 
     updateActiveDatabaseCount(`${game.log.length} entries`);
+}
+
+function updateJournalTab() {
+    journalPanel.update();
 }
 
 function updateSharedUI() {
@@ -1645,16 +1673,275 @@ initializeDebug({
 });
 
 function debugCatalog() {
-    console.log("Quartz material:", getJournalEntry("quartz", "material"));
+    console.group("JOURNAL CATALOG TESTS");
 
-    console.log("Recipes using Quartz:", getRecipesUsing("quartz"));
+    let passed = 0;
+    let failed = 0;
 
-    console.log(
-        "Recipes producing Quartz Powder:",
-        getRecipesProducing("quartzPowder")
+    function test(name, condition, details = "") {
+        if (condition) {
+            passed++;
+            console.log(`PASS: ${name}`, details);
+        } else {
+            failed++;
+            console.error(`FAIL: ${name}`, details);
+        }
+    }
+
+    // --------------------------------------------------
+    // CATALOG
+    // --------------------------------------------------
+
+    console.group("Catalog");
+
+    test(
+        "Catalog contains entries",
+        journalCatalog.length > 0,
+        `Total: ${journalCatalog.length}`
     );
 
-    console.log("Quartz recipe inputs:", getRecipeInputs("crushQuartz"));
+    test(
+        "LAB location exists",
+        getJournalEntry("lab", "location") !== null
+    );
 
-    console.log("Quartz recipe outputs:", getRecipeOutputs("crushQuartz"));
+    test(
+        "Quartz material exists",
+        getJournalEntry("quartz", "material") !== null
+    );
+
+    test(
+        "Quartz field exists",
+        getJournalEntry("quartz", "field") !== null
+    );
+
+    test(
+        "Energy resource exists",
+        getJournalEntry("energy", "resource") !== null
+    );
+
+    test(
+        "Missing entry returns null",
+        getJournalEntry("doesNotExist") === null
+    );
+
+    test(
+        "Type-aware lookup distinguishes Quartz",
+        getJournalEntry("quartz", "material")?.type === "material" &&
+        getJournalEntry("quartz", "field")?.type === "field"
+    );
+
+    console.groupEnd();
+
+    // --------------------------------------------------
+    // CATEGORIES AND TYPES
+    // --------------------------------------------------
+
+    console.group("Categories and Types");
+
+    test(
+        "Raw materials category contains Quartz",
+        getJournalEntriesByCategory("rawMaterials")
+            .some(entry => entry.id === "quartz")
+    );
+
+    test(
+        "Recipe type returns recipes only",
+        getJournalEntriesByType("recipe")
+            .every(entry => entry.type === "recipe")
+    );
+
+    test(
+        "Visible entries exclude hidden entries",
+        getVisibleJournalEntries()
+            .every(entry => !entry.metadata.hidden)
+    );
+
+    console.groupEnd();
+
+    // --------------------------------------------------
+    // METADATA
+    // --------------------------------------------------
+
+    console.group("Metadata");
+
+    const lab = getJournalEntry("lab", "location");
+
+    test(
+        "LAB has Journal category",
+        lab?.category === "locations"
+    );
+
+    test(
+        "LAB metadata has no duplicate category",
+        !Object.hasOwn(lab?.metadata ?? {}, "category")
+    );
+
+    test(
+        "LAB has hidden metadata",
+        lab?.metadata.hidden === false
+    );
+
+    test(
+        "LAB has tags",
+        Array.isArray(lab?.metadata.tags) &&
+        lab.metadata.tags.includes("hub")
+    );
+
+    console.groupEnd();
+
+    // --------------------------------------------------
+    // RECIPE RELATIONSHIPS
+    // --------------------------------------------------
+
+    console.group("Recipe Relationships");
+
+    const quartzRecipes = getRecipesUsing("quartz");
+    const powderRecipes = getRecipesProducing("quartzPowder");
+
+    test(
+        "Quartz is used by Crush Quartz",
+        quartzRecipes.some(recipe => recipe.id === "crushQuartz")
+    );
+
+    test(
+        "Quartz is used by Phase-Stable Crystal",
+        quartzRecipes.some(recipe =>
+            recipe.id === "fabricatePhaseStableCrystal"
+        )
+    );
+
+    test(
+        "Quartz Powder is produced by Crush Quartz",
+        powderRecipes.some(recipe => recipe.id === "crushQuartz")
+    );
+
+    test(
+        "Energy is indexed as a recipe input",
+        getRecipesUsing("energy").some(recipe =>
+            recipe.id === "crushQuartz"
+        )
+    );
+
+    test(
+        "Unknown recipe input returns empty array",
+        getRecipesUsing("doesNotExist").length === 0
+    );
+
+    console.groupEnd();
+
+    // --------------------------------------------------
+    // RECIPE ITEM LOOKUPS
+    // --------------------------------------------------
+
+    console.group("Recipe Items");
+
+    const inputs = getRecipeInputs("crushQuartz");
+    const outputs = getRecipeOutputs("crushQuartz");
+
+    const quartzInput = inputs.find(item => item.id === "quartz");
+    const energyInput = inputs.find(item => item.id === "energy");
+    const powderOutput = outputs.find(item => item.id === "quartzPowder");
+
+    test(
+        "Quartz input resolves as material",
+        quartzInput?.item?.type === "material"
+    );
+
+    test(
+        "Quartz input amount is 3",
+        quartzInput?.amount === 3
+    );
+
+    test(
+        "Energy input resolves as resource",
+        energyInput?.item?.type === "resource"
+    );
+
+    test(
+        "Energy input amount is 2",
+        energyInput?.amount === 2
+    );
+
+    test(
+        "Quartz Powder output resolves as material",
+        powderOutput?.item?.type === "material"
+    );
+
+    test(
+        "Quartz Powder output amount is 2",
+        powderOutput?.amount === 2
+    );
+
+    test(
+        "Unknown recipe returns empty inputs",
+        getRecipeInputs("doesNotExist").length === 0
+    );
+
+    test(
+        "Unknown recipe returns empty outputs",
+        getRecipeOutputs("doesNotExist").length === 0
+    );
+
+    console.groupEnd();
+
+    // --------------------------------------------------
+    // FIELD RELATIONSHIPS
+    // --------------------------------------------------
+
+    console.group("Field Relationships");
+
+    const labValleyMaterials = getFieldMaterials("labValley");
+    const quartzField = getMaterialField("quartz");
+
+    test(
+        "Lab Valley returns materials",
+        labValleyMaterials.length > 0
+    );
+
+    test(
+        "Lab Valley contains Quartz",
+        labValleyMaterials.some(item => item.id === "quartz")
+    );
+
+    test(
+        "Lab Valley material entries resolve",
+        labValleyMaterials.every(item =>
+            item.material?.type === "material"
+        )
+    );
+
+    test(
+        "Quartz resolves to Quartz field",
+        quartzField?.id === "quartz" &&
+        quartzField?.type === "field"
+    );
+
+    test(
+        "Unknown field returns empty materials",
+        getFieldMaterials("doesNotExist").length === 0
+    );
+
+    test(
+        "Unknown material returns null field",
+        getMaterialField("doesNotExist") === null
+    );
+
+    console.log("Lab Valley materials:", labValleyMaterials);
+    console.log("Quartz field:", quartzField);
+    console.log("Quartz field unlock:", getFieldUnlock("quartz"));
+
+    console.groupEnd();
+
+    // --------------------------------------------------
+    // SUMMARY
+    // --------------------------------------------------
+
+    console.log("----------------------------------");
+    console.log(`CATALOG TESTS: ${passed} passed, ${failed} failed`);
+    console.log("----------------------------------");
+
+    console.groupEnd();
+
+    return { passed, failed };
 }

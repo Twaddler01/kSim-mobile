@@ -1,0 +1,267 @@
+/* Journal panel */
+
+.journal-panel {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 16px;
+}
+
+/* Header */
+
+.journal-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.journal-eyebrow {
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    opacity: 0.65;
+}
+
+.journal-heading h2 {
+    margin: 0;
+}
+
+/* View selector */
+
+.journal-view-selector {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+}
+
+.journal-view-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-width: 0;
+    padding: 16px 8px;
+
+    border: 1px solid var(--border-color, #444);
+    border-radius: 10px;
+
+    background: var(--panel-background, #202020);
+    color: inherit;
+
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+
+    cursor: pointer;
+    transition:
+        background 150ms ease,
+        border-color 150ms ease;
+}
+
+.journal-view-button.active {
+    border-color: var(--accent-color, #65a9d8);
+    background: var(--accent-background, #263b4b);
+}
+
+.journal-view-button:active {
+    transform: scale(0.98);
+}
+
+/* Content area */
+
+.journal-content {
+    width: 100%;
+    min-width: 0;
+}
+
+/* ========================================
+   JOURNAL TREE
+======================================== */
+
+.journal-tree-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: 100%;
+    min-width: 0;
+}
+
+.journal-tree-navigation {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+}
+
+.journal-tree-section {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+/* Main category branches */
+
+.journal-tree-branch {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid var(--border-color, #444);
+    border-radius: 8px;
+    background: var(--panel-background, #202020);
+    color: inherit;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.045em;
+    text-align: left;
+    cursor: pointer;
+}
+
+/* Entry rows */
+
+.journal-tree-entry {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-width: 0;
+    padding: 9px 10px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 400;
+    text-align: left;
+    cursor: pointer;
+}
+
+.journal-tree-entry.active {
+    background: var(--accent-background, #263b4b);
+    color: var(--accent-color, #8cc8ef);
+}
+
+.journal-tree-entry:active,
+.journal-tree-branch:active,
+.journal-tree-related:active {
+    background: var(--panel-background, #252525);
+}
+
+.journal-tree-entry.active:active {
+    background: var(--accent-background, #263b4b);
+}
+
+.journal-tree-entry {
+    scroll-margin-block: 12px;
+}
+
+/* Nested tree structure */
+
+.journal-tree-children {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    margin-left: 19px;
+    padding-left: 9px;
+    border-left: 1px solid var(--border-color, #444);
+}
+
+.journal-tree-chevron {
+    flex: 0 0 12px;
+    width: 12px;
+    opacity: 0.65;
+    text-align: center;
+}
+
+.journal-tree-icon,
+.journal-tree-entry-icon {
+    flex: 0 0 22px;
+    text-align: center;
+}
+
+.journal-tree-label,
+.journal-tree-entry-label {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.journal-tree-count {
+    margin-left: auto;
+    font-size: 0.75rem;
+    opacity: 0.6;
+}
+
+.journal-tree-subheading {
+    padding: 10px 10px 5px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    opacity: 0.55;
+}
+
+/* Details panel */
+
+.journal-tree-details {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 16px;
+    border: 1px solid var(--border-color, #444);
+    border-radius: 10px;
+    background: var(--panel-background, #202020);
+}
+
+.journal-tree-detail-heading {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.journal-tree-detail-icon {
+    font-size: 1.8rem;
+}
+
+.journal-tree-detail-heading h3 {
+    margin: 3px 0 0;
+}
+
+/* Relationship sections */
+
+.journal-tree-relationship {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 18px;
+}
+
+.journal-tree-relationship h4 {
+    margin: 0 0 4px;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    opacity: 0.6;
+}
+
+.journal-tree-related {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    padding: 9px 10px;
+    border: 1px solid var(--border-color, #444);
+    border-radius: 7px;
+    background: transparent;
+    color: inherit;
+    font-family: inherit;
+    font-size: 0.85rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.journal-tree-related span {
+    overflow-wrap: anywhere;
+}

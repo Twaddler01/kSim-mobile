@@ -120,8 +120,9 @@ fc -clip data.js functions.js EventProcessor.js SaveManager.js
 
 # TEMP RUNS
 
-grep -RIn 'RefinementRecipes' \
-  --include="*.js" \
+grep -RIn 'panel' \
+  --include="*.css" \
   --exclude-dir=node_modules \
+  --exclude-dir=mobile-dev-console \
   .
 

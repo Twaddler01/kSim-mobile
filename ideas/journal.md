@@ -1,4 +1,138 @@
+# CURRENT SETUP
+Yes. You have enough infrastructure to start building the Research Journal UI. I would consider the current catalog and relationship layer a solid first version rather than trying to anticipate every future system now.
 
+You have three important pieces working:
+
+* Catalog: A unified, normalized view of locations, fields, resources, materials, and recipes.
+
+* Lookup: Retrieve entries by ID, type, category, or visibility.
+
+* Relationships: Navigate between recipes, their ingredients and outputs, and fields and their materials.
+
+That is enough to build a Journal with categories, entry lists, detail pages, and linked information.
+
+### What future integration looks like
+
+Your understanding is correct, with one distinction: new data doesn't always require new relationship functions.
+
+Think of it in three steps.
+
+### 1\. Add a new source definition
+
+For example, when you add discoveries to the Journal:
+
+```js
+import { discoveries } from "../discoveries.js";
+
+const discoveryEntries = discoveries.map(discovery =>
+    createEntry(discovery, "discovery", "discoveries")
+);
+```
+
+Then include `...discoveryEntries` in `journalCatalog`.
+
+The discovery remains owned by `discoveries.js`. The catalog simply indexes it.
+
+You'd follow the same pattern for:
+
+* Upgrades
+
+* Plans
+
+* Progression unlocks
+
+* Equipment
+
+* Machines
+
+* Other future entities
+
+### 2\. Add relationships when needed
+
+Suppose discoveries unlock materials or fields.
+
+We'd add a relationship function such as:
+
+```js
+getDiscoveryUnlocks(discoveryId)
+```
+
+Or perhaps a more general:
+
+```js
+getEntriesUnlockedBy(triggerId)
+```
+
+The important point is that we only add relationship logic when there's a meaningful connection to navigate.
+
+### 3\. Let UI components consume the catalog
+
+For example:
+
+Research Journal
+
+ResourcesMaterialsRecipesFields
+
+### 💎
+
+Quartz
+
+Raw material · Tier 1
+
+A crystalline mineral suitable for processing.
+
+Related information
+
+* Found in: Quartz Field
+
+* Used in: Crush Quartz, Phase-Stable Crystal
+
+* Produced from: Not applicable
+
+    Illustrative layout
+
+The same catalog entry can power:
+
+* Journal detail pages
+
+* Inventory tooltips
+
+* Recipe ingredient links
+
+* Field information panels
+
+* Discovery descriptions
+
+No duplicate definitions required.
+
+### One future consideration
+
+Your current catalog is built when its module loads. That's perfectly fine for your current static game definitions.
+
+If you eventually add definitions dynamically during gameplay, we'll need to account for rebuilding or updating the catalog and its relationship indexes. We don't need to solve that now.
+
+JavaScript modules are well suited to this arrangement: each source module owns its exports, while other modules import and consume them. MDN +1
+
+### My suggested development order
+
+* Now: Build the Journal UI using the existing catalog.
+
+* Add discoveries, upgrades, plans, and progression entries as those Journal sections become relevant.
+
+* Add relationships for unlocks, prerequisites, and other connections.
+
+* Connect the Journal catalog to inventory, recipes, fields, and other UI panels.
+
+The key architectural principle is worth keeping:
+
+Game data defines what exists. The catalog organizes what exists. Relationships explain how things connect. UI decides how to display it.
+
+That should let kSim grow considerably without turning the Journal into another place where you have to maintain game data.
+
+
+
+
+# PLANNING
 ### 1\. One source of truth, multiple consumers
 
 The direction of authoritative data should remain:
