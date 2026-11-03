@@ -1,10 +1,7 @@
-// src/ui/panels/ExplorationField.js
-//
-// Field-work adapter over ExplorationDemo.
-// Same interface GatheringField exposed: getElement() / update().
-// Same onGather(event, target) contract.
+// src/ui/panels/FieldScene.js
+// Field-work adapter over FieldCanvas.
 
-import ExplorationDemo from "./ExplorationDemo.js";
+import FieldCanvas from "./FieldCanvas.js";
 import { materials } from "../../data/materials.js";
 
 const DEPOSIT_COUNT = 10;
@@ -29,14 +26,14 @@ function hashString(str) {
     return h >>> 0;
 }
 
-export default class ExplorationField {
+export default class FieldScene {
     constructor({ field, onGather, getSprites = () => ({}) }) {
         this.field = field;
         this.onGather = onGather;
         this.getSprites = getSprites;
         this.rawMaterials = materials.filter(m => m.category === "raw");
 
-        this.demo = new ExplorationDemo({
+        this.canvas = new FieldCanvas({
             deposits: this.buildInitialDeposits(),
             onCollect: (deposit, screenPos) =>
                 this.handleCollect(deposit, screenPos),
@@ -48,15 +45,15 @@ export default class ExplorationField {
     }
 
     getElement() {
-        return this.demo.getElement();
+        return this.canvas.getElement();
     }
 
     update() {
-        this.demo.update();
+        this.canvas.update();
     }
 
     deactivate() {
-        this.demo.deactivate();
+        this.canvas.deactivate();
     }
 
     // -----------------------------------------------------------------
@@ -69,7 +66,7 @@ export default class ExplorationField {
         for (let i = 0; i < DEPOSIT_COUNT; i++) {
             const material = this.pickMaterial(rand);
 
-            // Try to keep spacing similar to the demo's rules.
+            // Spacing
             let x,
                 y,
                 attempts = 0;
@@ -160,7 +157,7 @@ export default class ExplorationField {
     }
 
     refreshSprites() {
-        for (const d of this.demo.deposits) {
+        for (const d of this.canvas.deposits) {
             d.sprite = this.getSpriteFor(d.materialId);
         }
     }

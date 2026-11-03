@@ -148,3 +148,6 @@ grep -IlRZ \
 xargs -0 -r sed -i 's/GatheringField/FieldWorkPanel/g'
 
 
+
+
+fc -clip FieldCanvas.js FieldScene.js FieldWorkPanel.js

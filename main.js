@@ -1,7 +1,7 @@
 // main.js
 
 // WIP
-import ExplorationField from "./src/ui/panels/ExplorationField.js";
+import FieldScene from "./src/ui/panels/FieldScene.js";
 import { buildMineralSprites } from "./src/data/mineralSprites.js";
 
 let mineralSprites = {};
@@ -381,7 +381,7 @@ const fieldWorkPanel = new FieldWorkPanel({
     refreshTab: () => ui.tabs?.update({ refreshContent: true }),
     resourcePopups,
 
-    createField: field => new ExplorationField({
+    createField: field => new FieldScene({
         field,
         getSprites: () => mineralSprites,   // reactive — see fix 3
         onGather: handleFieldGather,

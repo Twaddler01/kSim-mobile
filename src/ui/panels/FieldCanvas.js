@@ -1,4 +1,4 @@
-// src/ui/panels/ExplorationDemo.js
+// src/ui/panels/FieldCanvas.js
 //
 // Top-down exploration demo:
 //   · Camera pans over a world larger than the viewport
@@ -73,23 +73,8 @@ const PLAYER_SVG = `
   <circle cx="24" cy="10.5" r="1.1" fill="#ffffff"/>
 </svg>
 `;
-/*
-const PLAYER_SVG = `
-<svg class="sprite" viewBox="0 0 32 32" aria-hidden="true">
-  <polygon points="16,3 26,10 26,22 16,29 6,22 6,10"
-           fill="#3a4453" stroke="#7cc8ff" stroke-width="1.2" stroke-linejoin="round"/>
-  <polygon points="16,3 26,10 16,14"  fill="#586378"/>
-  <polygon points="16,3 16,14 6,10"   fill="#4a5464"/>
-  <polygon points="6,10 16,14 6,22"   fill="#434c5c"/>
-  <polygon points="26,10 26,22 16,14" fill="#525c6e"/>
-  <polygon points="6,22 16,29 16,14"  fill="#4e5868"/>
-  <polygon points="26,22 16,14 16,29" fill="#5a6578"/>
-  <circle class="core-glow" cx="16" cy="16" r="3.2" fill="#9ddcff" opacity="0.85"/>
-  <circle cx="16" cy="16" r="1.6" fill="#ffffff"/>
-</svg>
-`;
-*/
-export default class ExplorationDemo {
+
+export default class FieldCanvas {
     constructor({ deposits = [], onCollect, onRespawn, showToast } = {}) {
         this.onCollect = onCollect;
         this.onRespawn = onRespawn;

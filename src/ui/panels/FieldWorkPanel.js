@@ -4,8 +4,6 @@ import { Card } from "../components/Card.js";
 import Badge from "../components/Badge.js";
 import NewBadge from "../../notifications/NewBadge.js";
 
-//import FieldNodeView from "./FieldNodeView.js";
-
 export default class FieldWorkPanel {
     constructor({
         getGame,
@@ -15,7 +13,6 @@ export default class FieldWorkPanel {
         fieldDefinitions,
         navigateTo,
         createField,
-        onGather, // (field, event, target) => boolean
         refreshTab // () => ui.tabs.update({ refreshContent: true })
     }) {
         this.getGame = getGame;
@@ -24,9 +21,9 @@ export default class FieldWorkPanel {
         this.unreadManager = unreadManager;
         this.fieldDefinitions = fieldDefinitions;
         this.navigateTo = navigateTo;
-        this.onGather = onGather;
         this.refreshTab = refreshTab;
 
+        this._viewKey = null;
         this.view = "selector";
         this.fieldViews = new Map();
         this.badges = new Map();
@@ -38,13 +35,11 @@ export default class FieldWorkPanel {
         if (typeof createField !== "function") {
             throw new Error(
                 "FieldWorkPanel requires a createField(field) factory. " +
-                "It must return an object with getElement() and update() " +
-                "(optionally deactivate() and refreshSprites())."
+                    "It must return an object with getElement() and update() " +
+                    "(optionally deactivate() and refreshSprites())."
             );
         }
         this.createField = createField;
-
-        this.onGatherCallback = onGather;
     }
 
     // --- navigation entry points ---------------------------------------
@@ -58,6 +53,9 @@ export default class FieldWorkPanel {
 
     showField(fieldId) {
         if (!this.unlockManager.isUnlocked(fieldId)) return false;
+        if (this.view === "field" && this.activeFieldId() !== fieldId) {
+            this.deactivateField();
+        }
 
         const game = this.getGame();
         game.appState.navigation.activeFieldId = fieldId;
@@ -81,17 +79,25 @@ export default class FieldWorkPanel {
     update() {
         if (!this.element) return this;
 
-        this.element.replaceChildren(
-            this.view === "field"
-                ? this.renderActiveField()
-                : this.renderSelector()
-        );
+        const fieldId = this.view === "field" ? this.activeFieldId() : null;
+        const viewKey = fieldId ? `field:${fieldId}` : "selector";
 
-        // If showing an active field, start/restart its loop.
-        // FieldNodeView.getElement() self-renders, but ExplorationField
-        // needs an explicit update() to activate the canvas RAF.
-        if (this.view === "field") {
-            this.getFieldView(this.activeFieldId())?.update?.();
+        // Skip rebuild if the view hasn't changed. Rebuilding would detach
+        // and re-attach the canvas, losing pointer capture mid-gesture.
+        if (this._viewKey === viewKey) {
+            if (fieldId) this.getFieldView(fieldId)?.update?.();
+            return this;
+        }
+
+        this._viewKey = viewKey;
+
+        if (fieldId) {
+            this.element.replaceChildren(this.renderActiveField());
+            this.getFieldView(fieldId)?.update?.();
+        } else {
+            this.view = "selector";
+            this.fieldSelectionButton = null;
+            this.element.replaceChildren(this.renderSelector());
         }
 
         return this;
