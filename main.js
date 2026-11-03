@@ -16,6 +16,8 @@ import JournalPanel from "./src/ui/panels/journal/JournalPanel.js";
 import PlanPanel from "./src/ui/panels/PlanPanel.js";
 import GatheringField from "./src/ui/panels/GatheringField.js";
 import Inventory from "./src/ui/panels/Inventory.js";
+// TODO
+import ExperimentPanel from "./src/ui/panels/ExperimentPanel.js";
 
 // Components
 import { el } from "./src/ui/components/Element.js";
@@ -338,6 +340,20 @@ const journalPanel = new JournalPanel({
     getGame: () => game
 });
 
+/* TODO
+const experimentPanel = new ExperimentPanel({
+    getGame: () => game,
+    discoveries,
+    save,
+    refreshUI: options => refreshUI(options),
+    showToast: message => showToast(message),
+    processProgression,
+    notifyUnread,
+    resourcePopups,
+    unreadManager
+});
+*/
+
 function updateInventory() {
     ui.inventory?.update();
 }
@@ -615,6 +631,14 @@ function renderTabContent() {
             label: "LAB",
             render: renderLabTab
         },
+        // TODO: Attach ExperimentPanel to its own tab once the
+        // experiments system unlocks in progression.
+        //
+        // {
+        //     id: "experiments",
+        //     label: "EXPERIMENTS",
+        //     render: () => experimentPanel.getElement()
+        // },
         {
             id: "gathering",
             label: "FIELD WORK",
@@ -862,74 +886,6 @@ function completeInvestigation(item) {
 // Suppress transient notifications during initial startup.
 processProgression({ notify: false });
 
-function runExperiments(count = 1, event = null, costs = []) {
-    const result = stir(game, count, {
-        onProgress: processProgression,
-        onUnread: notifyUnread
-    });
-
-    const changes = [
-        ...costs,
-        { amount: result.energy, icon: "⚡" },
-        { amount: result.particles, icon: "⚛️" },
-        { amount: result.research, icon: "🔬" },
-        { amount: result.exoticMatter, icon: "🌀" }
-    ];
-
-    if (count > 1) {
-        addLog(game, `BATCH COMPLETE: ${count} experiments run.`);
-    }
-
-    // Combine gains and costs for each resource.
-    const totals = new Map();
-
-    for (const change of changes) {
-        if (!change.amount) continue;
-
-        totals.set(change.icon, (totals.get(change.icon) ?? 0) + change.amount);
-    }
-
-    const popups = [...totals.entries()]
-        .filter(([, amount]) => amount !== 0)
-        .map(([icon, amount]) => ({ icon, amount }));
-
-    save();
-    refreshUI({ database: true });
-    resourcePopups.show(popups, event);
-}
-
-function getExperimentProgress() {
-    const milestones = discoveries.filter(
-        item => !item.hidden && item.trigger?.type === "experimentCount"
-    );
-
-    const nextDiscovery = milestones.find(
-        item => !game.discoveries.includes(item.id)
-    );
-
-    const finalMilestone = milestones.at(-1);
-
-    if (!finalMilestone) {
-        return {
-            nextDiscovery: null,
-            value: 0,
-            max: 1
-        };
-    }
-
-    const nextRequirement =
-        nextDiscovery?.trigger?.min ?? finalMilestone?.trigger?.min ?? 0;
-    const finalRequirement = finalMilestone.trigger.min;
-
-    return {
-        nextDiscovery,
-        value: nextDiscovery
-            ? Math.min(game.clicks, nextRequirement)
-            : finalRequirement,
-        max: nextDiscovery ? nextRequirement : finalRequirement
-    };
-}
-
 function getGatheringField(fieldId = game.appState.navigation.activeFieldId) {
     const field =
         FIELD_DEFINITIONS.find(item => item.id === fieldId) ??
@@ -1091,32 +1047,6 @@ function updateFieldCards() {
     refreshFieldNewBadges();
 }
 
-function updateOperationsUI() {
-    // Announcements are independent of the Quantum Field panel.
-    updateFieldCards();
-
-    const unlocked = Boolean(game.operations?.quantumFieldUnlocked);
-    const panel = ui.quantumFieldPanel;
-
-    if (!panel) return;
-
-    if (unlocked && panel.locked) {
-        panel.unlock({
-            unread: unreadManager.isUnread("operations", "quantum-field"),
-            expanded: false
-        });
-    } else if (!unlocked && !panel.locked) {
-        panel.setLocked(true);
-    }
-
-    if (unlocked && panel.status !== "AVAILABLE") {
-        panel.setStatus("AVAILABLE");
-    }
-
-    // Keep the panel indicator synchronized with persisted unread state.
-    panel.setUnread(unreadManager.isUnread("operations", "quantum-field"));
-}
-
 function updateActiveTabUI() {
     switch (activeTab) {
         case "debug":
@@ -1125,7 +1055,10 @@ function updateActiveTabUI() {
         case "lab":
             updateLabTab();
             break;
-
+        // TODO
+        // case "experiments":
+        //     experimentPanel.update();
+        //     break;
         case "gathering":
             updateGatheringTab();
             break;
@@ -1152,32 +1085,10 @@ function updateActiveTabUI() {
     }
 }
 
-function updateExperimentUI() {
-    if (!ui.experimentProgress) return;
-
-    const { nextDiscovery, value, max } = getExperimentProgress();
-
-    ui.experimentCount.textContent = `${formatNumber(game.clicks)} experiments completed`;
-
-    ui.runTenButton.disabled = (game.inventory.particles ?? 0) < 10;
-
-    ui.convertButton.disabled = (game.inventory.particles ?? 0) <= 0;
-
-    const progressLabel = ui.experimentProgress.querySelector(
-        ".progress-label span:first-child"
-    );
-
-    if (progressLabel) {
-        progressLabel.textContent = nextDiscovery
-            ? `Experiment progress:`
-            : "Observation index complete";
-    }
-
-    ui.experimentProgress.setValue(value, max);
-}
-
 function updateLabTab() {
-    // TODO: updateLabUI();
+    // The LAB tab currently renders only the static intro + reset panel.
+    // Experiment UI lives in ExperimentPanel and will move to its own tab
+    // once the experiments system unlocks.
 }
 
 function updateGatheringTab() {
@@ -1310,8 +1221,6 @@ function render() {
         return;
     }
 
-    const { nextDiscovery, value, max } = getExperimentProgress();
-
     const intro = el("section", { className: "lab-intro sim-card" }, [
         el("div", {
             className: "eyebrow",
@@ -1326,159 +1235,6 @@ function render() {
             text: "⚠ RESEARCH NOTE: Theoretical safety limits are not the same as proven safety limits."
         })
     ]);
-
-    const orb = el(
-        "button",
-        {
-            className: "quantum-orb",
-            type: "button",
-            "aria-label": "Run one quantum experiment",
-            onClick: event => runExperiments(1, event)
-        },
-        [
-            el("span", { className: "orb-rings" }),
-            el("span", { className: "orb-symbol", text: "⚛" }),
-            el("span", {
-                className: "orb-button-label",
-                text: "RUN EXPERIMENT"
-            }),
-            el("span", {
-                className: "orb-sub-label",
-                text: "MANUAL FIELD TEST"
-            })
-        ]
-    );
-
-    const experimentCount = el("div", {
-        className: "experiment-count",
-        text: `${formatNumber(game.clicks)} experiments completed`
-    });
-
-    ui.experimentCount = experimentCount;
-
-    const runTenButton = Button(
-        "RUN ×10",
-        event => {
-            if ((game.inventory.particles ?? 0) < 10) {
-                showToast("Requires 10 Particles.");
-                return;
-            }
-
-            removeInventoryItem(game, "particles", 10);
-
-            addLog(
-                game,
-                "BATCH: Consumed 10 Particles to run ten experiments."
-            );
-            runExperiments(10, event, [{ amount: -10, icon: "⚛️" }]);
-        },
-        {
-            variant: "primary-button",
-            disabled: (game.inventory.particles ?? 0) < 10
-        }
-    );
-
-    const convertButton = Button(
-        "CONVERT",
-        event => {
-            const result = consumeParticles(game);
-
-            if (result.particles > 0) {
-                save();
-
-                refreshUI({ database: true });
-
-                resourcePopups.show(
-                    [
-                        { amount: result.energy, icon: "⚡" },
-                        { amount: -result.particles, icon: "⚛️" }
-                    ],
-                    event
-                );
-            }
-        },
-        {
-            variant: "primary-button",
-            disabled: (game.inventory.particles ?? 0) <= 0
-        }
-    );
-
-    ui.runTenButton = runTenButton;
-    ui.convertButton = convertButton;
-
-    const experimentProgress = ProgressBar({
-        label: nextDiscovery
-            ? `Experiment progress:`
-            : "Observation index complete",
-        value,
-        max,
-        format: (value, max) =>
-            nextDiscovery ? `${Math.floor(value)} / ${max}` : "COMPLETE"
-    });
-
-    ui.experimentProgress = experimentProgress;
-
-    const fieldContent = el("div", { className: "field-panel-content" }, [
-        el("p", {
-            className: "muted",
-            text: "Each experiment produces energy. Particle formation and research observations are probabilistic."
-        }),
-
-        el("div", { className: "quantum-orb-wrap" }, [orb]),
-
-        experimentCount,
-
-        el("div", { className: "bonus-actions" }, [
-            el("div", { className: "bonus-row" }, [
-                el("div", { className: "bonus-copy" }, [
-                    el("strong", {
-                        className: "bonus-title",
-                        text: "EXPERIMENT ×10"
-                    }),
-                    el("p", {
-                        className: "bonus-description",
-                        text: "Consume 10 Particles to run ten experiments."
-                    })
-                ]),
-                runTenButton
-            ]),
-
-            el("div", { className: "bonus-row" }, [
-                el("div", { className: "bonus-copy" }, [
-                    el("strong", {
-                        className: "bonus-title",
-                        text: "CONSUME PARTICLES"
-                    }),
-                    el("p", {
-                        className: "bonus-description",
-                        text: "Consume all available Particles to generate Energy."
-                    }),
-                    el("p", {
-                        className: "bonus-rate",
-                        text: "+5 ⚡ Energy per Particle"
-                    })
-                ]),
-                convertButton
-            ])
-        ]),
-
-        experimentProgress
-    ]);
-
-    const quantumFieldPanel = new CollapsiblePanel({
-        eyebrow: "INACTIVE SYSTEM",
-        title: "Quantum Field",
-        status: "INACTIVE",
-        content: fieldContent,
-        expanded: false,
-        locked: !game.operations.quantumFieldUnlocked,
-        unread: unreadManager.isUnread("operations", "quantum-field"),
-        onAcknowledge: () => {
-            unreadManager.markRead("operations", "quantum-field");
-        }
-    });
-
-    ui.quantumFieldPanel = quantumFieldPanel;
 
     ui.fieldSelection = el(
         "section",
@@ -1592,7 +1348,8 @@ window.kSim = {
 
         return result;
     },
-    experiment: runExperiments,
+    // TODO
+    // experiment: (count = 1) => experimentPanel.runExperiments(count),
     clearStorage: () => saveManager.clear(),
     reset: resetGame
 };
