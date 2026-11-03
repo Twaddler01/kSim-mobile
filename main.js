@@ -5,24 +5,7 @@
 // ===================================
 
 // Debug
-import DebugPanel from "./debug/DebugPanel.js";
-import {
-    journalCatalog,
-    getJournalEntry,
-    getJournalEntriesByCategory,
-    getJournalEntriesByType,
-    getVisibleJournalEntries
-} from "../src/data/journal/catalog.js";
-
-import {
-    getRecipesUsing,
-    getRecipesProducing,
-    getRecipeInputs,
-    getRecipeOutputs,
-    getFieldMaterials,
-    getMaterialField,
-    getFieldUnlock
-} from "../src/data/journal/relationships.js";
+import attachDebugPanel from "./debug/attach.js";
 
 // Panels
 import DiscoveryPanel from "./src/ui/panels/DiscoveryPanel.js";
@@ -1615,15 +1598,15 @@ window.kSim = {
 };
 
 // --------------------------------------------------
-// DEBUG BUTTONS
+// DEBUG TAB
 // --------------------------------------------------
 
-const debugPanel = new DebugPanel({
+const debugPanel = attachDebugPanel({
     getGame: () => game,
     save,
-    refreshUI: options => refreshUI(options),
-    showToast: message => showToast(message),
-    showAnnouncement: message => showAnnouncement(message),
+    refreshUI,
+    showToast,
+    showAnnouncement,
     logEvent,
     processProgression
 });
