@@ -3,7 +3,8 @@ import { Button } from "../components/Button.js";
 import { Card } from "../components/Card.js";
 import Badge from "../components/Badge.js";
 import NewBadge from "../../notifications/NewBadge.js";
-import FieldNodeView from "./FieldNodeView.js";
+
+//import FieldNodeView from "./FieldNodeView.js";
 
 export default class FieldWorkPanel {
     constructor({
@@ -34,13 +35,15 @@ export default class FieldWorkPanel {
         this.fieldCards = null;
         this.fieldSelectionButton = null;
 
-        this.createField =
-            createField ??
-            (field =>
-                new FieldNodeView({
-                    field,
-                    onGather: (event, target) => onGather(field, event, target)
-                }));
+        if (typeof createField !== "function") {
+            throw new Error(
+                "FieldWorkPanel requires a createField(field) factory. " +
+                "It must return an object with getElement() and update() " +
+                "(optionally deactivate() and refreshSprites())."
+            );
+        }
+        this.createField = createField;
+
         this.onGatherCallback = onGather;
     }
 

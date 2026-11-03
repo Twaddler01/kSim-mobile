@@ -1,27 +1,18 @@
 // main.js
 
 // WIP
-import ExplorationDemo from "./src/ui/panels/ExplorationDemo.js";
-
 import ExplorationField from "./src/ui/panels/ExplorationField.js";
 import { buildMineralSprites } from "./src/data/mineralSprites.js";
 
-// at the top of main.js, after the buildMineralSprites import
+let mineralSprites = {};
 buildMineralSprites()
     .then(sprites => {
-        console.log("[sprites] loaded:", Object.keys(sprites ?? {}));
         mineralSprites = sprites;
         ui.fieldWorkPanel?.refreshFieldSprites?.();
         refreshUI();
     })
     .catch(err => console.error("[sprites] failed:", err));
-
-let mineralSprites = {}; // populated asynchronously below
-buildMineralSprites().then(sprites => {
-    mineralSprites = sprites;
-    ui.fieldWorkPanel?.refreshFieldSprites?.();
-    refreshUI();
-});
+//
 
 // ===================================
 // IMPORTS
@@ -394,8 +385,7 @@ const fieldWorkPanel = new FieldWorkPanel({
         field,
         getSprites: () => mineralSprites,   // reactive — see fix 3
         onGather: handleFieldGather,
-    }),
-    onGather: handleFieldGather,
+    })
 });
 
 ui.fieldWorkPanel = fieldWorkPanel;
@@ -523,11 +513,6 @@ function renderTabContent() {
             label: "LAB",
             render: renderLabTab
         },
-{
-    id: "explore",
-    label: "EXPLORE",
-    render: renderExploreTab
-},
         // TODO: Attach ExperimentPanel to its own tab once the
         // experiments system unlocks in progression.
         //
@@ -784,19 +769,12 @@ function completeInvestigation(item) {
 processProgression({ notify: false });
 
 function updateActiveTabUI() {
-    // Stop the canvas loop when we're not on the explore tab.
-    if (activeTab !== "explore") {
-        explorationDemo.deactivate();
-    }
-
+    // Stop the canvas loop when we're not on the fieldWork tab.
     if (activeTab !== "fieldWork") {
         fieldWorkPanel.deactivateField?.();
     }
 
     switch (activeTab) {
-        case "explore":
-            explorationDemo.update(); // activates if needed
-            break;
         case "debug":
             debugPanel.update();
             break;
@@ -886,22 +864,6 @@ function updateSharedUI() {
 
       updateActiveTabUI();
   }
-
-function renderExploreTab() {
-    return explorationDemo.getElement();
-}
-
-const explorationDemo = new ExplorationDemo({
-    showToast: message => showToast(message),
-    onCollect: total => {
-        // Hook point for real integration — e.g.:
-        // logEvent(game, `Field sample recovered (${total} total).`, {
-        //     category: "activity",
-        //     tab: "log"
-        // });
-        // Or route it through recoverMaterial / addInventoryItem.
-    }
-});
 
 const upgradePanel = new UpgradePanel({
     getGame: () => game,
