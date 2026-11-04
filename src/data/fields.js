@@ -6,19 +6,34 @@ export const FIELD_DEFINITIONS = [
         icon: "🪨",
         description: "Locate scattered deposits and recover raw samples.",
         unlockTrigger: null,
-    
+
         // --- world / spawn tuning (defaults shown; omit to use these) ---
+        background: {
+            tileset: "grassland",
+            tileSize: 40,
+            baseColor: "#2d3d2a",
+            patchScale: 1.6, // tiles drawn at 1.6× cell size
+            baseTiles: [
+                { tile: "grassA", weight: 60 },
+                { tile: "grassB", weight: 40 }
+            ],
+            scatter: [
+                { tile: "flowers", weight: 5 },
+                { tile: "smallRock", weight: 2 }
+            ],
+            scatterDensity: 0.12 // ~12% of cells get a scatter item
+        },
         depositCount: 10,
         respawnSeconds: 3,
         world: { width: 1200, height: 900 },
-        margin: 80,          // distance from world edge where deposits can spawn
-        minSpacing: 100,     // minimum distance between initial deposits
-        depositRadius: 22,   // collider + base draw radius
-    
+        margin: 80, // distance from world edge where deposits can spawn
+        minSpacing: 100, // minimum distance between initial deposits
+        depositRadius: 22, // collider + base draw radius
+
         // --- optional per-field overrides (null = use material + code default) ---
-        strikeCountTable: null,   // e.g. [{ richness: 3, strikes: 5 }]
-        sparkleTable: null,       // e.g. [{ richness: 2, tier: 2 }]
-    
+        strikeCountTable: null, // e.g. [{ richness: 3, strikes: 5 }]
+        sparkleTable: null, // e.g. [{ richness: 2, tier: 2 }]
+
         spawnTable: [
             { materialId: "stone", weight: 70 },
             { materialId: "quartz", weight: 25 },
@@ -39,9 +54,7 @@ export const FIELD_DEFINITIONS = [
         icon: "🪨",
         description: "Locate stone deposits and recover raw samples.",
         unlockTrigger: null,
-        spawnTable: [
-            { materialId: "stone", weight: 100 }
-        ],
+        spawnTable: [{ materialId: "stone", weight: 100 }],
         richnessTable: [
             { amount: 1, weight: 80 },
             { amount: 2, weight: 15 },
@@ -57,9 +70,7 @@ export const FIELD_DEFINITIONS = [
         icon: "💎",
         description: "A crystalline mineral suitable for processing.",
         unlockTrigger: null,
-        spawnTable: [
-            { materialId: "quartz", weight: 100 }
-        ],
+        spawnTable: [{ materialId: "quartz", weight: 100 }],
         richnessTable: [
             { amount: 1, weight: 80 },
             { amount: 2, weight: 15 },
@@ -79,9 +90,7 @@ export const FIELD_DEFINITIONS = [
             item: "stone",
             amount: 10
         },
-        spawnTable: [
-            { materialId: "copper", weight: 100 }
-        ],
+        spawnTable: [{ materialId: "copper", weight: 100 }],
         richnessTable: [
             { amount: 1, weight: 80 },
             { amount: 2, weight: 15 },
@@ -101,9 +110,7 @@ export const FIELD_DEFINITIONS = [
             item: "copper",
             amount: 12
         },
-        spawnTable: [
-            { materialId: "silicon", weight: 100 }
-        ],
+        spawnTable: [{ materialId: "silicon", weight: 100 }],
         richnessTable: [
             { amount: 1, weight: 80 },
             { amount: 2, weight: 15 },

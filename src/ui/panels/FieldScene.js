@@ -16,6 +16,7 @@ Per-material crumb color materialDrawings.js → crumbs: [...] on that entry
 import FieldCanvas from "./FieldCanvas.js";
 import { materials } from "../../data/materials.js";
 import { getCrumbColors } from "../../assets/icons/materials/materialDrawings.js";
+import { buildBackgroundCache } from "../../data/backgroundCache.js";
 
 // Deterministic per-field RNG so a field looks the same across renders.
 function seededRandom(seed) {
@@ -36,10 +37,16 @@ function hashString(str) {
 }
 
 export default class FieldScene {
-    constructor({ field, onGather, getSprites = () => ({}) }) {
+    constructor({
+        field,
+        onGather,
+        getSprites = () => ({}),
+        getTiles = () => null
+    }) {
         this.field = field;
         this.onGather = onGather;
         this.getSprites = getSprites;
+        this.getTiles = getTiles;
         this.rawMaterials = materials.filter(m => m.category === "raw");
 
         // Resolve tuning from the field, falling back to engine defaults.
@@ -53,10 +60,17 @@ export default class FieldScene {
         this.minSpacing = field.minSpacing ?? 100;
         this.depositRadius = field.depositRadius ?? 22;
 
+        this.backgroundCanvas = buildBackgroundCache(
+            this.field,
+            this.world.width,
+            this.world.height
+        );
+
         this.canvas = new FieldCanvas({
             deposits: this.buildInitialDeposits(),
             world: this.world,
             respawnDelay: this.respawnDelay,
+            backgroundCanvas: this.backgroundCanvas, // may be null
             onCollect: (deposit, screenPos) =>
                 this.handleCollect(deposit, screenPos),
             onRespawn: deposit => this.buildRespawn(deposit),
@@ -90,8 +104,8 @@ export default class FieldScene {
         for (let i = 0; i < depositCount; i++) {
             const material = this.pickMaterial(rand);
             const richness = this.selectRichness(rand);
-            const rotation = (rand() - 0.5) * 0.35;    // ±0.175 rad ≈ ±10°
-            const scale = 0.9 + rand() * 0.2;          // 0.9 – 1.1
+            const rotation = (rand() - 0.5) * 0.35; // ±0.175 rad ≈ ±10°
+            const scale = 0.9 + rand() * 0.2; // 0.9 – 1.1
             const crumbs = this.makeCrumbs(rand, material.id, depositRadius);
 
             let x,
@@ -136,10 +150,10 @@ export default class FieldScene {
             this.rawMaterials.find(m => m.id === oldDeposit.materialId) ??
             this.pickMaterial(rand);
         const richness = this.selectRichness(rand);
-        const rotation = (rand() - 0.5) * 0.35;    // ±0.175 rad ≈ ±10°
-        const scale = 0.9 + rand() * 0.2;          // 0.9 – 1.1
+        const rotation = (rand() - 0.5) * 0.35; // ±0.175 rad ≈ ±10°
+        const scale = 0.9 + rand() * 0.2; // 0.9 – 1.1
         const crumbs = this.makeCrumbs(rand, material.id, depositRadius);
-        
+
         return {
             id: oldDeposit.id,
             x: margin + rand() * (ww - margin * 2),
@@ -209,6 +223,18 @@ export default class FieldScene {
         for (const d of this.canvas.deposits) {
             d.sprite = this.getSpriteFor(d.materialId);
         }
+    }
+
+    refreshBackground() {
+        if (!this.field.background) return;
+        const cache = buildBackgroundCache(
+            this.field,
+            this.world.width,
+            this.world.height
+        );
+        if (cache === this.backgroundCanvas) return;
+        this.backgroundCanvas = cache;
+        this.canvas?.setBackground(cache);
     }
 
     selectRichness(rand = Math.random) {

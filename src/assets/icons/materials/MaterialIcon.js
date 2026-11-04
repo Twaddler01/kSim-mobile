@@ -1,4 +1,4 @@
-import { createSvgElement } from "./svgHelpers.js";
+import { createSvgElement } from "../svgHelpers.js";
 import { getDrawing } from "./materialDrawings.js";
 
 export function MaterialIcon(

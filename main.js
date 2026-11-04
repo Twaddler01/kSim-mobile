@@ -12,7 +12,15 @@ buildMineralSprites()
         refreshUI();
     })
     .catch(err => console.error("[sprites] failed:", err));
-//
+
+import { buildTileSprites, getTileCache } from "./src/data/tileSprites.js";
+
+buildTileSprites()
+    .then(() => {
+        ui.fieldWorkPanel?.refreshFieldBackgrounds?.();
+        refreshUI();
+    })
+    .catch(err => console.error("[tiles] failed:", err));
 
 // ===================================
 // IMPORTS
@@ -383,7 +391,8 @@ const fieldWorkPanel = new FieldWorkPanel({
 
     createField: field => new FieldScene({
         field,
-        getSprites: () => mineralSprites,   // reactive — see fix 3
+        getSprites: () => mineralSprites,
+        getTiles: () => getTileCache(),
         onGather: handleFieldGather,
     })
 });

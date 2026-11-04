@@ -1,4 +1,4 @@
-import { addShapes } from "./svgHelpers.js";
+import { addShapes } from "../svgHelpers.js";
 import { getMaterial } from "../../../data/materials.js";
 
 // CORE

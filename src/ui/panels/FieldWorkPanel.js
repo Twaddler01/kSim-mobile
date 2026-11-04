@@ -356,4 +356,10 @@ export default class FieldWorkPanel {
             view.deactivate?.();
         }
     }
+
+    refreshFieldBackgrounds() {
+        for (const view of this.fieldViews.values()) {
+            view.refreshBackground?.();
+        }
+    }
 }

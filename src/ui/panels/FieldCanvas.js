@@ -1,3 +1,10 @@
+
+
+
+
+
+
+
 // src/ui/panels/FieldCanvas.js
 //
 // Top-down exploration demo:
@@ -77,6 +84,7 @@ export default class FieldCanvas {
         deposits = [],
         world = { width: 1200, height: 900 },
         respawnDelay = 3,
+        backgroundCanvas = null,
         fallbackDepositCount = 10,
         onCollect,
         onRespawn,
@@ -101,6 +109,7 @@ export default class FieldCanvas {
         // Clone so caller mutations don't leak in.
         this.world = { width: world.width, height: world.height };
         this.respawnDelay = respawnDelay;
+        this.backgroundCanvas = backgroundCanvas;   // ← add
         this.fallbackDepositCount = fallbackDepositCount;
 
         this.camera = { x: 0, y: 0 };
@@ -133,6 +142,10 @@ export default class FieldCanvas {
         this.approachingDeposit = null;
     }
 
+    setBackground(canvas) {
+        this.backgroundCanvas = canvas;
+    }
+    
     // ---------------------------------------------------------------
     // DOM
     // ---------------------------------------------------------------
@@ -469,16 +482,11 @@ export default class FieldCanvas {
         this.drawMinimap();
     }
 
-    drawWorld() {
+    // Grid (visible range only).
+    drawGrid() {
         const ctx = this.ctx;
-        const cam = this.camera;
         const { width: w, height: h } = this;
-        const { width: ww, height: wh } = this.world;
-
-        ctx.save();
-        ctx.translate(-cam.x, -cam.y);
-
-        // Grid (visible range only).
+        const cam = this.camera;
         const g = 40;
         const startX = Math.floor(cam.x / g) * g;
         const startY = Math.floor(cam.y / g) * g;
@@ -497,7 +505,34 @@ export default class FieldCanvas {
             ctx.lineTo(endX, y);
         }
         ctx.stroke();
+    }
 
+    drawWorld() {
+        const ctx = this.ctx;
+        const cam = this.camera;
+        const { width: w, height: h } = this;
+        const { width: ww, height: wh } = this.world;
+
+        // Background: one blit if we have a cache, else flat fill
+        if (this.backgroundCanvas) {
+            ctx.drawImage(
+                this.backgroundCanvas,
+                cam.x, cam.y, w, h,
+                0, 0, w, h
+            );
+        } else {
+            ctx.fillStyle = "#0b0f14";
+            ctx.fillRect(0, 0, w, h);
+        }
+
+        ctx.save();
+        ctx.translate(-cam.x, -cam.y);
+
+        // Grid only when there's no background
+        if (!this.backgroundCanvas) {
+            this.drawGrid();
+        }
+        
         // World bounds.
         ctx.strokeStyle = "rgba(120,200,255,0.25)";
         ctx.lineWidth = 2;
