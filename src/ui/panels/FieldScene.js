@@ -4,10 +4,6 @@
 import FieldCanvas from "./FieldCanvas.js";
 import { materials } from "../../data/materials.js";
 
-const DEPOSIT_COUNT = 10;
-const WORLD_W = 1200;
-const WORLD_H = 900;
-
 // Deterministic per-field RNG so a field looks the same across renders.
 function seededRandom(seed) {
     let s = seed >>> 0;
@@ -33,12 +29,25 @@ export default class FieldScene {
         this.getSprites = getSprites;
         this.rawMaterials = materials.filter(m => m.category === "raw");
 
+        // Resolve tuning from the field, falling back to engine defaults.
+        this.world = {
+            width: field.world?.width ?? 1200,
+            height: field.world?.height ?? 900
+        };
+        this.depositCount = field.depositCount ?? 10;
+        this.respawnDelay = field.respawnSeconds ?? 3;
+        this.margin = field.margin ?? 80;
+        this.minSpacing = field.minSpacing ?? 100;
+        this.depositRadius = field.depositRadius ?? 22;
+
         this.canvas = new FieldCanvas({
             deposits: this.buildInitialDeposits(),
+            world: this.world,
+            respawnDelay: this.respawnDelay,
             onCollect: (deposit, screenPos) =>
                 this.handleCollect(deposit, screenPos),
             onRespawn: deposit => this.buildRespawn(deposit),
-            showToast: null // silence per-collect toast; main.js toasts on real gather
+            showToast: null
         });
 
         this.collected = 0;
@@ -61,34 +70,35 @@ export default class FieldScene {
     buildInitialDeposits() {
         const rand = seededRandom(hashString(this.field.id));
         const list = [];
-        const margin = 80;
+        const { margin, minSpacing, depositRadius, depositCount } = this;
+        const ww = this.world.width;
+        const wh = this.world.height;
 
-        for (let i = 0; i < DEPOSIT_COUNT; i++) {
+        for (let i = 0; i < depositCount; i++) {
             const material = this.pickMaterial(rand);
+            const richness = this.selectRichness(rand);
 
-            // Spacing
             let x,
                 y,
                 attempts = 0;
             do {
-                x = margin + rand() * (WORLD_W - margin * 2);
-                y = margin + rand() * (WORLD_H - margin * 2);
+                x = margin + rand() * (ww - margin * 2);
+                y = margin + rand() * (wh - margin * 2);
                 attempts++;
             } while (
                 attempts < 40 &&
-                list.some(d => Math.hypot(d.x - x, d.y - y) < 100)
+                list.some(d => Math.hypot(d.x - x, d.y - y) < minSpacing)
             );
 
-            const richness = this.selectRichness(rand);
             list.push({
                 id: `${this.field.id}-dep-${i}`,
                 x,
                 y,
-                r: 22,
+                r: depositRadius,
                 materialId: material.id,
                 richness,
-                strikesRequired: this.selectStrikes(richness),
-                sparkleTier: this.selectSparkleTier(richness), // ← add
+                strikesRequired: this.selectStrikes(richness, material.id),
+                sparkleTier: this.selectSparkleTier(richness, material.id),
                 label: material.name,
                 sprite: this.getSpriteFor(material.id) ?? null
             });
@@ -98,25 +108,25 @@ export default class FieldScene {
     }
 
     buildRespawn(oldDeposit) {
-        // Keep the same material family so the field stays coherent.
-        // Swap to a fresh position so the player doesn't camp one spot.
         const rand = Math.random;
-        const margin = 80;
+        const { margin, depositRadius } = this;
+        const ww = this.world.width;
+        const wh = this.world.height;
+
         const material =
             this.rawMaterials.find(m => m.id === oldDeposit.materialId) ??
             this.pickMaterial(rand);
-
         const richness = this.selectRichness(rand);
 
         return {
             id: oldDeposit.id,
-            x: margin + rand() * (WORLD_W - margin * 2),
-            y: margin + rand() * (WORLD_H - margin * 2),
-            r: 22,
+            x: margin + rand() * (ww - margin * 2),
+            y: margin + rand() * (wh - margin * 2),
+            r: depositRadius,
             materialId: material.id,
             richness,
-            strikesRequired: this.selectStrikes(richness),
-            sparkleTier: this.selectSparkleTier(richness), // ← add
+            strikesRequired: this.selectStrikes(richness, material.id),
+            sparkleTier: this.selectSparkleTier(richness, material.id),
             label: material.name,
             sprite: this.getSpriteFor(material.id) ?? null
         };
@@ -191,30 +201,25 @@ export default class FieldScene {
         return valid[valid.length - 1].amount;
     }
 
-    selectStrikes(richness) {
-        // Field data override — optional:
-        //   strikeCountTable: [
-        //     { richness: 1, strikes: 2 },
-        //     { richness: 2, strikes: 3 },
-        //     { richness: 3, strikes: 4 },
-        //     { richness: 4, strikes: 6 },
-        //   ]
+    selectStrikes(richness, materialId) {
+        // 1. Field override (opt-in)
         const table = this.field.strikeCountTable;
         if (Array.isArray(table)) {
             const entry = table.find(e => e.richness === richness);
-            if (entry && Number.isFinite(entry.strikes) && entry.strikes >= 1) {
-                return Math.round(entry.strikes);
+            if (entry && Number.isFinite(entry.strikes)) {
+                return Math.max(1, Math.round(entry.strikes));
             }
         }
-        // Default: 1 + richness
-        //   richness 1 → 2 strikes
-        //   richness 2 → 3 strikes
-        //   richness 3 → 4 strikes
-        //   richness 4 → 5 strikes
-        return 1 + richness;
+
+        // 2. Material base + richness scaling
+        //    base = 2 preserves current behavior (richness 1 = 2 strikes)
+        const material = materials.find(m => m.id === materialId);
+        const base = material?.mining?.strikesBase ?? 2;
+        return Math.max(1, base + (richness - 1));
     }
 
-    selectSparkleTier(richness) {
+    selectSparkleTier(richness, materialId) {
+        // 1. Field override (opt-in)
         const table = this.field.sparkleTable;
         if (Array.isArray(table)) {
             const entry = table.find(e => e.richness === richness);
@@ -222,7 +227,11 @@ export default class FieldScene {
                 return Math.max(0, Math.min(3, entry.tier));
             }
         }
-        // Default: richness 1 → 0, 2 → 1, 3 → 2, 4+ → 3
-        return Math.max(0, Math.min(3, richness - 1));
+
+        // 2. Material base + richness scaling
+        //    base = 0 preserves current behavior (richness 1 = 0 sparkles)
+        const material = materials.find(m => m.id === materialId);
+        const base = material?.mining?.sparkleBase ?? 0;
+        return Math.max(0, Math.min(3, base + (richness - 1)));
     }
 }

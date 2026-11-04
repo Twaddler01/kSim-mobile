@@ -4,14 +4,15 @@ export const materials = [
     // --------------------------------------------------
     // RAW MATERIALS — recovered from gathering fields
     // --------------------------------------------------
-    {
+{
         id: "stone",
         name: "Stone Sample",
         category: "raw",
         subtype: "mineral",
         tier: 1,
         icon: "🪨",
-        description: "A rough fragment of common stone recovered from the field."
+        description: "A rough fragment of common stone recovered from the field.",
+        mining: { strikesBase: 2, sparkleBase: 0 }   // baseline: current behavior
     },
     {
         id: "quartz",
@@ -20,7 +21,8 @@ export const materials = [
         subtype: "mineral",
         tier: 1,
         icon: "💎",
-        description: "A crystalline mineral suitable for processing."
+        description: "A crystalline mineral suitable for processing.",
+        mining: { strikesBase: 2, sparkleBase: 1 }   // naturally sparkly
     },
     {
         id: "copper",
@@ -29,7 +31,8 @@ export const materials = [
         subtype: "ore",
         tier: 2,
         icon: "🟠",
-        description: "A recovered conductive metal sample."
+        description: "A recovered conductive metal sample.",
+        mining: { strikesBase: 3, sparkleBase: 0 }   // ore is tougher
     },
     {
         id: "silicon",
@@ -38,7 +41,8 @@ export const materials = [
         subtype: "mineral",
         tier: 2,
         icon: "🔹",
-        description: "A semiconductor-grade mineral sample."
+        description: "A semiconductor-grade mineral sample.",
+        mining: { strikesBase: 3, sparkleBase: 0 }
     },
     {
         id: "silica",
