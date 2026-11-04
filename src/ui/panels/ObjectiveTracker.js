@@ -14,7 +14,7 @@ export default class ObjectiveTracker {
 
     getElement() {
         if (!this.element) {
-            this.element = el("div", { className: "objective-tracker" });
+            this.element = el("section", { className: "objective-tracker" });
             this.bindOutsideClick();
         }
         this.update();
@@ -29,11 +29,12 @@ export default class ObjectiveTracker {
             "pointerdown",
             e => {
                 if (!this.expanded) return;
-                if (this.element.contains(e.target)) return;
+                if (this.element?.contains(e.target)) return;
                 this.expanded = false;
+                document.body.classList.remove("objective-open");
                 this.update();
             },
-            true // capture phase — runs before inner click handlers
+            true
         );
     }
 
@@ -42,18 +43,19 @@ export default class ObjectiveTracker {
 
         const game = this.getGame();
         if (!game.appState?.trackerEnabled) {
-            this.element.replaceChildren();
             this.element.style.display = "none";
+            document.body.classList.remove("objective-open");
             return this;
         }
 
         const stage = getCurrentStage(game);
         if (!stage) {
             this.element.style.display = "none";
+            document.body.classList.remove("objective-open");
             return this;
         }
 
-        // Auto-collapse when stage changes
+        // Auto-collapse on new stage
         if (this._lastStageId !== stage.id) {
             this._lastStageId = stage.id;
             this.expanded = false;
@@ -61,50 +63,58 @@ export default class ObjectiveTracker {
 
         const { progress, met } = checkRequirements(game, stage);
         const entries = Object.entries(progress);
-        const totalHave = entries.reduce(
+        const capped = entries.reduce(
             (s, [, { have, need }]) => s + Math.min(have, need),
             0
         );
-        const totalNeed = entries.reduce((s, [, { need }]) => s + need, 0);
+        const total = entries.reduce((s, [, { need }]) => s + need, 0);
+        const pct = total === 0 ? 100 : Math.round((capped / total) * 100);
 
         this.element.style.display = "flex";
+        this.element.classList.toggle("is-expanded", this.expanded);
+        document.body.classList.toggle("objective-open", this.expanded);
+
         this.element.replaceChildren(
-            this.renderHeader(stage, totalHave, totalNeed, met),
+            this.renderHeader(stage, capped, total, pct, met),
             ...(this.expanded ? [this.renderBody(entries)] : [])
         );
+
+        return this;
     }
 
-    renderHeader(stage, totalHave, totalNeed, met) {
-        const header = el(
+    renderHeader(stage, capped, total, pct, met) {
+        const fill = el("div", {
+            className: `tracker-strip__fill${met ? " is-done" : ""}`
+        });
+        fill.style.width = `${pct}%`;
+
+        return el(
             "button",
             {
                 type: "button",
-                className: "objective-tracker__header",
+                className: "tracker-strip__header",
                 onClick: () => {
                     this.expanded = !this.expanded;
                     this.update();
                 }
             },
             [
+                el("span", { className: "tracker-strip__icon", text: "◈" }),
                 el("span", {
-                    className: "objective-tracker__badge",
-                    text: "◈"
-                }),
-                el("span", {
-                    className: "objective-tracker__label",
+                    className: "tracker-strip__label",
                     text: stage.shortName.toUpperCase()
                 }),
+                el("div", { className: "tracker-strip__bar" }, [fill]),
                 el("span", {
-                    className: `objective-tracker__progress${met ? " is-done" : ""}`,
-                    text: `${totalHave}/${totalNeed}`
+                    className: `tracker-strip__count${met ? " is-done" : ""}`,
+                    text: `${capped}/${total}`
                 }),
                 el("span", {
-                    className: `objective-tracker__chevron${this.expanded ? " is-open" : ""}`,
+                    className: `tracker-strip__chevron${this.expanded ? " is-open" : ""}`,
                     text: "▾"
                 })
             ]
         );
-        return header;
     }
 
     renderBody(entries) {
@@ -140,6 +150,7 @@ export default class ObjectiveTracker {
                     className: "objective-tracker__open-lab",
                     onClick: () => {
                         this.expanded = false;
+                        document.body.classList.remove("objective-open");
                         this.update();
                         this.navigateToLab();
                     }

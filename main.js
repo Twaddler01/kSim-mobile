@@ -590,6 +590,7 @@ function renderTabContent() {
         tabs: tabDefinitions.map(tab => ({
             ...tab,
             unread: [
+                "lab",
                 "fieldWork",
                 "observations",
                 "equipment",
@@ -804,14 +805,11 @@ function updateActiveTabUI() {
         fieldWorkPanel.deactivateField?.();
     }
 
-    // Tracker visibility: hidden on LAB (card is visible there),
-    // shown elsewhere when the user has toggled it on.
-    if (ui.objectiveTrackerEl) {
-        const show =
-            activeTab !== "lab" &&
-            Boolean(game.appState?.trackerEnabled) &&
-            Boolean(getCurrentStage(game));
-        ui.objectiveTrackerEl.style.display = show ? "flex" : "none";
+    if (activeTab === "lab") {
+        const stage = getCurrentStage(game);
+        if (stage) {
+            unreadManager.markRead("lab", `objective-${stage.id}`);
+        }
     }
 
     switch (activeTab) {
@@ -892,12 +890,13 @@ function refreshUI({ database = false } = {}) {
         return;
     }
 
-    // Silent stage advancement — no modal, no popup.
     const result = tryAdvanceStage(game);
     if (result.advanced) {
         save();
         if (result.to) {
             showToast(`Objective complete. New objective: ${result.to.name}.`);
+            // Fire the LAB tab badge so the player knows to check in.
+            notifyUnread("lab", `objective-${result.to.id}`);
         } else {
             showToast("Objective chain complete.");
         }
@@ -1064,16 +1063,13 @@ function render() {
     const layout = el("div", { className: "game-layout" }, [
         topbar,
         ui.inventory.element,
+        objectiveTracker.getElement(),   // ← sibling, below inventory
         renderTabContent()
     ]);
-
+    
     ui.layout = layout;
     app.replaceChildren(layout);
-    
-    const trackerEl = objectiveTracker.getElement();
-    app.appendChild(trackerEl);
-    ui.objectiveTrackerEl = trackerEl;
-    
+
     updateSharedUI();
     updateLabTab();
 }
