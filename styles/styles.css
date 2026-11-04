@@ -2526,7 +2526,7 @@ body:not(.debug-mode) {
     border-radius: 11px;
     background: rgba(12, 27, 45, 0.96);
     overflow: hidden;
-    z-index: 44;
+    z-index: 46;
     transition: border-color 160ms ease;
 }
 
@@ -2611,7 +2611,7 @@ body:not(.debug-mode) {
     top: calc(100% + 4px);
     left: 0;
     right: 0;
-    z-index: 45;
+    z-index: 47;
     display: flex;
     flex-direction: column;
     gap: 6px;
@@ -2682,24 +2682,6 @@ body:not(.debug-mode) {
     font-size: 11px;
     letter-spacing: 0.05em;
     cursor: pointer;
-}
-
-.objective-tracker__open-lab:hover {
-    border-color: rgba(120, 200, 255, 0.55);
-    background: rgba(120, 200, 255, 0.08);
-}
-
-/* Mutual exclusion with inventory */
-body.objective-open .inventory-panel {
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 140ms ease;
-}
-
-body.inventory-open .objective-tracker {
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 140ms ease;
 }
 
 /* LAB tab badge → bare dot instead of count chip */

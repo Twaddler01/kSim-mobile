@@ -31,7 +31,6 @@ export default class ObjectiveTracker {
                 if (!this.expanded) return;
                 if (this.element?.contains(e.target)) return;
                 this.expanded = false;
-                document.body.classList.remove("objective-open");
                 this.update();
             },
             true
@@ -51,7 +50,6 @@ export default class ObjectiveTracker {
         const stage = getCurrentStage(game);
         if (!stage) {
             this.element.style.display = "none";
-            document.body.classList.remove("objective-open");
             return this;
         }
 
@@ -150,7 +148,6 @@ export default class ObjectiveTracker {
                     className: "objective-tracker__open-lab",
                     onClick: () => {
                         this.expanded = false;
-                        document.body.classList.remove("objective-open");
                         this.update();
                         this.navigateToLab();
                     }

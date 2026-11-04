@@ -1062,8 +1062,8 @@ function render() {
 
     const layout = el("div", { className: "game-layout" }, [
         topbar,
+        objectiveTracker.getElement(),
         ui.inventory.element,
-        objectiveTracker.getElement(),   // ← sibling, below inventory
         renderTabContent()
     ]);
     
