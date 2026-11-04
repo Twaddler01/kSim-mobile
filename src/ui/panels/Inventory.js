@@ -25,10 +25,7 @@ export default class Inventory {
         return ItemIcon(item, {
             size,
             className,
-            materialId:
-                item.inventoryType === "resource"
-                    ? null
-                    : item.id
+            materialId: item.inventoryType === "resource" ? null : item.id
         });
     }
 
@@ -53,56 +50,54 @@ export default class Inventory {
         this.detailValues.clear();
         this.itemIds = items.map(item => this.getItemKey(item));
 
-        const toggle = el(
-            "button",
-            {
-                type: "button",
-                className: "inventory-toggle",
-                "aria-expanded": String(this.expanded),
-                onClick: () => {
-                    this.expanded = !this.expanded;
-                    this.replaceElement();
-                }
-            },
-            [
-                el("span", {
-                    className: "inventory-toggle-title",
-                    text: "INVENTORY"
-                }),
-                el("span", {
-                    className: "inventory-chevron",
-                    text: this.expanded ? "⌃" : "⌄"
-                })
-            ]
-        );
+        // Horizontal chips
+        const chips = items.map(item => {
+            const key = this.getItemKey(item);
+            const value = el("span", {
+                className: "resource-chip-value",
+                text: this.formatNumber(this.getAmount(item))
+            });
+            this.values.set(key, value);
 
-        const compact = el(
-            "div",
-            {
-                className: "inventory-compact",
-                role: "list",
-                "aria-label": "Current resources and materials"
-            },
-            items.map(item => {
-                const key = this.getItemKey(item);
-                const value = el("span", {
-                    className: "resource-chip-value",
-                    text: this.formatNumber(this.getAmount(item))
-                });
+            return el(
+                "div",
+                {
+                    className: "resource-chip",
+                    role: "listitem",
+                    title: item.name
+                },
+                [this.createItemIcon(item, "resource-chip-icon", 14), value]
+            );
+        });
 
-                this.values.set(key, value);
-
-                return el(
-                    "div",
-                    {
-                        className: "resource-chip",
-                        role: "listitem",
-                        title: item.name
-                    },
-                    [this.createItemIcon(item, "resource-chip-icon", 18), value]
-                );
-            })
-        );
+        // Single header row: chips left, chevron right
+        const header = el("div", { className: "inventory-header" }, [
+            el(
+                "div",
+                {
+                    className: "inventory-compact",
+                    role: "list",
+                    "aria-label": "Current resources and materials"
+                },
+                chips
+            ),
+            el(
+                "button",
+                {
+                    type: "button",
+                    className: "inventory-chevron-btn",
+                    "aria-expanded": String(this.expanded),
+                    "aria-label": this.expanded
+                        ? "Collapse inventory"
+                        : "Expand inventory",
+                    onClick: () => {
+                        this.expanded = !this.expanded;
+                        this.replaceElement();
+                    }
+                },
+                [this.expanded ? "▴" : "▾"]
+            )
+        ]);
 
         const expanded = this.expanded
             ? el(
@@ -118,7 +113,6 @@ export default class Inventory {
                           className: "inventory-item-value",
                           text: this.formatNumber(this.getAmount(item))
                       });
-
                       this.detailValues.set(key, value);
 
                       return el(
@@ -133,18 +127,10 @@ export default class Inventory {
                                   "inventory-item-icon",
                                   26
                               ),
-                              el(
-                                  "div",
-                                  {
-                                      className: "inventory-item-copy"
-                                  },
-                                  [
-                                      el("strong", { text: item.name }),
-                                      el("small", {
-                                          text: item.description
-                                      })
-                                  ]
-                              ),
+                              el("div", { className: "inventory-item-copy" }, [
+                                  el("strong", { text: item.name }),
+                                  el("small", { text: item.description })
+                              ]),
                               value
                           ]
                       );
@@ -157,7 +143,7 @@ export default class Inventory {
             {
                 className: `inventory-panel${this.expanded ? " is-expanded" : ""}`
             },
-            [toggle, compact, expanded]
+            [header, expanded]
         );
     }
 

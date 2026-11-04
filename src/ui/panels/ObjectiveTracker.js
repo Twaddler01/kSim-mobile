@@ -9,14 +9,32 @@ export default class ObjectiveTracker {
         this.element = null;
         this.expanded = false;
         this._lastStageId = null;
+        this._outsideBound = false;
     }
 
     getElement() {
         if (!this.element) {
             this.element = el("div", { className: "objective-tracker" });
+            this.bindOutsideClick();
         }
         this.update();
         return this.element;
+    }
+
+    bindOutsideClick() {
+        if (this._outsideBound) return;
+        this._outsideBound = true;
+
+        document.addEventListener(
+            "pointerdown",
+            e => {
+                if (!this.expanded) return;
+                if (this.element.contains(e.target)) return;
+                this.expanded = false;
+                this.update();
+            },
+            true // capture phase — runs before inner click handlers
+        );
     }
 
     update() {

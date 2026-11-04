@@ -39,7 +39,7 @@ import PlanPanel from "./src/ui/panels/PlanPanel.js";
 
 import MainObjective from "./src/ui/panels/MainObjective.js";
 import ObjectiveTracker from "./src/ui/panels/ObjectiveTracker.js";
-import { tryAdvanceStage } from "./src/data/stages.js";
+import { tryAdvanceStage, getCurrentStage } from "./src/data/stages.js";
 
 // mcv
 import FieldWorkPanel from "./src/ui/panels/FieldWorkPanel.js";
@@ -804,6 +804,16 @@ function updateActiveTabUI() {
         fieldWorkPanel.deactivateField?.();
     }
 
+    // Tracker visibility: hidden on LAB (card is visible there),
+    // shown elsewhere when the user has toggled it on.
+    if (ui.objectiveTrackerEl) {
+        const show =
+            activeTab !== "lab" &&
+            Boolean(game.appState?.trackerEnabled) &&
+            Boolean(getCurrentStage(game));
+        ui.objectiveTrackerEl.style.display = show ? "flex" : "none";
+    }
+
     switch (activeTab) {
         case "debug":
             debugPanel.update();
@@ -1053,14 +1063,17 @@ function render() {
 
     const layout = el("div", { className: "game-layout" }, [
         topbar,
-        objectiveTracker.getElement(),
         ui.inventory.element,
         renderTabContent()
     ]);
 
     ui.layout = layout;
     app.replaceChildren(layout);
-
+    
+    const trackerEl = objectiveTracker.getElement();
+    app.appendChild(trackerEl);
+    ui.objectiveTrackerEl = trackerEl;
+    
     updateSharedUI();
     updateLabTab();
 }

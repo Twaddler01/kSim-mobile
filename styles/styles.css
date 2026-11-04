@@ -41,12 +41,14 @@ button {
 .is-hidden {
     display: none !important;
 }
+
 .topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 14px 16px;
+    flex: 0 0 auto;
+    padding: 6px 12px;                 /* was 9px 13px */
+    gap: 8px;
     border-bottom: 1px solid var(--line);
     background: rgba(5, 14, 25, 0.88);
     position: sticky;
@@ -62,8 +64,10 @@ button {
 .brand-mark {
     display: grid;
     place-items: center;
-    width: 39px;
-    height: 39px;
+    width: 28px;                        /* was 34px */
+    height: 28px;
+    flex: 0 0 auto;
+    font-size: 0.85rem;
     border: 1px solid rgba(98, 228, 244, 0.55);
     border-radius: 12px;
     color: var(--cyan);
@@ -71,11 +75,13 @@ button {
     font-weight: 800;
 }
 .brand-name {
-    font-size: 1.05rem;
+    font-size: 0.85rem;
     font-weight: 800;
     letter-spacing: 0.04em;
 }
-.brand-subtitle,
+.brand-subtitle {
+    font-size: 0.52rem;                 /* was 0.55rem */
+}
 .eyebrow {
     color: var(--muted);
     font:
@@ -83,7 +89,10 @@ button {
         monospace;
     letter-spacing: 0.14em;
 }
-.stage-pill,
+.stage-pill {
+    padding: 5px 8px;                   /* was 7px 9px */
+    font-size: 0.58rem;                 /* was 0.62rem */
+}
 .count-pill,
 .level-pill {
     border: 1px solid var(--line);
@@ -638,41 +647,89 @@ body:not(.debug-mode) {
     background: rgba(12, 27, 45, 0.96);
 }
 
-.inventory-toggle {
+.inventory-panel {
+    flex: 0 0 auto;
+    min-width: 0;
+    margin: 5px 10px;                 /* was 7px */
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 11px;              /* was 13px */
+    background: rgba(12, 27, 45, 0.96);
+}
+
+.inventory-header {
     display: flex;
     align-items: center;
-    gap: 8px;
-    width: 100%;
-    min-height: 34px;
-    padding: 5px 10px;
-    border: 0;
-    color: var(--text);
-    background: transparent;
-    text-align: left;
-    cursor: pointer;
+    gap: 2px;
+    padding: 3px 5px;
+    min-height: 32px;                  /* was 34 + 51 stacked */
 }
 
-.inventory-toggle-title {
-    font:
-        500 0.66rem "DM Mono",
-        monospace;
-    letter-spacing: 0.12em;
+.inventory-compact {
+    flex: 1;
+    display: flex;
+    gap: 3px;
+    overflow-x: auto;
+    overscroll-behavior: contain;      /* stop mobile swipe-up-from-row */
+    scrollbar-width: thin;
+    padding: 0;
+    min-width: 0;
+    -webkit-overflow-scrolling: touch;
 }
 
-.inventory-toggle-hint {
-    margin-left: auto;
-    color: var(--muted);
-    font:
-        0.55rem "DM Mono",
-        monospace;
-    letter-spacing: 0.05em;
+.resource-chip {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: row;               /* was column */
+    align-items: center;
+    gap: 3px;
+    padding: 3px 6px;
+    border-radius: 6px;
+    background: rgba(98, 228, 244, 0.035);
+    white-space: nowrap;
 }
 
-.inventory-chevron {
-    width: 17px;
+.resource-chip-icon {
+    font-size: 0.85rem;
+    line-height: 1;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.resource-chip-icon svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+}
+
+.resource-chip-value {
     color: var(--cyan);
-    font-size: 1.1rem;
-    text-align: center;
+    font: 700 0.68rem "DM Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+.inventory-chevron-btn {
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--cyan);
+    font-size: 0.9rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.inventory-chevron-btn:active {
+    background: rgba(98, 228, 244, 0.1);
 }
 
 .inventory-compact {
@@ -2442,20 +2499,24 @@ body:not(.debug-mode) {
 }
 
 /* ============ Objective Tracker (optional overlay) ============ */
-/* ============ Objective Tracker (optional, expandable) ============ */
 .objective-tracker {
     display: none;
     flex-direction: column;
-    margin: 8px 0 0;
+    position: fixed;
+    top: calc(110px + env(safe-area-inset-top, 0px));
+    right: 12px;
+    z-index: 40;
+    margin: 0;
+    min-width: 220px;
+    max-width: 320px;
     border-radius: 10px;
-    background: rgba(20, 28, 38, 0.9);
+    background: rgba(20, 28, 38, 0.94);
     border: 1px solid rgba(120, 200, 255, 0.25);
     overflow: hidden;
-    align-self: flex-start;
-    min-width: 220px;
-    max-width: 340px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
     transition: border-color 160ms ease;
-    flex-shrink: 0;
 }
 
 .objective-tracker:hover {
