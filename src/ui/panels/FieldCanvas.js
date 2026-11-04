@@ -12,11 +12,6 @@ const TAP_HIT_RADIUS = 1.6; // tap hit detection, × d.r
 const SPRITE_PX = 60;
 const SPRITE_HALF = SPRITE_PX / 2;
 
-const WORLD_WIDTH = 1200;
-const WORLD_HEIGHT = 900;
-
-const DEPOSIT_COUNT = 10;
-const RESPAWN_DELAY = 3; // seconds
 const TAP_THRESHOLD = 10; // px of movement that promotes a tap to a pan
 
 const PLAYER_SPEED = 200; // world units / second
@@ -78,11 +73,19 @@ const PLAYER_SVG = `
 `;
 
 export default class FieldCanvas {
-    constructor({ deposits = [], onCollect, onRespawn, showToast } = {}) {
+    constructor({
+        deposits = [],
+        world = { width: 1200, height: 900 },
+        respawnDelay = 3,
+        fallbackDepositCount = 10,
+        onCollect,
+        onRespawn,
+        showToast
+    } = {}) {
         this.onCollect = onCollect;
         this.onRespawn = onRespawn;
         this.showToast = showToast;
-
+    
         this.element = null;
         this.canvas = null;
         this.ctx = null;
@@ -90,20 +93,24 @@ export default class FieldCanvas {
         this.rafId = null;
         this.lastTime = 0;
         this.active = false;
-
+    
         this.dpr = 1;
         this.width = 0;
         this.height = 0;
-
-        this.world = { width: WORLD_WIDTH, height: WORLD_HEIGHT };
+    
+        // Clone so caller mutations don't leak in.
+        this.world = { width: world.width, height: world.height };
+        this.respawnDelay = respawnDelay;
+        this.fallbackDepositCount = fallbackDepositCount;
+    
         this.camera = { x: 0, y: 0 };
         this.cameraInitialized = false;
-
+    
         this.player = {
-            x: WORLD_WIDTH / 2,
-            y: WORLD_HEIGHT / 2,
-            tx: WORLD_WIDTH / 2,
-            ty: WORLD_HEIGHT / 2,
+            x: this.world.width / 2,
+            y: this.world.height / 2,
+            tx: this.world.width / 2,
+            ty: this.world.height / 2,
             r: 22,
             speed: PLAYER_SPEED
         };
@@ -167,7 +174,7 @@ export default class FieldCanvas {
                 sparkles: this.makeSparkles(d.sparkleTier ?? 0, d.r ?? 22)
             }));
         } else if (this.deposits.length === 0) {
-            this.spawnDeposits(DEPOSIT_COUNT);
+            this.spawnDeposits(this.fallbackDepositCount);
         }
 
         return this.element;
@@ -280,7 +287,7 @@ export default class FieldCanvas {
                 return {
                     x,
                     y,
-                    r: 16,
+                    r: 22,
                     pulse: Math.random() * Math.PI * 2,
                     active: true,
                     respawnAt: 0
@@ -737,7 +744,7 @@ export default class FieldCanvas {
 
     completeDeposit(d) {
         d.active = false;
-        d.respawnAt = this.time + RESPAWN_DELAY;
+        d.respawnAt = this.time + this.respawnDelay;
         d.strikesLanded = 0;
         d.cracks = [];
 

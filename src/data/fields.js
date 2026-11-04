@@ -6,6 +6,19 @@ export const FIELD_DEFINITIONS = [
         icon: "🪨",
         description: "Locate scattered deposits and recover raw samples.",
         unlockTrigger: null,
+    
+        // --- world / spawn tuning (defaults shown; omit to use these) ---
+        depositCount: 10,
+        respawnSeconds: 3,
+        world: { width: 1200, height: 900 },
+        margin: 80,          // distance from world edge where deposits can spawn
+        minSpacing: 100,     // minimum distance between initial deposits
+        depositRadius: 22,   // collider + base draw radius
+    
+        // --- optional per-field overrides (null = use material + code default) ---
+        strikeCountTable: null,   // e.g. [{ richness: 3, strikes: 5 }]
+        sparkleTable: null,       // e.g. [{ richness: 2, tier: 2 }]
+    
         spawnTable: [
             { materialId: "stone", weight: 70 },
             { materialId: "quartz", weight: 25 },
