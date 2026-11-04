@@ -1,36 +1,35 @@
 // src/data/mineralSprites.js
-import { materialDrawings } from "../assets/icons/materials/materialDrawings.js";
+import { getDrawing } from "../assets/icons/materials/materialDrawings.js";
 import { materials } from "./materials.js";
+import { svgToImage } from "./svgToImage.js";
 
-function svgToImage(drawFn, size = 64) {
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-    svg.setAttribute("viewBox", "0 0 48 48");
-    svg.setAttribute("width", size);
-    svg.setAttribute("height", size);
-    drawFn(svg);
+const DEFAULT_VARIANTS = ["field", "core"];
+const DEFAULT_SIZE = 64;
 
-    const xml = new XMLSerializer().serializeToString(svg);
-    const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`;
-
-    return new Promise(resolve => {
-        const img = new Image();
-        img.onload = () => resolve(img);
-        img.onerror = () => resolve(null);
-        img.src = url;
-    });
-}
-
-export async function buildMineralSprites() {
+/**
+ * Returns { [materialId]: { core?: Image, field?: Image } }.
+ *
+ * Every raw material is guaranteed to receive both variants —
+ * getDrawing() always resolves through the generic subtype fallback
+ * if no exact drawing exists, so no material is ever blank.
+ */
+export async function buildMineralSprites({
+    variants = DEFAULT_VARIANTS,
+    size = DEFAULT_SIZE
+} = {}) {
     const cache = {};
     const raw = materials.filter(m => m.category === "raw");
 
     await Promise.all(
         raw.map(async m => {
-            const drawing = materialDrawings[m.id];
-            if (!drawing?.core) return;
-            const img = await svgToImage(drawing.core, 64);
-            if (img) cache[m.id] = img;
+            const entry = {};
+            for (const variant of variants) {
+                const draw = getDrawing(m.id, variant);
+                if (!draw) continue;
+                const img = await svgToImage(draw, size);
+                if (img) entry[variant] = img;
+            }
+            if (Object.keys(entry).length > 0) cache[m.id] = entry;
         })
     );
 

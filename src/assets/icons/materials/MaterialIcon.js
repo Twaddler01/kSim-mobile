@@ -1,5 +1,5 @@
 import { createSvgElement } from "./svgHelpers.js";
-import { materialDrawings } from "./materialDrawings.js";
+import { getDrawing } from "./materialDrawings.js";
 
 export function MaterialIcon(
     materialId,
@@ -15,30 +15,17 @@ export function MaterialIcon(
         class: ["material-icon", className].filter(Boolean).join(" ")
     });
 
-    const drawings = materialDrawings[materialId];
-    const draw = drawings?.[variant] ?? drawings?.core;
-
-    if (draw) {
-        draw(svg);
-    } else {
-        const fallback = createSvgElement("text", {
-            x: 24,
-            y: 32,
-            "text-anchor": "middle",
-            "font-size": 28,
-            fill: "currentColor"
-        });
-
-        fallback.textContent = "◈";
-        svg.append(fallback);
-    }
+    const draw = getDrawing(materialId, variant);
+    // getDrawing always resolves — fallback is baked in.
+    draw(svg);
 
     return svg;
 }
 
 export function hasMaterialIcon(materialId, variant = "core") {
-    const drawings = materialDrawings[materialId];
-    return Boolean(drawings?.[variant] ?? drawings?.core);
+    // Every material with a subtype resolves to a generic drawing,
+    // so this is effectively always true. Kept for API compatibility.
+    return Boolean(getDrawing(materialId, variant));
 }
 
 export default MaterialIcon;

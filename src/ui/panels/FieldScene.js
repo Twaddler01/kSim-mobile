@@ -169,8 +169,15 @@ export default class FieldScene {
         });
     }
 
-    getSpriteFor(materialId) {
-        return this.getSprites()[materialId] ?? null;
+    getSpriteFor(materialId, variant = "field") {
+        const entry = this.getSprites()[materialId];
+        if (!entry) return null;
+    
+        // Legacy flat cache: { stone: Image }
+        if (!entry.core && !entry.field) return entry;
+    
+        // Nested cache: { stone: { core, field } }
+        return entry[variant] ?? entry.core ?? null;
     }
 
     refreshSprites() {
