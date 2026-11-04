@@ -241,6 +241,7 @@ function notifyUnread(tabId, itemId, options = {}) {
 if (unlockManager.unlock("labValley")) {
     notifyUnread("fieldWork", "field-labValley");
 }
+unlockManager.unlock("labBorderlamds");
 
 function logEvent(game, message, options = {}) {
     return addLog(game, message, {

@@ -12,7 +12,7 @@ export const materials = [
         tier: 1,
         icon: "🪨",
         description: "A rough fragment of common stone recovered from the field.",
-        mining: { strikesBase: 2, sparkleBase: 0 }   // baseline: current behavior
+        mining: { strikesBase: 6, sparkleBase: 0 }   // baseline: current behavior
     },
     {
         id: "quartz",
@@ -22,7 +22,7 @@ export const materials = [
         tier: 1,
         icon: "💎",
         description: "A crystalline mineral suitable for processing.",
-        mining: { strikesBase: 2, sparkleBase: 1 }   // naturally sparkly
+        mining: { strikesBase: 9, sparkleBase: 1 }   // naturally sparkly
     },
     {
         id: "copper",
@@ -32,7 +32,7 @@ export const materials = [
         tier: 2,
         icon: "🟠",
         description: "A recovered conductive metal sample.",
-        mining: { strikesBase: 3, sparkleBase: 0 }   // ore is tougher
+        mining: { strikesBase: 12, sparkleBase: 0 }   // ore is tougher
     },
     {
         id: "silicon",
@@ -42,7 +42,7 @@ export const materials = [
         tier: 2,
         icon: "🔹",
         description: "A semiconductor-grade mineral sample.",
-        mining: { strikesBase: 3, sparkleBase: 0 }
+        mining: { strikesBase: 15, sparkleBase: 0 }
     },
     {
         id: "silica",
@@ -51,7 +51,8 @@ export const materials = [
         subtype: "mineral",
         tier: 1,
         icon: "💎",
-        description: "A mineral precursor for engineered crystal structures."
+        description: "A mineral precursor for engineered crystal structures.",
+        mining: { strikesBase: 20, sparkleBase: 2 }
     },
     {
         id: "graphite",

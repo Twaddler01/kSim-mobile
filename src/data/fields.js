@@ -47,19 +47,24 @@ export const FIELD_DEFINITIONS = [
         ]
     },
     {
-        id: "stone",
-        name: "Stone Field",
+        id: "labBorderlamds",
+        name: "Lab Borderlamds",
         materialId: "stone",
         visualVariant: "stone",
         icon: "🪨",
-        description: "Locate stone deposits and recover raw samples.",
+        description: "Further away from home -- a little less safe? There appears to be a better sample selection here.",
         unlockTrigger: null,
-        spawnTable: [{ materialId: "stone", weight: 100 }],
+        spawnTable: [
+            { materialId: "stone", weight: 50 },
+            { materialId: "quartz", weight: 20 },
+            { materialId: "copper", weight: 15 },
+            { materialId: "silica", weight: 15 }
+        ],
         richnessTable: [
-            { amount: 1, weight: 80 },
-            { amount: 2, weight: 15 },
-            { amount: 3, weight: 4 },
-            { amount: 5, weight: 1 }
+            { amount: 1, weight: 45 },
+            { amount: 2, weight: 25 },
+            { amount: 3, weight: 15 },
+            { amount: 5, weight: 15 }
         ]
     },
     {
