@@ -79,13 +79,15 @@ export default class FieldScene {
                 list.some(d => Math.hypot(d.x - x, d.y - y) < 100)
             );
 
+            const richness = this.selectRichness(rand);
             list.push({
                 id: `${this.field.id}-dep-${i}`,
                 x,
                 y,
                 r: 22,
                 materialId: material.id,
-                richness: this.selectRichness(rand),
+                richness,
+                strikesRequired: this.selectStrikes(richness),
                 label: material.name,
                 sprite: this.getSpriteFor(material.id) ?? null
             });
@@ -103,13 +105,15 @@ export default class FieldScene {
             this.rawMaterials.find(m => m.id === oldDeposit.materialId) ??
             this.pickMaterial(rand);
 
+        const richness = this.selectRichness(rand);
         return {
             id: oldDeposit.id,
             x: margin + rand() * (WORLD_W - margin * 2),
             y: margin + rand() * (WORLD_H - margin * 2),
             r: 22,
             materialId: material.id,
-            richness: this.selectRichness(rand),
+            richness,
+            strikesRequired: this.selectStrikes(richness),
             label: material.name,
             sprite: this.getSpriteFor(material.id) ?? null
         };
@@ -182,5 +186,28 @@ export default class FieldScene {
             if (roll < 0) return e.amount;
         }
         return valid[valid.length - 1].amount;
+    }
+
+    selectStrikes(richness) {
+        // Field data override — optional:
+        //   strikeCountTable: [
+        //     { richness: 1, strikes: 2 },
+        //     { richness: 2, strikes: 3 },
+        //     { richness: 3, strikes: 4 },
+        //     { richness: 4, strikes: 6 },
+        //   ]
+        const table = this.field.strikeCountTable;
+        if (Array.isArray(table)) {
+            const entry = table.find(e => e.richness === richness);
+            if (entry && Number.isFinite(entry.strikes) && entry.strikes >= 1) {
+                return Math.round(entry.strikes);
+            }
+        }
+        // Default: 1 + richness
+        //   richness 1 → 2 strikes
+        //   richness 2 → 3 strikes
+        //   richness 3 → 4 strikes
+        //   richness 4 → 5 strikes
+        return 1 + richness;
     }
 }

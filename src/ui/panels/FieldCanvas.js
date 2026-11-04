@@ -6,6 +6,9 @@
 //   · Drag = pan camera (does not move player)
 //   · 10 deposits live in the world, each respawns after being mined
 
+const STRIKE_REACH = 12; // px beyond touching that counts as "in reach"
+const TAP_HIT_RADIUS = 1.6; // tap hit detection, × d.r
+
 const SPRITE_PX = 60;
 const SPRITE_HALF = SPRITE_PX / 2;
 
@@ -119,6 +122,8 @@ export default class FieldCanvas {
         this._onPointerMove = e => this.handlePointerMove(e);
         this._onPointerUp = e => this.handlePointerUp(e);
         this._onPointerCancel = e => this.handlePointerCancel(e);
+
+        this.approachingDeposit = null;
     }
 
     // ---------------------------------------------------------------
@@ -156,7 +161,9 @@ export default class FieldCanvas {
                 ...d,
                 pulse: Math.random() * Math.PI * 2,
                 active: true,
-                respawnAt: 0
+                respawnAt: 0,
+                strikesLanded: 0,
+                cracks: []
             }));
         } else if (this.deposits.length === 0) {
             this.spawnDeposits(DEPOSIT_COUNT);
@@ -334,13 +341,21 @@ export default class FieldCanvas {
     handlePointerUp(event) {
         if (!this.pointer || event.pointerId !== this.pointer.id) return;
 
-        // If the pointer never crossed the threshold, treat it as a tap.
         if (!this.pointer.hasPanned) {
             const rect = this.canvas.getBoundingClientRect();
             const screenX = event.clientX - rect.left;
             const screenY = event.clientY - rect.top;
-            this.player.tx = this.clampWorldX(screenX + this.camera.x);
-            this.player.ty = this.clampWorldY(screenY + this.camera.y);
+            const worldX = screenX + this.camera.x;
+            const worldY = screenY + this.camera.y;
+
+            const hit = this.hitTestDeposit(worldX, worldY);
+            if (hit) {
+                this.tryStrike(hit);
+            } else {
+                this.player.tx = this.clampWorldX(worldX);
+                this.player.ty = this.clampWorldY(worldY);
+                this.approachingDeposit = null;
+            }
         }
 
         this.canvas.releasePointerCapture?.(event.pointerId);
@@ -388,18 +403,15 @@ export default class FieldCanvas {
 
         for (const d of this.deposits) {
             if (!d.active) continue;
-            if (Math.hypot(p.x - d.x, p.y - d.y) < p.r + d.r) {
-                d.active = false;
-                d.respawnAt = this.time + RESPAWN_DELAY;
-
-                const rect = this.canvas.getBoundingClientRect();
-                const screenPos = {
-                    clientX: rect.left + (d.x - this.camera.x),
-                    clientY: rect.top + (d.y - this.camera.y)
-                };
-
-                this.onCollect?.(d, screenPos);
-                this.showToast?.(`${d.label ?? "Deposit"} recovered`);
+            // Auto-strike approaching deposit on arrival.
+            if (this.approachingDeposit) {
+                const d = this.approachingDeposit;
+                if (!d.active) {
+                    this.approachingDeposit = null;
+                } else if (this.inReach(d)) {
+                    this.strikeDeposit(d);
+                    this.approachingDeposit = null;
+                }
             }
         }
 
@@ -415,7 +427,9 @@ export default class FieldCanvas {
                 Object.assign(d, fresh, {
                     pulse: 0,
                     active: true,
-                    respawnAt: 0
+                    respawnAt: 0,
+                    strikesLanded: 0,
+                    cracks: []
                 });
             }
             // If onRespawn returns null, deposit stays gone (finite field).
@@ -506,37 +520,60 @@ export default class FieldCanvas {
         for (const d of this.deposits) {
             if (!d.active) continue;
 
-            const glow = 0.55 + Math.sin(d.pulse) * 0.25;
-            const halo = ctx.createRadialGradient(
-                d.x,
-                d.y,
-                0,
-                d.x,
-                d.y,
-                d.r * 2.2
-            );
+            // Hit shake (decays over 120ms)
+            const sinceHit = this.time - (d.hitFlash ?? -999);
+            const shakeAmt = sinceHit < 0.12 ? (1 - sinceHit / 0.12) * 3 : 0;
+            const drawX =
+                d.x + (shakeAmt ? (Math.random() - 0.5) * shakeAmt * 2 : 0);
+            const drawY =
+                d.y + (shakeAmt ? (Math.random() - 0.5) * shakeAmt * 2 : 0);
 
+            // Sprite (or fallback circle)
             if (d.sprite && d.sprite.complete && d.sprite.naturalWidth) {
-                const s = d.r * 3 * (1 + ((d.richness ?? 1) - 1) * 0.125);
-                ctx.drawImage(d.sprite, d.x - s / 2, d.y - s / 2, s, s);
+                const s = d.r * 3;
+                ctx.drawImage(d.sprite, drawX - s / 2, drawY - s / 2, s, s);
             } else {
                 const r = d.r ?? 22;
-                halo.addColorStop(0, `rgba(120,255,180,${glow * 0.5})`);
-                halo.addColorStop(1, "rgba(120,255,180,0)");
-                ctx.fillStyle = halo;
+                ctx.fillStyle = "rgba(120,255,180,0.75)";
                 ctx.beginPath();
-                ctx.arc(d.x, d.y, r * 2.2, 0, Math.PI * 2);
+                ctx.arc(drawX, drawY, r, 0, Math.PI * 2);
                 ctx.fill();
+            }
 
-                ctx.fillStyle = `rgba(120,255,180,${0.75 + Math.sin(d.pulse) * 0.15})`;
-                ctx.beginPath();
-                ctx.arc(d.x, d.y, r, 0, Math.PI * 2);
-                ctx.fill();
+            // Cracks
+            if (d.cracks && d.cracks.length > 0) {
+                ctx.strokeStyle = "rgba(0,0,0,0.55)";
+                ctx.lineWidth = 1.5;
+                ctx.lineCap = "round";
+                for (const c of d.cracks) {
+                    ctx.beginPath();
+                    ctx.moveTo(
+                        drawX + Math.cos(c.angle) * c.innerR,
+                        drawY + Math.sin(c.angle) * c.innerR
+                    );
+                    ctx.lineTo(
+                        drawX + Math.cos(c.angle) * c.outerR,
+                        drawY + Math.sin(c.angle) * c.outerR
+                    );
+                    ctx.stroke();
+                }
+            }
 
-                ctx.fillStyle = "rgba(230,255,240,0.95)";
-                ctx.beginPath();
-                ctx.arc(d.x, d.y, r * 0.45, 0, Math.PI * 2);
-                ctx.fill();
+            // Progress pips
+            const required = d.strikesRequired ?? 1;
+            if (required > 1 && d.strikesLanded > 0) {
+                const pipY = drawY - d.r - 10;
+                const gap = 6;
+                const startX = drawX - ((required - 1) * gap) / 2;
+                for (let i = 0; i < required; i++) {
+                    ctx.fillStyle =
+                        i < d.strikesLanded
+                            ? "#7cc8ff"
+                            : "rgba(255,255,255,0.18)";
+                    ctx.beginPath();
+                    ctx.arc(startX + i * gap, pipY, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
             }
         }
 
@@ -606,5 +643,77 @@ export default class FieldCanvas {
             Math.PI * 2
         );
         ctx.fill();
+    }
+
+    hitTestDeposit(worldX, worldY) {
+        for (const d of this.deposits) {
+            if (!d.active) continue;
+            const r = d.r * TAP_HIT_RADIUS;
+            if (Math.hypot(worldX - d.x, worldY - d.y) <= r) return d;
+        }
+        return null;
+    }
+
+    inReach(d) {
+        const p = this.player;
+        return Math.hypot(p.x - d.x, p.y - d.y) <= p.r + d.r + STRIKE_REACH;
+    }
+
+    tryStrike(d) {
+        if (this.inReach(d)) {
+            this.strikeDeposit(d);
+            return;
+        }
+
+        // Walk to deposit edge; auto-strike once on arrival.
+        const p = this.player;
+        const dx = d.x - p.x;
+        const dy = d.y - p.y;
+        const dist = Math.hypot(dx, dy);
+        const stopDist = p.r + d.r + STRIKE_REACH * 0.5;
+
+        if (dist > stopDist) {
+            p.tx = this.clampWorldX(d.x - (dx / dist) * stopDist);
+            p.ty = this.clampWorldY(d.y - (dy / dist) * stopDist);
+        }
+        this.approachingDeposit = d;
+    }
+
+    strikeDeposit(d) {
+        if (!d.active) return;
+        const required = d.strikesRequired ?? 1;
+        if (d.strikesLanded >= required) return;
+
+        d.strikesLanded++;
+        d.hitFlash = this.time;
+        d.cracks.push(this.makeCrack(d));
+
+        if (d.strikesLanded >= required) {
+            this.completeDeposit(d);
+        }
+    }
+
+    makeCrack(d) {
+        return {
+            angle: Math.random() * Math.PI * 2,
+            innerR: d.r * (0.15 + Math.random() * 0.1),
+            outerR: d.r * (0.75 + Math.random() * 0.35)
+        };
+    }
+
+    completeDeposit(d) {
+        d.active = false;
+        d.respawnAt = this.time + RESPAWN_DELAY;
+        d.strikesLanded = 0;
+        d.cracks = [];
+
+        const rect = this.canvas.getBoundingClientRect();
+        const screenPos = {
+            clientX: rect.left + (d.x - this.camera.x),
+            clientY: rect.top + (d.y - this.camera.y)
+        };
+
+        this.onCollect?.(d, screenPos);
+        this.showToast?.(`${d.label ?? "Deposit"} recovered`);
     }
 }
