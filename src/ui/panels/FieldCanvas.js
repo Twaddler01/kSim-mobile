@@ -85,7 +85,7 @@ export default class FieldCanvas {
         this.onCollect = onCollect;
         this.onRespawn = onRespawn;
         this.showToast = showToast;
-    
+
         this.element = null;
         this.canvas = null;
         this.ctx = null;
@@ -93,19 +93,19 @@ export default class FieldCanvas {
         this.rafId = null;
         this.lastTime = 0;
         this.active = false;
-    
+
         this.dpr = 1;
         this.width = 0;
         this.height = 0;
-    
+
         // Clone so caller mutations don't leak in.
         this.world = { width: world.width, height: world.height };
         this.respawnDelay = respawnDelay;
         this.fallbackDepositCount = fallbackDepositCount;
-    
+
         this.camera = { x: 0, y: 0 };
         this.cameraInitialized = false;
-    
+
         this.player = {
             x: this.world.width / 2,
             y: this.world.height / 2,
@@ -529,7 +529,7 @@ export default class FieldCanvas {
         for (const d of this.deposits) {
             if (!d.active) continue;
 
-            // Hit shake (decays over 120ms)
+            // --- Hit shake (unchanged) ---
             const sinceHit = this.time - (d.hitFlash ?? -999);
             const shakeAmt = sinceHit < 0.12 ? (1 - sinceHit / 0.12) * 3 : 0;
             const drawX =
@@ -537,15 +537,56 @@ export default class FieldCanvas {
             const drawY =
                 d.y + (shakeAmt ? (Math.random() - 0.5) * shakeAmt * 2 : 0);
 
-            // Sprite (or fallback circle)
+            const scale = d.scale ?? 1;
+            const rotation = d.rotation ?? 0;
+            const s = d.r * 3;
+
+            // --- 1. Ground shadow (base-anchored, scales but doesn't rotate) ---
+            ctx.fillStyle = "rgba(0,0,0,0.35)";
+            ctx.beginPath();
+            ctx.ellipse(
+                drawX,
+                drawY + s * 0.35,
+                s * 0.32 * scale,
+                s * 0.1 * scale,
+                0,
+                0,
+                Math.PI * 2
+            );
+            ctx.fill();
+
+            // --- 2. Crumbs (ground clutter — no rotate, no scale) ---
+            if (d.crumbs) {
+                for (const c of d.crumbs) {
+                    ctx.globalAlpha = c.alpha;
+                    ctx.fillStyle = c.color;
+                    ctx.beginPath();
+                    ctx.arc(
+                        drawX + c.dx,
+                        drawY + c.dy + s * 0.28,
+                        c.r,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                }
+                ctx.globalAlpha = 1;
+            }
+
+            // --- 3. Sprite (rotated + scaled) ---
             if (d.sprite && d.sprite.complete && d.sprite.naturalWidth) {
-                const s = d.r * 3;
-                ctx.drawImage(d.sprite, drawX - s / 2, drawY - s / 2, s, s);
+                ctx.save();
+                ctx.translate(drawX, drawY);
+                ctx.rotate(rotation);
+                ctx.scale(scale, scale);
+                ctx.drawImage(d.sprite, -s / 2, -s / 2, s, s);
+                ctx.restore();
             } else {
+                // Fallback circle (still gets scale for consistency)
                 const r = d.r ?? 22;
                 ctx.fillStyle = "rgba(120,255,180,0.75)";
                 ctx.beginPath();
-                ctx.arc(drawX, drawY, r, 0, Math.PI * 2);
+                ctx.arc(drawX, drawY, r * scale, 0, Math.PI * 2);
                 ctx.fill();
             }
 

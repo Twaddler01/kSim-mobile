@@ -1,8 +1,21 @@
 // src/ui/panels/FieldScene.js
 // Field-work adapter over FieldCanvas.
 
+/*
+Want -- Change
+More/less rotation (rand() - 0.5) * 0.35 → * 0.2 (subtle) or * 0.5 (noticeable)
+More/less scale variety 0.9 + rand() * 0.2 → 0.95 + rand() * 0.1 (subtle) or 0.85 + rand() * 0.3 (bold)
+More crumbs 3 + Math.floor(rand() * 3) → 5 + Math.floor(rand() * 4)
+Bigger crumbs 1 + rand() * 1.5 → 1.2 + rand() * 2
+Wider scatter 0.8 + rand() * 0.8 → 0.7 + rand() * 1.1
+Crumbs further down (more "base") + s * 0.28 → + s * 0.35
+Softer shadow rgba(0,0,0,0.35) → rgba(0,0,0,0.25)
+Per-material crumb color materialDrawings.js → crumbs: [...] on that entry
+*/
+
 import FieldCanvas from "./FieldCanvas.js";
 import { materials } from "../../data/materials.js";
+import { getCrumbColors } from "../../assets/icons/materials/materialDrawings.js";
 
 // Deterministic per-field RNG so a field looks the same across renders.
 function seededRandom(seed) {
@@ -77,6 +90,9 @@ export default class FieldScene {
         for (let i = 0; i < depositCount; i++) {
             const material = this.pickMaterial(rand);
             const richness = this.selectRichness(rand);
+            const rotation = (rand() - 0.5) * 0.35;    // ±0.175 rad ≈ ±10°
+            const scale = 0.9 + rand() * 0.2;          // 0.9 – 1.1
+            const crumbs = this.makeCrumbs(rand, material.id, depositRadius);
 
             let x,
                 y,
@@ -100,7 +116,10 @@ export default class FieldScene {
                 strikesRequired: this.selectStrikes(richness, material.id),
                 sparkleTier: this.selectSparkleTier(richness, material.id),
                 label: material.name,
-                sprite: this.getSpriteFor(material.id) ?? null
+                sprite: this.getSpriteFor(material.id) ?? null,
+                rotation,
+                scale,
+                crumbs
             });
         }
 
@@ -117,7 +136,10 @@ export default class FieldScene {
             this.rawMaterials.find(m => m.id === oldDeposit.materialId) ??
             this.pickMaterial(rand);
         const richness = this.selectRichness(rand);
-
+        const rotation = (rand() - 0.5) * 0.35;    // ±0.175 rad ≈ ±10°
+        const scale = 0.9 + rand() * 0.2;          // 0.9 – 1.1
+        const crumbs = this.makeCrumbs(rand, material.id, depositRadius);
+        
         return {
             id: oldDeposit.id,
             x: margin + rand() * (ww - margin * 2),
@@ -128,7 +150,10 @@ export default class FieldScene {
             strikesRequired: this.selectStrikes(richness, material.id),
             sparkleTier: this.selectSparkleTier(richness, material.id),
             label: material.name,
-            sprite: this.getSpriteFor(material.id) ?? null
+            sprite: this.getSpriteFor(material.id) ?? null,
+            rotation,
+            scale,
+            crumbs
         };
     }
 
@@ -172,10 +197,10 @@ export default class FieldScene {
     getSpriteFor(materialId, variant = "field") {
         const entry = this.getSprites()[materialId];
         if (!entry) return null;
-    
+
         // Legacy flat cache: { stone: Image }
         if (!entry.core && !entry.field) return entry;
-    
+
         // Nested cache: { stone: { core, field } }
         return entry[variant] ?? entry.core ?? null;
     }
@@ -240,5 +265,25 @@ export default class FieldScene {
         const material = materials.find(m => m.id === materialId);
         const base = material?.mining?.sparkleBase ?? 0;
         return Math.max(0, Math.min(3, base + (richness - 1)));
+    }
+
+    makeCrumbs(rand, materialId, depositRadius) {
+        const colors = getCrumbColors(materialId) ?? ["#586378"];
+        const count = 5 + Math.floor(rand() * 3); // 3–5 crumbs
+
+        const crumbs = [];
+        for (let i = 0; i < count; i++) {
+            const angle = rand() * Math.PI * 2;
+            const dist = depositRadius * (0.8 + rand() * 0.8); // 0.8r – 1.6r
+
+            crumbs.push({
+                dx: Math.cos(angle) * dist,
+                dy: Math.sin(angle) * dist * 0.7, // squash Y = top-down
+                r: 1 + rand() * 1.5, // 1–2.5px
+                color: colors[Math.floor(rand() * colors.length)],
+                alpha: 0.55 + rand() * 0.35 // 0.55–0.9
+            });
+        }
+        return crumbs;
     }
 }

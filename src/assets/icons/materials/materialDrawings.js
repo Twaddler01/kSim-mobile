@@ -307,11 +307,6 @@ function drawCopperCore(svg) {
 // FIELD VARIANTS
 function drawStoneField(svg) {
     addShapes(svg, [
-        // Ground shadow
-        {
-            tag: "ellipse",
-            attrs: { cx: 24, cy: 39, rx: 19, ry: 5, fill: "#2a1e14", opacity: 0.75 }
-        },
         // Boulder body — rounder than the octagonal core
         {
             tag: "path",
@@ -368,10 +363,6 @@ function drawStoneField(svg) {
 
 function drawQuartzField(svg) {
     addShapes(svg, [
-        {
-            tag: "ellipse",
-            attrs: { cx: 24, cy: 41, rx: 20, ry: 4.5, fill: "#2a1e14", opacity: 0.75 }
-        },
         // Rock base
         {
             tag: "path",
@@ -436,10 +427,6 @@ function drawQuartzField(svg) {
 
 function drawCopperField(svg) {
     addShapes(svg, [
-        {
-            tag: "ellipse",
-            attrs: { cx: 24, cy: 40, rx: 18, ry: 5, fill: "#2a1e14", opacity: 0.75 }
-        },
         // Rock body (grayish base, not pure copper)
         {
             tag: "path",
@@ -693,29 +680,35 @@ function drawGenericFallback(svg) {
 }
 
 export const materialDrawings = {
-    stone:  { core: drawStoneCore,  field: drawStoneField },
-    quartz: { core: drawQuartzCore, field: drawQuartzField },
-    copper: { core: drawCopperCore, field: drawCopperField }
+    stone:  { core: drawStoneCore,  field: drawStoneField,  crumbs: ["#5a6370", "#6b7480", "#aeb7c2"] },
+    quartz: { core: drawQuartzCore, field: drawQuartzField, crumbs: ["#8892a0", "#B8D9FF", "#c5cdd6"] },
+    copper: { core: drawCopperCore, field: drawCopperField, crumbs: ["#5a5450", "#c87950", "#a95c3d"] }
 };
 
 const genericDrawings = {
-    // Raw subtypes
-    mineral:   { core: drawGenericMineral,   field: drawGenericMineral },
-    ore:       { core: drawGenericOre,       field: drawGenericOre },
-    anomalous: { core: drawGenericAnomalous, field: drawGenericAnomalous },
-    // Processed subtypes
-    metal:     { core: drawGenericMetal,     field: drawGenericMetal },
-    alloy:     { core: drawGenericMetal,     field: drawGenericMetal },
-    ceramic:   { core: drawGenericCeramic,   field: drawGenericCeramic },
-    chemical:  { core: drawGenericChemical,  field: drawGenericChemical },
-    advanced:  { core: drawGenericAdvanced,  field: drawGenericAdvanced },
-    // Crafted subtypes
-    component: { core: drawGenericComponent, field: drawGenericComponent },
-    assembly:  { core: drawGenericAssembly,  field: drawGenericAssembly },
-    equipment: { core: drawGenericAssembly,  field: drawGenericAssembly },
-    // Safety net
-    fallback:  { core: drawGenericFallback,  field: drawGenericFallback }
+    mineral:   { core: drawGenericMineral,   field: drawGenericMineral,   crumbs: ["#8892a0", "#a3adb8", "#c5cdd6"] },
+    ore:       { core: drawGenericOre,       field: drawGenericOre,       crumbs: ["#5a5450", "#8a8280", "#d08a50"] },
+    anomalous: { core: drawGenericAnomalous, field: drawGenericAnomalous, crumbs: ["#4a2a6a", "#8a7aa0", "#d090ff"] },
+    metal:     { core: drawGenericMetal,     field: drawGenericMetal,     crumbs: ["#8a929c", "#b0bac5", "#e0e6ec"] },
+    alloy:     { core: drawGenericMetal,     field: drawGenericMetal,     crumbs: ["#8a929c", "#b0bac5", "#e0e6ec"] },
+    ceramic:   { core: drawGenericCeramic,   field: drawGenericCeramic,   crumbs: ["#a3c0d6", "#e0f0ff"] },
+    chemical:  { core: drawGenericChemical,  field: drawGenericChemical,  crumbs: ["#88e0b0", "#4ac090"] },
+    advanced:  { core: drawGenericAdvanced,  field: drawGenericAdvanced,  crumbs: ["#b0d0ff", "#8ea8e0"] },
+    component: { core: drawGenericComponent, field: drawGenericComponent, crumbs: ["#3a4453", "#7cc8ff", "#aeb7c2"] },
+    assembly:  { core: drawGenericAssembly,  field: drawGenericAssembly,  crumbs: ["#3a4453", "#7cc8ff"] },
+    equipment: { core: drawGenericAssembly,  field: drawGenericAssembly,  crumbs: ["#3a4453", "#7cc8ff"] },
+    fallback:  { core: drawGenericFallback,  field: drawGenericFallback,  crumbs: ["#586378", "#aeb7c2"] }
 };
+
+export function getCrumbColors(materialId) {
+    const exact = materialDrawings[materialId];
+    if (exact?.crumbs) return exact.crumbs;
+
+    const material = getMaterial(materialId);
+    const subtype = material?.subtype ?? "fallback";
+    const generic = genericDrawings[subtype] ?? genericDrawings.fallback;
+    return generic.crumbs ?? ["#586378"];
+}
 
 export function getDrawing(materialId, variant = "core") {
     // 1. Exact match (with variant fallback to core)
