@@ -12,9 +12,28 @@ export default class Inventory {
         this.detailValues = new Map();
         this.itemIds = [];
 
-        initializeInventory(this.game);
+        this._outsideBound = false;
+        this.bindOutsideClick();
 
+        initializeInventory(this.game);
         this.element = this.render();
+    }
+
+    bindOutsideClick() {
+        if (this._outsideBound) return;
+        this._outsideBound = true;
+
+        document.addEventListener(
+            "pointerdown",
+            e => {
+                if (!this.expanded) return;
+                if (this.element?.contains(e.target)) return;
+                this.expanded = false;
+                document.body.classList.remove("inventory-open");
+                this.replaceElement();
+            },
+            true
+        );
     }
 
     get game() {
@@ -150,6 +169,12 @@ export default class Inventory {
     replaceElement() {
         const oldElement = this.element;
         this.element = this.render();
+
+        if (this.expanded) {
+            document.body.classList.add("inventory-open");
+        } else {
+            document.body.classList.remove("inventory-open");
+        }
 
         if (oldElement?.isConnected) {
             oldElement.replaceWith(this.element);
