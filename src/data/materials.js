@@ -11,8 +11,7 @@ export const materials = [
         subtype: "mineral",
         tier: 1,
         icon: "🪨",
-        description: "A rough fragment of common stone recovered from the field.",
-        field: { id: "stone", dropChance: 0.22 }
+        description: "A rough fragment of common stone recovered from the field."
     },
     {
         id: "quartz",
@@ -21,8 +20,7 @@ export const materials = [
         subtype: "mineral",
         tier: 1,
         icon: "💎",
-        description: "A crystalline mineral suitable for processing.",
-        field: { id: "quartz", dropChance: 0.30 }
+        description: "A crystalline mineral suitable for processing."
     },
     {
         id: "copper",
@@ -31,8 +29,7 @@ export const materials = [
         subtype: "ore",
         tier: 2,
         icon: "🟠",
-        description: "A recovered conductive metal sample.",
-        field: { id: "copper", dropChance: 0.22 }
+        description: "A recovered conductive metal sample."
     },
     {
         id: "silicon",
@@ -41,8 +38,7 @@ export const materials = [
         subtype: "mineral",
         tier: 2,
         icon: "🔹",
-        description: "A semiconductor-grade mineral sample.",
-        field: { id: "silicon", dropChance: 0.22 }
+        description: "A semiconductor-grade mineral sample."
     },
     {
         id: "silica",
@@ -51,8 +47,7 @@ export const materials = [
         subtype: "mineral",
         tier: 1,
         icon: "💎",
-        description: "A mineral precursor for engineered crystal structures.",
-        field: { id: "quartz", dropChance: 0.20 }
+        description: "A mineral precursor for engineered crystal structures."
     },
     {
         id: "graphite",
@@ -61,8 +56,7 @@ export const materials = [
         subtype: "mineral",
         tier: 1,
         icon: "⬛",
-        description: "A carbon-rich mineral useful in conductive materials.",
-        field: { id: "carbon", dropChance: 0.16 }
+        description: "A carbon-rich mineral useful in conductive materials."
     },
     {
         id: "clay",
@@ -71,8 +65,7 @@ export const materials = [
         subtype: "mineral",
         tier: 1,
         icon: "🟤",
-        description: "A workable mineral feedstock for heat-resistant materials.",
-        field: { id: "surface", dropChance: 0.20 }
+        description: "A workable mineral feedstock for heat-resistant materials."
     },
     {
         id: "sulfur",
@@ -81,8 +74,7 @@ export const materials = [
         subtype: "mineral",
         tier: 1,
         icon: "🟡",
-        description: "A reactive mineral used in chemical processing.",
-        field: { id: "sulfur", dropChance: 0.12 }
+        description: "A reactive mineral used in chemical processing."
     },
     {
         id: "ironOre",
@@ -91,8 +83,7 @@ export const materials = [
         subtype: "ore",
         tier: 1,
         icon: "🪨",
-        description: "An iron-bearing ore suitable for smelting.",
-        field: { id: "iron", dropChance: 0.12 }
+        description: "An iron-bearing ore suitable for smelting."
     },
     {
         id: "aluminum",
@@ -101,8 +92,7 @@ export const materials = [
         subtype: "ore",
         tier: 2,
         icon: "⬜",
-        description: "A lightweight-metal feedstock recovered from bauxite deposits.",
-        field: { id: "aluminum", dropChance: 0.12 }
+        description: "A lightweight-metal feedstock recovered from bauxite deposits."
     },
     {
         id: "nickelOre",
@@ -111,8 +101,7 @@ export const materials = [
         subtype: "ore",
         tier: 2,
         icon: "🪨",
-        description: "A metal-bearing ore for advanced alloys.",
-        field: { id: "nickel", dropChance: 0.08 }
+        description: "A metal-bearing ore for advanced alloys."
     },
     {
         id: "zincOre",
@@ -121,8 +110,7 @@ export const materials = [
         subtype: "ore",
         tier: 2,
         icon: "🪨",
-        description: "A zinc-bearing ore for material processing.",
-        field: { id: "zinc", dropChance: 0.10 }
+        description: "A zinc-bearing ore for material processing."
     },
     {
         id: "lithiumOre",
@@ -131,8 +119,7 @@ export const materials = [
         subtype: "ore",
         tier: 3,
         icon: "🪨",
-        description: "A lithium-bearing ore for specialized chemical processing.",
-        field: { id: "lithium", dropChance: 0.08 }
+        description: "A lithium-bearing ore for specialized chemical processing."
     },
     {
         id: "cobaltOre",
@@ -141,8 +128,7 @@ export const materials = [
         subtype: "ore",
         tier: 3,
         icon: "🪨",
-        description: "A cobalt-bearing ore for advanced material production.",
-        field: { id: "cobalt", dropChance: 0.06 }
+        description: "A cobalt-bearing ore for advanced material production."
     },
     {
         id: "titaniumOre",
@@ -151,8 +137,7 @@ export const materials = [
         subtype: "ore",
         tier: 3,
         icon: "🪨",
-        description: "A high-strength metal feedstock.",
-        field: { id: "titanium", dropChance: 0.05 }
+        description: "A high-strength metal feedstock."
     },
     {
         id: "rareEarthOre",
@@ -161,8 +146,7 @@ export const materials = [
         subtype: "ore",
         tier: 3,
         icon: "🪨",
-        description: "An ore containing elements useful in advanced electronics.",
-        field: { id: "rareEarth", dropChance: 0.04 }
+        description: "An ore containing elements useful in advanced electronics."
     },
     {
         id: "tungstenOre",
@@ -171,8 +155,7 @@ export const materials = [
         subtype: "ore",
         tier: 4,
         icon: "🪨",
-        description: "A dense metal feedstock for specialized equipment.",
-        field: { id: "tungsten", dropChance: 0.035 }
+        description: "A dense metal feedstock for specialized equipment."
     },
     {
         id: "tantalumOre",
@@ -181,8 +164,7 @@ export const materials = [
         subtype: "ore",
         tier: 4,
         icon: "🪨",
-        description: "A rare metal feedstock for electronic components.",
-        field: { id: "tantalum", dropChance: 0.025 }
+        description: "A rare metal feedstock for electronic components."
     },
     {
         id: "platinumOre",
@@ -191,8 +173,7 @@ export const materials = [
         subtype: "ore",
         tier: 4,
         icon: "🪨",
-        description: "A rare metal-bearing deposit.",
-        field: { id: "deepRock", dropChance: 0.015 }
+        description: "A rare metal-bearing deposit."
     },
     {
         id: "meteoriteFragment",
@@ -201,8 +182,7 @@ export const materials = [
         subtype: "anomalous",
         tier: 4,
         icon: "☄️",
-        description: "An extraterrestrial fragment with unusual material properties.",
-        field: { id: "meteorSite", dropChance: 0.02 }
+        description: "An extraterrestrial fragment with unusual material properties."
     },
     {
         id: "unstableIsotope",
@@ -211,8 +191,7 @@ export const materials = [
         subtype: "anomalous",
         tier: 5,
         icon: "☢️",
-        description: "An isotope exhibiting unusual decay behavior.",
-        field: { id: "meteorSite", dropChance: 0.01 }
+        description: "An isotope exhibiting unusual decay behavior."
     },
     {
         id: "anomalousCrystal",
@@ -221,8 +200,7 @@ export const materials = [
         subtype: "anomalous",
         tier: 5,
         icon: "💠",
-        description: "A crystal exhibiting unexplained field interactions.",
-        field: { id: "anomalyZone", dropChance: 0.005 }
+        description: "A crystal exhibiting unexplained field interactions."
     },
     {
         id: "quantumParticleTrace",
@@ -231,8 +209,7 @@ export const materials = [
         subtype: "discovery",
         tier: 5,
         icon: "⚛️",
-        description: "Evidence of a particle interaction outside the expected model.",
-        field: { id: "anomalyZone", dropChance: 0.002 }
+        description: "Evidence of a particle interaction outside the expected model."
     },
 
     // --------------------------------------------------

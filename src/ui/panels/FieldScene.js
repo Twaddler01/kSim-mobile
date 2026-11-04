@@ -88,6 +88,7 @@ export default class FieldScene {
                 materialId: material.id,
                 richness,
                 strikesRequired: this.selectStrikes(richness),
+                sparkleTier: this.selectSparkleTier(richness), // ← add
                 label: material.name,
                 sprite: this.getSpriteFor(material.id) ?? null
             });
@@ -106,6 +107,7 @@ export default class FieldScene {
             this.pickMaterial(rand);
 
         const richness = this.selectRichness(rand);
+
         return {
             id: oldDeposit.id,
             x: margin + rand() * (WORLD_W - margin * 2),
@@ -114,6 +116,7 @@ export default class FieldScene {
             materialId: material.id,
             richness,
             strikesRequired: this.selectStrikes(richness),
+            sparkleTier: this.selectSparkleTier(richness), // ← add
             label: material.name,
             sprite: this.getSpriteFor(material.id) ?? null
         };
@@ -209,5 +212,17 @@ export default class FieldScene {
         //   richness 3 → 4 strikes
         //   richness 4 → 5 strikes
         return 1 + richness;
+    }
+
+    selectSparkleTier(richness) {
+        const table = this.field.sparkleTable;
+        if (Array.isArray(table)) {
+            const entry = table.find(e => e.richness === richness);
+            if (entry && Number.isFinite(entry.tier)) {
+                return Math.max(0, Math.min(3, entry.tier));
+            }
+        }
+        // Default: richness 1 → 0, 2 → 1, 3 → 2, 4+ → 3
+        return Math.max(0, Math.min(3, richness - 1));
     }
 }

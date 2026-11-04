@@ -163,7 +163,8 @@ export default class FieldCanvas {
                 active: true,
                 respawnAt: 0,
                 strikesLanded: 0,
-                cracks: []
+                cracks: [],
+                sparkles: this.makeSparkles(d.sparkleTier ?? 0, d.r ?? 22)
             }));
         } else if (this.deposits.length === 0) {
             this.spawnDeposits(DEPOSIT_COUNT);
@@ -431,6 +432,7 @@ export default class FieldCanvas {
                     strikesLanded: 0,
                     cracks: []
                 });
+                d.sparkles = this.makeSparkles(d.sparkleTier ?? 0, d.r ?? 22);
             }
             // If onRespawn returns null, deposit stays gone (finite field).
         }
@@ -558,6 +560,38 @@ export default class FieldCanvas {
                     ctx.stroke();
                 }
             }
+
+            // Sparkles (ambient orbital motes, tier from richness)
+            if (d.sparkleTier > 0 && d.sparkles) {
+                for (const s of d.sparkles) {
+                    const angle = s.baseAngle + this.time * s.orbitSpeed;
+                    const sx = drawX + Math.cos(angle) * s.orbitRadius;
+                    const sy = drawY + Math.sin(angle) * s.orbitRadius;
+                    const twinkle =
+                        0.5 +
+                        0.5 * Math.sin(this.time * s.twinkleSpeed + s.phase);
+
+                    // Soft glow
+                    ctx.fillStyle = `rgba(160,255,200,${0.28 * twinkle})`;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, s.size * 2.2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Bright core
+                    ctx.fillStyle = `rgba(230,255,240,${0.55 + 0.4 * twinkle})`;
+                    ctx.beginPath();
+                    ctx.arc(sx, sy, s.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            /*
+            sparkleTable: [
+                { richness: 1, tier: 0 },
+                { richness: 2, tier: 1 },
+                { richness: 3, tier: 3 },   // this field makes tier 3 richer
+                { richness: 4, tier: 3 },
+            ]
+            */
 
             // Progress pips
             const required = d.strikesRequired ?? 1;
@@ -715,5 +749,21 @@ export default class FieldCanvas {
 
         this.onCollect?.(d, screenPos);
         this.showToast?.(`${d.label ?? "Deposit"} recovered`);
+    }
+
+    makeSparkles(tier, radius) {
+        const count = [0, 2, 3, 5][tier] ?? 0;
+        const sparkles = [];
+        for (let i = 0; i < count; i++) {
+            sparkles.push({
+                baseAngle: (i / count) * Math.PI * 2 + Math.random() * 0.5,
+                orbitSpeed: 0.35 + Math.random() * 0.45,
+                orbitRadius: radius * (1.5 + Math.random() * 0.5),
+                twinkleSpeed: 1.8 + Math.random() * 2.2,
+                phase: Math.random() * Math.PI * 2,
+                size: 1.4 + Math.random() * 1.6
+            });
+        }
+        return sparkles;
     }
 }
