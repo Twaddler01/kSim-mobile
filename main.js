@@ -37,6 +37,10 @@ import LogPanel from "./src/ui/panels/LogPanel.js";
 import JournalPanel from "./src/ui/panels/journal/JournalPanel.js";
 import PlanPanel from "./src/ui/panels/PlanPanel.js";
 
+import MainObjective from "./src/ui/panels/MainObjective.js";
+import ObjectiveTracker from "./src/ui/panels/ObjectiveTracker.js";
+import { tryAdvanceStage } from "./src/data/stages.js";
+
 // mcv
 import FieldWorkPanel from "./src/ui/panels/FieldWorkPanel.js";
 
@@ -118,6 +122,8 @@ const unlockManager = new UnlockManager(game);
 game.appState ??= {};
 game.appState.navigation ??= {};
 game.appState.navigation.activeFieldId ??= null;
+game.appState.trackerEnabled ??= false;
+game.progression ??= { currentStage: 1 };
 
 const eventProcessor = new EventProcessor(game);
 
@@ -399,6 +405,20 @@ const fieldWorkPanel = new FieldWorkPanel({
 });
 
 ui.fieldWorkPanel = fieldWorkPanel;
+
+const mainObjective = new MainObjective({
+    getGame: () => game,
+    onToggleTracker: enabled => {
+        game.appState.trackerEnabled = enabled;
+        save();
+        refreshUI();
+    }
+});
+
+const objectiveTracker = new ObjectiveTracker({
+    getGame: () => game,
+    navigateToLab: () => navigateTo({ tab: "lab" })
+});
 
 // Navigation — still registered in main because it's global,
 // but delegating to the panel:
@@ -822,9 +842,7 @@ function updateActiveTabUI() {
 }
 
 function updateLabTab() {
-    // The LAB tab currently renders only the static intro + reset panel.
-    // Experiment UI lives in ExperimentPanel and will move to its own tab
-    // once the experiments system unlocks.
+    mainObjective?.update?.();
 }
 
 function updateFieldWorkTab() {
@@ -858,22 +876,32 @@ function updateSharedUI() {
     updateInventory();
 }
 
-  function refreshUI({ database = false } = {}) {
-      if (!ui.layout) {
-          render();
-          return;
-      }
+function refreshUI({ database = false } = {}) {
+    if (!ui.layout) {
+        render();
+        return;
+    }
 
-      updateSharedUI();
+    // Silent stage advancement — no modal, no popup.
+    const result = tryAdvanceStage(game);
+    if (result.advanced) {
+        save();
+        if (result.to) {
+            showToast(`Objective complete. New objective: ${result.to.name}.`);
+        } else {
+            showToast("Objective chain complete.");
+        }
+    }
 
-      if (database) {
-          // Refresh navigation and unread indicators only.
-          // The active panel is refreshed in place by updateActiveTabUI().
-          ui.tabs.update({ refreshContent: false });
-      }
+    updateSharedUI();
+    objectiveTracker?.update?.();
 
-      updateActiveTabUI();
-  }
+    if (database) {
+        ui.tabs.update({ refreshContent: false });
+    }
+
+    updateActiveTabUI();
+}
 
 const upgradePanel = new UpgradePanel({
     getGame: () => game,
@@ -992,13 +1020,11 @@ function render() {
         ]
     );
 
-    ui.labContent = el(
-        "div",
-        {
-            className: "lab-tab-content"
-        },
-        [intro, resetPanel]
-    );
+    ui.labContent = el("div", { className: "lab-tab-content" }, [
+        mainObjective.getElement(),
+        intro,
+        resetPanel
+    ]);
 
     const topbar = el("header", { className: "topbar" }, [
         el("div", { className: "brand" }, [
@@ -1019,7 +1045,7 @@ function render() {
             text: "LAB 01"
         })
     ]);
-
+    
     ui.inventory = new Inventory({
         getGame: () => game,
         formatNumber
@@ -1027,6 +1053,7 @@ function render() {
 
     const layout = el("div", { className: "game-layout" }, [
         topbar,
+        objectiveTracker.getElement(),
         ui.inventory.element,
         renderTabContent()
     ]);

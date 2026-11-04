@@ -68,9 +68,11 @@ export const initialGameData = {
     },
     unlocks: {},
     appState: {
-        navigation: {
-            activeFieldId: null
-        }
+        navigation: { activeFieldId: null },
+        trackerEnabled: false
+    },
+    progression: {
+        currentStage: 1
     },
     operations: {
         quantumFieldUnlocked: false
