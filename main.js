@@ -43,6 +43,7 @@ import { tryAdvanceStage, getCurrentStage } from "./src/data/stages.js";
 
 // mcv
 import FieldWorkPanel from "./src/ui/panels/FieldWorkPanel.js";
+import { createFieldIcon } from "./src/ui/fieldIcons.js";
 
 import Inventory from "./src/ui/panels/Inventory.js";
 // TODO
@@ -274,10 +275,11 @@ function handleFieldUnlock(fieldId, { notify = true } = {}) {
 
     if (notify) {
         showToast(`${field.name} unlocked!`);
-
+    
         showAnnouncement({
             title: "NEW FIELD AVAILABLE",
-            message: `${field.name}: ${field.description}`
+            message: `${field.name}: ${field.description}`,
+            symbol: createFieldIcon(field, { size: 44 })
         });
     }
 

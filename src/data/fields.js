@@ -52,7 +52,8 @@ export const FIELD_DEFINITIONS = [
         materialId: "stone",
         visualVariant: "stone",
         icon: "🪨",
-        description: "Further away from home -- a little less safe? There appears to be a better sample selection here.",
+        description:
+            "Further away from home -- a little less safe? There appears to be a better sample selection here.",
         unlockTrigger: null,
         spawnTable: [
             { materialId: "stone", weight: 50 },
@@ -124,3 +125,33 @@ export const FIELD_DEFINITIONS = [
         ]
     }
 ];
+
+export function getFieldIconMaterialId(field) {
+    if (!field) return null;
+
+    // Explicit identity wins — useful for mixed fields with a
+    // thematic flagship material.
+    if (field.materialId) return field.materialId;
+
+    // Otherwise: dominant spawn weight.
+    const spawn = [...(field.spawnTable ?? [])]
+        .filter(e => e.weight > 0)
+        .sort((a, b) => b.weight - a.weight)[0];
+
+    return spawn?.materialId ?? null;
+}
+
+export function getFieldSpawnBreakdown(field) {
+    const table = field?.spawnTable ?? [];
+    const total = table.reduce((s, e) => s + (e.weight > 0 ? e.weight : 0), 0);
+    if (total <= 0) return [];
+
+    return table
+        .filter(e => e.weight > 0)
+        .map(e => ({
+            materialId: e.materialId,
+            weight: e.weight,
+            percent: (e.weight / total) * 100
+        }))
+        .sort((a, b) => b.weight - a.weight);
+}

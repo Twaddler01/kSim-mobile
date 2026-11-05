@@ -3,6 +3,10 @@ import { Button } from "../components/Button.js";
 import { Card } from "../components/Card.js";
 import Badge from "../components/Badge.js";
 import NewBadge from "../../notifications/NewBadge.js";
+import { createFieldIcon } from "../fieldIcons.js";
+import { materials } from "../../data/materials.js";
+import { getFieldSpawnBreakdown } from "../../data/fields.js";
+import { MaterialIcon } from "../../assets/icons/materials/MaterialIcon.js";
 
 export default class FieldWorkPanel {
     constructor({
@@ -223,10 +227,12 @@ export default class FieldWorkPanel {
                     }
                 },
                 [
-                    el("span", {
-                        className: "field-selection-card__icon",
-                        text: field.icon ?? "◈"
-                    }),
+                    el("span", { className: "field-selection-card__icon" }, [
+                        createFieldIcon(field, {
+                            size: 32,
+                            className: "field-selection-card__icon-svg"
+                        })
+                    ]),
                     el("span", { className: "field-selection-card__copy" }, [
                         el(
                             "span",
@@ -243,7 +249,8 @@ export default class FieldWorkPanel {
                                 : `Requires ${field.unlockTrigger?.amount ?? 0} ${
                                       field.unlockTrigger?.item ?? "resources"
                                   } Samples`
-                        })
+                        }),
+                        unlocked ? this.renderFieldMaterials(field) : null
                     ])
                 ]
             );
@@ -361,5 +368,52 @@ export default class FieldWorkPanel {
         for (const view of this.fieldViews.values()) {
             view.refreshBackground?.();
         }
+    }
+
+    renderFieldMaterials(field) {
+        const breakdown = getFieldSpawnBreakdown(field);
+        if (breakdown.length === 0) return null;
+
+        const top = breakdown.slice(0, 3);
+
+        return el(
+            "span",
+            {
+                className: "field-selection-card__materials",
+                "aria-label": `Field materials: ${top
+                    .map(
+                        b =>
+                            `${this.materialName(b.materialId)} ${Math.round(b.percent)}%`
+                    )
+                    .join(", ")}`
+            },
+            top.map(spawn => {
+                const pct = Math.round(spawn.percent);
+                const name = this.materialName(spawn.materialId);
+
+                return el(
+                    "span",
+                    {
+                        className: "field-selection-card__chip",
+                        title: `${name} · ${pct}%`
+                    },
+                    [
+                        MaterialIcon(spawn.materialId, {
+                            size: 14,
+                            variant: "core",
+                            className: "field-selection-card__chip-icon"
+                        }),
+                        el("span", {
+                            className: "field-selection-card__chip-label",
+                            text: `${pct}%`
+                        })
+                    ]
+                );
+            })
+        );
+    }
+
+    materialName(materialId) {
+        return materials.find(m => m.id === materialId)?.name ?? materialId;
     }
 }

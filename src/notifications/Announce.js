@@ -99,7 +99,13 @@ export default class Announce {
             this.current;
 
         this.eyebrow.textContent = eyebrow;
-        this.symbol.textContent = symbol;
+
+        if (symbol instanceof Node) {
+            this.symbol.replaceChildren(symbol);
+        } else {
+            this.symbol.textContent = String(symbol ?? "◉");
+        }
+        
         this.titleElement.textContent = title;
         this.messageElement.textContent = message;
 
