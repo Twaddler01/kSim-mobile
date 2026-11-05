@@ -131,7 +131,7 @@ grep -RIn 'panel' \
 
 
 
-grep -rn "svgHelpers" . --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=mobile-dev-console --exclude-dir=ideas --exclude-dir=debug
+grep -rn "MaterialIcon" . --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=mobile-dev-console --exclude-dir=ideas --exclude-dir=debug
 
 
 
